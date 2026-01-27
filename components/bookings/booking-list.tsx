@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import {
@@ -55,26 +55,30 @@ export function BookingList() {
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [deletingBooking, setDeletingBooking] = useState<Booking | null>(null);
   const [forfeitingBooking, setForfeitingBooking] = useState<Booking | null>(
-    null
+    null,
   );
 
   // Group bookings by date
-  const groupedBookings = bookings.reduce(
-    (acc, booking) => {
-      const dateKey = format(new Date(booking.bookingDate), "yyyy-MM-dd");
-      if (!acc[dateKey]) {
-        acc[dateKey] = [];
-      }
-      acc[dateKey].push(booking);
-      return acc;
-    },
-    {} as Record<string, Booking[]>
-  );
+  const groupedBookings = useMemo(() => {
+    return bookings.reduce(
+      (acc, booking) => {
+        const dateKey = format(new Date(booking.bookingDate), "yyyy-MM-dd");
+        if (!acc[dateKey]) {
+          acc[dateKey] = [];
+        }
+        acc[dateKey].push(booking);
+        return acc;
+      },
+      {} as Record<string, Booking[]>,
+    );
+  }, [bookings]);
 
   // Sort by date
-  const sortedDates = Object.keys(groupedBookings).sort(
-    (a, b) => new Date(a).getTime() - new Date(b).getTime()
-  );
+  const sortedDates = useMemo(() => {
+    return Object.keys(groupedBookings).sort(
+      (a, b) => new Date(a).getTime() - new Date(b).getTime(),
+    );
+  }, [groupedBookings]);
 
   const handleDelete = () => {
     if (deletingBooking) {
@@ -151,7 +155,7 @@ export function BookingList() {
                               "flex h-10 w-10 items-center justify-center rounded-lg shrink-0",
                               booking.petType === "DOG"
                                 ? "bg-dog/10 text-dog"
-                                : "bg-cat/10 text-cat"
+                                : "bg-cat/10 text-cat",
                             )}
                           >
                             {booking.petType === "DOG" ? (
@@ -192,7 +196,7 @@ export function BookingList() {
                               variant="outline"
                               className={cn(
                                 "text-xs",
-                                depositStatusColors[booking.depositStatus]
+                                depositStatusColors[booking.depositStatus],
                               )}
                             >
                               {booking.depositStatus === "NONE"
@@ -208,7 +212,8 @@ export function BookingList() {
                         </div>
 
                         <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t mt-auto">
-                          {(booking.depositStatus === "NONE" || booking.depositStatus === "HELD") && (
+                          {(booking.depositStatus === "NONE" ||
+                            booking.depositStatus === "HELD") && (
                             <Button
                               variant="outline"
                               size="sm"

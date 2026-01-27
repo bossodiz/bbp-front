@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Pencil, Trash2, Dog, Cat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,8 +34,13 @@ export function ServiceList() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deletingService, setDeletingService] = useState<Service | null>(null);
 
-  const sortedPetTypes = [...petTypes].sort((a, b) => a.order - b.order);
-  const sortedSizes = [...sizes].sort((a, b) => a.order - b.order);
+  const sortedPetTypes = useMemo(() => {
+    return [...petTypes].sort((a, b) => a.order - b.order);
+  }, [petTypes]);
+
+  const sortedSizes = useMemo(() => {
+    return [...sizes].sort((a, b) => a.order - b.order);
+  }, [sizes]);
 
   const handleDelete = () => {
     if (deletingService) {
@@ -109,7 +114,10 @@ export function ServiceList() {
                     <TableRow>
                       <TableHead className="w-[80px]">ประเภท</TableHead>
                       {sortedSizes.map((size) => (
-                        <TableHead key={size.id} className="text-center min-w-[70px]">
+                        <TableHead
+                          key={size.id}
+                          className="text-center min-w-[70px]"
+                        >
                           <div className="flex flex-col items-center">
                             <span>{size.name}</span>
                             {size.description && (
@@ -133,7 +141,9 @@ export function ServiceList() {
                         </TableCell>
                         {sortedSizes.map((size) => {
                           const price = service.prices.find(
-                            (p) => p.petTypeId === petType.id && p.sizeId === size.id
+                            (p) =>
+                              p.petTypeId === petType.id &&
+                              p.sizeId === size.id,
                           );
                           return (
                             <TableCell key={size.id} className="text-center">

@@ -5,18 +5,18 @@ import { useSearchParams } from "next/navigation";
 import { POSServiceSelector } from "./pos-service-selector";
 import { POSCart } from "./pos-cart";
 import { POSCustomerSelector } from "./pos-customer-selector";
-import {
-  usePOSStore,
-  useBookingStore,
-  useCustomerStore,
-} from "@/lib/store";
+import { usePOSStore, useBookingStore, useCustomerStore } from "@/lib/store";
 
 export function POSContent() {
   const searchParams = useSearchParams();
   const bookingId = searchParams.get("bookingId");
 
-  const { setSelectedBooking, setSelectedCustomer, setSelectedPet, resetPOS } =
-    usePOSStore();
+  const {
+    setSelectedBooking,
+    setSelectedCustomer,
+    togglePetSelection,
+    resetPOS,
+  } = usePOSStore();
   const { getBookingById } = useBookingStore();
   const { customers } = useCustomerStore();
 
@@ -39,7 +39,7 @@ export function POSContent() {
         // Select first pet of matching type if available
         const pet = customer.pets.find((p) => p.type === booking.petType);
         if (pet) {
-          setSelectedPet(pet.id);
+          togglePetSelection(pet.id);
         }
       }
     }
@@ -49,7 +49,7 @@ export function POSContent() {
     customers,
     setSelectedBooking,
     setSelectedCustomer,
-    setSelectedPet,
+    togglePetSelection,
     resetPOS,
   ]);
 
@@ -59,9 +59,7 @@ export function POSContent() {
         <h1 className="text-2xl font-semibold text-foreground">
           ขายหน้าร้าน (POS)
         </h1>
-        <p className="text-muted-foreground">
-          เลือกบริการและชำระเงิน
-        </p>
+        <p className="text-muted-foreground">เลือกบริการและชำระเงิน</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

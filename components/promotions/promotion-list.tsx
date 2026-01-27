@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Pencil, Trash2, Percent, Banknote, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,8 +32,12 @@ const typeIcons = {
 export function PromotionList() {
   const { promotions, deletePromotion, togglePromotion } = usePromotionStore();
   const { services } = useServiceStore();
-  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
-  const [deletingPromotion, setDeletingPromotion] = useState<Promotion | null>(null);
+  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(
+    null,
+  );
+  const [deletingPromotion, setDeletingPromotion] = useState<Promotion | null>(
+    null,
+  );
 
   const handleDelete = () => {
     if (deletingPromotion) {
@@ -48,19 +52,24 @@ export function PromotionList() {
     toast.success(active ? "ปิดใช้งานโปรโมชั่น" : "เปิดใช้งานโปรโมชั่น");
   };
 
-  const formatValue = (promotion: Promotion) => {
-    switch (promotion.type) {
-      case "PERCENT":
-        return `ลด ${promotion.value}%`;
-      case "AMOUNT":
-        return `ลด ${promotion.value} บาท`;
-      case "FREE_SERVICE":
-        const service = services.find((s) => s.id === promotion.freeServiceId);
-        return `แถม ${service?.name || "บริการ"}`;
-      default:
-        return "";
-    }
-  };
+  const formatValue = useCallback(
+    (promotion: Promotion) => {
+      switch (promotion.type) {
+        case "PERCENT":
+          return `ลด ${promotion.value}%`;
+        case "AMOUNT":
+          return `ลด ${promotion.value} บาท`;
+        case "FREE_SERVICE":
+          const service = services.find(
+            (s) => s.id === promotion.freeServiceId,
+          );
+          return `แถม ${service?.name || "บริการ"}`;
+        default:
+          return "";
+      }
+    },
+    [services],
+  );
 
   if (promotions.length === 0) {
     return (
@@ -82,7 +91,7 @@ export function PromotionList() {
               key={promotion.id}
               className={cn(
                 "transition-opacity",
-                !promotion.active && "opacity-60"
+                !promotion.active && "opacity-60",
               )}
             >
               <CardContent className="p-4">
@@ -92,7 +101,7 @@ export function PromotionList() {
                       "flex h-12 w-12 items-center justify-center rounded-xl",
                       promotion.active
                         ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground"
+                        : "bg-muted text-muted-foreground",
                     )}
                   >
                     <Icon className="h-6 w-6" />
@@ -163,8 +172,8 @@ export function PromotionList() {
           <AlertDialogHeader>
             <AlertDialogTitle>ยืนยันการลบโปรโมชั่น</AlertDialogTitle>
             <AlertDialogDescription>
-              คุณต้องการลบโปรโมชั่น &quot;{deletingPromotion?.name}&quot; ใช่หรือไม่?
-              การดำเนินการนี้ไม่สามารถย้อนกลับได้
+              คุณต้องการลบโปรโมชั่น &quot;{deletingPromotion?.name}&quot;
+              ใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

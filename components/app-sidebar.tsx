@@ -10,6 +10,7 @@ import {
   Calendar,
   ShoppingCart,
   PawPrint,
+  History,
 } from "lucide-react";
 import {
   Sidebar,
@@ -22,6 +23,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +54,11 @@ const menuItems = [
     icon: Calendar,
   },
   {
+    title: "ประวัติการใช้บริการ",
+    url: "/history",
+    icon: History,
+  },
+  {
     title: "ขายหน้าร้าน (POS)",
     url: "/pos",
     icon: ShoppingCart,
@@ -60,11 +67,22 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
-        <Link href="/" className="flex items-center gap-3">
+        <Link
+          href="/"
+          className="flex items-center gap-3"
+          onClick={handleLinkClick}
+        >
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <PawPrint className="h-6 w-6" />
           </div>
@@ -94,10 +112,10 @@ export function AppSidebar() {
                       isActive={isActive}
                       className={cn(
                         "transition-colors",
-                        isActive && "bg-sidebar-accent font-medium"
+                        isActive && "bg-sidebar-accent font-medium",
                       )}
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url} onClick={handleLinkClick}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>

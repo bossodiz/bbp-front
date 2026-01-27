@@ -1,5 +1,13 @@
 import { create } from "zustand";
-import type { Customer, Pet, Service, Promotion, Booking, PetTypeConfig, SizeConfig } from "./types";
+import type {
+  Customer,
+  Pet,
+  Service,
+  Promotion,
+  Booking,
+  PetTypeConfig,
+  SizeConfig,
+} from "./types";
 import {
   mockCustomers,
   mockServices,
@@ -12,17 +20,23 @@ import {
 // Customer Store
 interface CustomerStore {
   customers: Customer[];
-  addCustomer: (customer: Omit<Customer, "id" | "createdAt" | "updatedAt" | "pets">) => Customer;
+  addCustomer: (
+    customer: Omit<Customer, "id" | "createdAt" | "updatedAt" | "pets">,
+  ) => Customer;
   updateCustomer: (id: number, data: Partial<Customer>) => void;
   deleteCustomer: (id: number) => void;
-  addPet: (customerId: number, pet: Omit<Pet, "id" | "customerId" | "createdAt" | "updatedAt">) => Pet;
+  addPet: (
+    customerId: number,
+    pet: Omit<Pet, "id" | "customerId" | "createdAt" | "updatedAt">,
+  ) => Pet;
   updatePet: (customerId: number, petId: number, data: Partial<Pet>) => void;
   deletePet: (customerId: number, petId: number) => void;
   searchCustomers: (query: string) => Customer[];
 }
 
 let customerIdCounter = Math.max(...mockCustomers.map((c) => c.id)) + 1;
-let petIdCounter = Math.max(...mockCustomers.flatMap((c) => c.pets.map((p) => p.id))) + 1;
+let petIdCounter =
+  Math.max(...mockCustomers.flatMap((c) => c.pets.map((p) => p.id))) + 1;
 
 export const useCustomerStore = create<CustomerStore>((set, get) => ({
   customers: mockCustomers,
@@ -42,7 +56,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
   updateCustomer: (id, data) => {
     set((state) => ({
       customers: state.customers.map((c) =>
-        c.id === id ? { ...c, ...data, updatedAt: new Date() } : c
+        c.id === id ? { ...c, ...data, updatedAt: new Date() } : c,
       ),
     }));
   },
@@ -65,7 +79,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
       customers: state.customers.map((c) =>
         c.id === customerId
           ? { ...c, pets: [...c.pets, newPet], updatedAt: new Date() }
-          : c
+          : c,
       ),
     }));
     return newPet;
@@ -78,11 +92,11 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
           ? {
               ...c,
               pets: c.pets.map((p) =>
-                p.id === petId ? { ...p, ...data, updatedAt: new Date() } : p
+                p.id === petId ? { ...p, ...data, updatedAt: new Date() } : p,
               ),
               updatedAt: new Date(),
             }
-          : c
+          : c,
       ),
     }));
   },
@@ -96,7 +110,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
               pets: c.pets.filter((p) => p.id !== petId),
               updatedAt: new Date(),
             }
-          : c
+          : c,
       ),
     }));
   },
@@ -110,7 +124,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
       (c) =>
         c.name.toLowerCase().includes(lowerQuery) ||
         c.phone.includes(query) ||
-        c.pets.some((p) => p.name.toLowerCase().includes(lowerQuery))
+        c.pets.some((p) => p.name.toLowerCase().includes(lowerQuery)),
     );
   },
 }));
@@ -142,7 +156,9 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
 
   updatePetType: (id, data) => {
     set((state) => ({
-      petTypes: state.petTypes.map((p) => (p.id === id ? { ...p, ...data } : p)),
+      petTypes: state.petTypes.map((p) =>
+        p.id === id ? { ...p, ...data } : p,
+      ),
     }));
   },
 
@@ -183,7 +199,9 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
 // Service Store
 interface ServiceStore {
   services: Service[];
-  addService: (service: Omit<Service, "id" | "createdAt" | "updatedAt">) => Service;
+  addService: (
+    service: Omit<Service, "id" | "createdAt" | "updatedAt">,
+  ) => Service;
   updateService: (id: number, data: Partial<Service>) => void;
   deleteService: (id: number) => void;
 }
@@ -207,7 +225,7 @@ export const useServiceStore = create<ServiceStore>((set) => ({
   updateService: (id, data) => {
     set((state) => ({
       services: state.services.map((s) =>
-        s.id === id ? { ...s, ...data, updatedAt: new Date() } : s
+        s.id === id ? { ...s, ...data, updatedAt: new Date() } : s,
       ),
     }));
   },
@@ -246,7 +264,7 @@ export const usePromotionStore = create<PromotionStore>((set) => ({
   updatePromotion: (id, data) => {
     set((state) => ({
       promotions: state.promotions.map((p) =>
-        p.id === id ? { ...p, ...data } : p
+        p.id === id ? { ...p, ...data } : p,
       ),
     }));
   },
@@ -260,7 +278,7 @@ export const usePromotionStore = create<PromotionStore>((set) => ({
   togglePromotion: (id) => {
     set((state) => ({
       promotions: state.promotions.map((p) =>
-        p.id === id ? { ...p, active: !p.active } : p
+        p.id === id ? { ...p, active: !p.active } : p,
       ),
     }));
   },
@@ -296,7 +314,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   updateBooking: (id, data) => {
     set((state) => ({
       bookings: state.bookings.map((b) =>
-        b.id === id ? { ...b, ...data } : b
+        b.id === id ? { ...b, ...data } : b,
       ),
     }));
   },
@@ -311,8 +329,12 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
     set((state) => ({
       bookings: state.bookings.map((b) =>
         b.id === id
-          ? { ...b, depositStatus: "FORFEITED" as const, depositForfeitedDate: new Date() }
-          : b
+          ? {
+              ...b,
+              depositStatus: "FORFEITED" as const,
+              depositForfeitedDate: new Date(),
+            }
+          : b,
       ),
     }));
   },
@@ -322,7 +344,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
       bookings: state.bookings.map((b) =>
         b.id === id
           ? { ...b, depositStatus: "NONE" as const, depositAmount: 0 }
-          : b
+          : b,
       ),
     }));
   },
@@ -330,7 +352,7 @@ export const useBookingStore = create<BookingStore>((set, get) => ({
   useDeposit: (id) => {
     set((state) => ({
       bookings: state.bookings.map((b) =>
-        b.id === id ? { ...b, depositStatus: "USED" as const } : b
+        b.id === id ? { ...b, depositStatus: "USED" as const } : b,
       ),
     }));
   },
@@ -348,12 +370,15 @@ export interface CartItem {
   originalPrice: number;
   finalPrice: number;
   isPriceModified: boolean;
+  petId: number | null;
+  petName?: string;
+  petType?: "DOG" | "CAT";
 }
 
 interface POSStore {
   cart: CartItem[];
   selectedCustomerId: number | null;
-  selectedPetId: number | null;
+  selectedPetIds: number[];
   selectedBookingId: number | null;
   appliedPromotionId: number | null;
   addToCart: (item: Omit<CartItem, "id">) => void;
@@ -361,7 +386,7 @@ interface POSStore {
   updateCartItemPrice: (id: string, price: number) => void;
   clearCart: () => void;
   setSelectedCustomer: (customerId: number | null) => void;
-  setSelectedPet: (petId: number | null) => void;
+  togglePetSelection: (petId: number) => void;
   setSelectedBooking: (bookingId: number | null) => void;
   setAppliedPromotion: (promotionId: number | null) => void;
   resetPOS: () => void;
@@ -370,7 +395,7 @@ interface POSStore {
 export const usePOSStore = create<POSStore>((set) => ({
   cart: [],
   selectedCustomerId: null,
-  selectedPetId: null,
+  selectedPetIds: [],
   selectedBookingId: null,
   appliedPromotionId: null,
 
@@ -390,8 +415,12 @@ export const usePOSStore = create<POSStore>((set) => ({
     set((state) => ({
       cart: state.cart.map((item) =>
         item.id === id
-          ? { ...item, finalPrice: price, isPriceModified: price !== item.originalPrice }
-          : item
+          ? {
+              ...item,
+              finalPrice: price,
+              isPriceModified: price !== item.originalPrice,
+            }
+          : item,
       ),
     }));
   },
@@ -401,11 +430,18 @@ export const usePOSStore = create<POSStore>((set) => ({
   },
 
   setSelectedCustomer: (customerId) => {
-    set({ selectedCustomerId: customerId });
+    set({ selectedCustomerId: customerId, selectedPetIds: [] });
   },
 
-  setSelectedPet: (petId) => {
-    set({ selectedPetId: petId });
+  togglePetSelection: (petId) => {
+    set((state) => {
+      const isSelected = state.selectedPetIds.includes(petId);
+      return {
+        selectedPetIds: isSelected
+          ? state.selectedPetIds.filter((id) => id !== petId)
+          : [...state.selectedPetIds, petId],
+      };
+    });
   },
 
   setSelectedBooking: (bookingId) => {
@@ -420,7 +456,7 @@ export const usePOSStore = create<POSStore>((set) => ({
     set({
       cart: [],
       selectedCustomerId: null,
-      selectedPetId: null,
+      selectedPetIds: [],
       selectedBookingId: null,
       appliedPromotionId: null,
     });

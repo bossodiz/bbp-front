@@ -1,9 +1,18 @@
 "use client";
 
-import { Scissors, Plus } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { Scissors, Plus, Dog, Cat } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   useServiceStore,
   usePOSStore,
@@ -17,44 +26,66 @@ import { toast } from "sonner";
 export function POSServiceSelector() {
   const { services } = useServiceStore();
   const { petTypes, sizes } = useServiceConfigStore();
-  const { addToCart, selectedPetId, selectedCustomerId } = usePOSStore();
+  const { addToCart, selectedPetIds, selectedCustomerId, cart } = usePOSStore();
   const { customers } = useCustomerStore();
+  const [showPetSelectDialog, setShowPetSelectDialog] = useState(false);
+  const [pendingService, setPendingService] = useState<{
+    serviceId: number;
+    serviceName: string;
+    price: number;
+  } | null>(null);
 
-  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
-  const selectedPet = selectedCustomer?.pets.find((p) => p.id === selectedPetId);
+  const selectedCustomer = useMemo(() => {
+    return customers.find((c) => c.id === selectedCustomerId);
+  }, [customers, selectedCustomerId]);
+
+  const selectedPets = useMemo(() => {
+    return (
+      selectedCustomer?.pets.filter((p) => selectedPetIds.includes(p.id)) || []
+    );
+  }, [selectedCustomer, selectedPetIds]);
+
+  const sortedSizes = useMemo(() => {
+    return [...sizes].sort((a, b) => a.order - b.order);
+  }, [sizes]);
 
   // Estimate size based on weight for the selected pet
-  const estimateSizeFromWeight = (weight: number): string | null => {
-    const sortedSizes = [...sizes].sort((a, b) => a.order - b.order);
-    // Try to match based on description if it contains weight ranges
-    for (const size of sortedSizes) {
-      if (size.description) {
-        // Parse description like "2-5kg" or "10kg+"
-        const match = size.description.match(/(\d+(?:\.\d+)?)\s*-?\s*(\d+(?:\.\d+)?)?/);
-        if (match) {
-          const min = parseFloat(match[1]);
-          const max = match[2] ? parseFloat(match[2]) : Infinity;
-          if (weight >= min && weight <= max) {
-            return size.id;
+  const estimateSizeFromWeight = useCallback(
+    (weight: number): string | null => {
+      const sortedSizes = [...sizes].sort((a, b) => a.order - b.order);
+      // Try to match based on description if it contains weight ranges
+      for (const size of sortedSizes) {
+        if (size.description) {
+          // Parse description like "2-5kg" or "10kg+"
+          const match = size.description.match(
+            /(\d+(?:\.\d+)?)\s*-?\s*(\d+(?:\.\d+)?)?/,
+          );
+          if (match) {
+            const min = parseFloat(match[1]);
+            const max = match[2] ? parseFloat(match[2]) : Infinity;
+            if (weight >= min && weight <= max) {
+              return size.id;
+            }
           }
         }
       }
-    }
-    // Fallback: estimate based on order
-    if (weight <= 2) return sortedSizes[0]?.id || null;
-    if (weight <= 5) return sortedSizes[1]?.id || sortedSizes[0]?.id || null;
-    if (weight <= 10) return sortedSizes[2]?.id || sortedSizes[1]?.id || null;
-    if (weight <= 20) return sortedSizes[3]?.id || sortedSizes[2]?.id || null;
-    return sortedSizes[sortedSizes.length - 1]?.id || null;
-  };
-
-  const estimatedSizeId = selectedPet
-    ? estimateSizeFromWeight(selectedPet.weight)
-    : null;
+      // Fallback: estimate based on order
+      if (weight <= 2) return sortedSizes[0]?.id || null;
+      if (weight <= 5) return sortedSizes[1]?.id || sortedSizes[0]?.id || null;
+      if (weight <= 10) return sortedSizes[2]?.id || sortedSizes[1]?.id || null;
+      if (weight <= 20) return sortedSizes[3]?.id || sortedSizes[2]?.id || null;
+      return sortedSizes[sortedSizes.length - 1]?.id || null;
+    },
+    [sizes, sortedSizes],
+  );
 
   const getPetTypeName = (petTypeId: string) => {
     const pt = petTypes.find((p) => p.id === petTypeId);
-    return pt?.name || petTypeLabels[petTypeId as keyof typeof petTypeLabels] || petTypeId;
+    return (
+      pt?.name ||
+      petTypeLabels[petTypeId as keyof typeof petTypeLabels] ||
+      petTypeId
+    );
   };
 
   const getSizeName = (sizeId: string) => {
@@ -75,9 +106,24 @@ export function POSServiceSelector() {
     }).format(amount);
   };
 
-  const handleAddService = (serviceId: number, price: number) => {
+  const handleAddService = (
+    serviceId: number,
+    serviceName: string,
+    price: number,
+    petId?: number,
+  ) => {
     const service = services.find((s) => s.id === serviceId);
     if (!service) return;
+
+    // If no pet specified and we have selected pets, show dialog
+    if (!petId && selectedPets.length > 0) {
+      setPendingService({ serviceId, serviceName, price });
+      setShowPetSelectDialog(true);
+      return;
+    }
+
+    // Get pet info if petId is provided
+    const pet = petId ? selectedPets.find((p) => p.id === petId) : undefined;
 
     addToCart({
       serviceId: service.id,
@@ -85,9 +131,27 @@ export function POSServiceSelector() {
       originalPrice: price,
       finalPrice: price,
       isPriceModified: false,
+      petId: petId || null,
+      petName: pet?.name,
+      petType: pet?.type,
     });
 
-    toast.success(`เพิ่ม "${service.name}" ลงตะกร้าแล้ว`);
+    toast.success(
+      `เพิ่ม "${service.name}"${pet ? ` สำหรับ ${pet.name}` : ""} ลงตะกร้าแล้ว`,
+    );
+  };
+
+  const handleSelectPetForService = (petId: number) => {
+    if (pendingService) {
+      handleAddService(
+        pendingService.serviceId,
+        pendingService.serviceName,
+        pendingService.price,
+        petId,
+      );
+      setShowPetSelectDialog(false);
+      setPendingService(null);
+    }
   };
 
   // Map pet type (DOG/CAT from Pet) to service pet type ID
@@ -100,111 +164,224 @@ export function POSServiceSelector() {
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <Scissors className="h-5 w-5" />
-          เลือกบริการ
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {selectedPet && estimatedSizeId ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              แสดงราคาสำหรับ {petTypeLabels[selectedPet.type]} ขนาด
-              {getSizeName(estimatedSizeId)} ({selectedPet.weight} kg)
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {services.map((service) => {
-                const petTypeId = getPetTypeIdForPet(selectedPet.type);
-                const priceInfo = service.prices.find(
-                  (p) => p.petTypeId === petTypeId && p.sizeId === estimatedSizeId
-                );
-
-                if (!priceInfo || priceInfo.price <= 0) return null;
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Scissors className="h-5 w-5" />
+            เลือกบริการ
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {selectedPets.length > 0 ? (
+            <div className="space-y-4">
+              {selectedPets.map((pet) => {
+                const estimatedSizeId = estimateSizeFromWeight(pet.weight);
+                const petTypeId = getPetTypeIdForPet(pet.type);
 
                 return (
-                  <div
-                    key={service.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:border-primary/50 transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium">{service.name}</p>
-                      <p className="text-lg font-semibold text-primary">
-                        {formatCurrency(priceInfo.price)}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleAddService(service.id, priceInfo.price)}
+                  <div key={pet.id} className="space-y-3">
+                    <div
+                      className={cn(
+                        "flex items-center gap-2 p-2 rounded-lg border",
+                        pet.type === "DOG"
+                          ? "bg-dog/10 border-dog/20"
+                          : "bg-cat/10 border-cat/20",
+                      )}
                     >
-                      <Plus className="mr-1 h-4 w-4" />
-                      เพิ่ม
-                    </Button>
+                      {pet.type === "DOG" ? (
+                        <Dog className="h-5 w-5 text-dog" />
+                      ) : (
+                        <Cat className="h-5 w-5 text-cat" />
+                      )}
+                      <div>
+                        <p className="font-medium">{pet.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {petTypeLabels[pet.type]} - {pet.breed} ({pet.weight}{" "}
+                          kg)
+                        </p>
+                      </div>
+                    </div>
+
+                    {estimatedSizeId && (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {services.map((service) => {
+                          const priceInfo = service.prices.find(
+                            (p) =>
+                              p.petTypeId === petTypeId &&
+                              p.sizeId === estimatedSizeId,
+                          );
+
+                          if (!priceInfo || priceInfo.price <= 0) return null;
+
+                          // Check if this service+pet combination is already in cart
+                          const isInCart = cart.some(
+                            (item) =>
+                              item.serviceId === service.id &&
+                              item.petId === pet.id,
+                          );
+
+                          return (
+                            <button
+                              key={service.id}
+                              type="button"
+                              disabled={isInCart}
+                              onClick={() =>
+                                handleAddService(
+                                  service.id,
+                                  service.name,
+                                  priceInfo.price,
+                                  pet.id,
+                                )
+                              }
+                              className={cn(
+                                "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
+                                isInCart
+                                  ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
+                                  : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
+                              )}
+                            >
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {service.name}
+                                </p>
+                                <p
+                                  className={cn(
+                                    "text-lg font-semibold",
+                                    isInCart
+                                      ? "text-muted-foreground"
+                                      : "text-primary",
+                                  )}
+                                >
+                                  {formatCurrency(priceInfo.price)}
+                                </p>
+                              </div>
+                              {isInCart && (
+                                <Badge variant="secondary" className="text-xs">
+                                  เลือกแล้ว
+                                </Badge>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              เลือกลูกค้าและสัตว์เลี้ยงเพื่อดูราคาที่เหมาะสม หรือเลือกบริการด้านล่าง
-            </p>
-            {services.map((service) => (
-              <div key={service.id} className="space-y-2">
-                <h4 className="font-medium">{service.name}</h4>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {service.prices
-                    .filter((price) => price.price > 0)
-                    .map((price) => (
-                      <button
-                        type="button"
-                        key={price.id}
-                        onClick={() => handleAddService(service.id, price.price)}
-                        className={cn(
-                          "flex items-center justify-between p-3 rounded-lg border text-left hover:border-primary/50 transition-colors",
-                          price.petTypeId === "DOG"
-                            ? "bg-dog/5 hover:bg-dog/10"
-                            : price.petTypeId === "CAT"
-                              ? "bg-cat/5 hover:bg-cat/10"
-                              : "bg-muted/50 hover:bg-muted"
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-xs",
-                              price.petTypeId === "DOG"
-                                ? "border-dog/30 text-dog"
-                                : price.petTypeId === "CAT"
-                                  ? "border-cat/30 text-cat"
-                                  : ""
-                            )}
-                          >
-                            {getPetTypeName(price.petTypeId)}
-                          </Badge>
-                          <span className="text-sm">
-                            {getSizeName(price.sizeId)}
-                            {getSizeDescription(price.sizeId) && (
-                              <span className="text-muted-foreground ml-1">
-                                ({getSizeDescription(price.sizeId)})
-                              </span>
-                            )}
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                เลือกลูกค้าและสัตว์เลี้ยงเพื่อดูราคาที่เหมาะสม
+                หรือเลือกบริการด้านล่าง
+              </p>
+              {services.map((service) => (
+                <div key={service.id} className="space-y-2">
+                  <h4 className="font-medium">{service.name}</h4>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {service.prices
+                      .filter((price) => price.price > 0)
+                      .map((price) => (
+                        <button
+                          type="button"
+                          key={price.id}
+                          onClick={() =>
+                            handleAddService(
+                              service.id,
+                              service.name,
+                              price.price,
+                            )
+                          }
+                          className={cn(
+                            "flex items-center justify-between p-3 rounded-lg border text-left hover:border-primary/50 transition-colors",
+                            price.petTypeId === "DOG"
+                              ? "bg-dog/5 hover:bg-dog/10"
+                              : price.petTypeId === "CAT"
+                                ? "bg-cat/5 hover:bg-cat/10"
+                                : "bg-muted/50 hover:bg-muted",
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-xs",
+                                price.petTypeId === "DOG"
+                                  ? "border-dog/30 text-dog"
+                                  : price.petTypeId === "CAT"
+                                    ? "border-cat/30 text-cat"
+                                    : "",
+                              )}
+                            >
+                              {getPetTypeName(price.petTypeId)}
+                            </Badge>
+                            <span className="text-sm">
+                              {getSizeName(price.sizeId)}
+                              {getSizeDescription(price.sizeId) && (
+                                <span className="text-muted-foreground ml-1">
+                                  ({getSizeDescription(price.sizeId)})
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <span className="font-semibold">
+                            {formatCurrency(price.price)}
                           </span>
-                        </div>
-                        <span className="font-semibold">
-                          {formatCurrency(price.price)}
-                        </span>
-                      </button>
-                    ))}
+                        </button>
+                      ))}
+                  </div>
                 </div>
-              </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pet Selection Dialog */}
+      <Dialog open={showPetSelectDialog} onOpenChange={setShowPetSelectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>เลือกสัตว์เลี้ยง</DialogTitle>
+            <DialogDescription>
+              เลือกสัตว์เลี้ยงที่ต้องการให้บริการ {pendingService?.serviceName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {selectedPets.map((pet) => (
+              <button
+                key={pet.id}
+                type="button"
+                onClick={() => handleSelectPetForService(pet.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left hover:bg-accent cursor-pointer",
+                  pet.type === "DOG" ? "border-dog/20" : "border-cat/20",
+                )}
+              >
+                {pet.type === "DOG" ? (
+                  <Dog className="h-6 w-6 text-dog" />
+                ) : (
+                  <Cat className="h-6 w-6 text-cat" />
+                )}
+                <div>
+                  <p className="font-medium">{pet.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {petTypeLabels[pet.type]} - {pet.breed} ({pet.weight} kg)
+                  </p>
+                </div>
+              </button>
             ))}
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowPetSelectDialog(false)}
+            >
+              ยกเลิก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

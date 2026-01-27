@@ -21,15 +21,16 @@ export function POSCustomerSelector() {
   const { customers, searchCustomers } = useCustomerStore();
   const {
     selectedCustomerId,
-    selectedPetId,
+    selectedPetIds,
     selectedBookingId,
     setSelectedCustomer,
-    setSelectedPet,
+    togglePetSelection,
   } = usePOSStore();
   const { getBookingById } = useBookingStore();
 
   const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
-  const selectedPet = selectedCustomer?.pets.find((p) => p.id === selectedPetId);
+  const selectedPets =
+    selectedCustomer?.pets.filter((p) => selectedPetIds.includes(p.id)) || [];
   const booking = selectedBookingId ? getBookingById(selectedBookingId) : null;
 
   const filteredCustomers = searchQuery
@@ -47,18 +48,11 @@ export function POSCustomerSelector() {
   const handleSelectCustomer = (customerId: number) => {
     const customer = customers.find((c) => c.id === customerId);
     setSelectedCustomer(customerId);
-    // Auto-select first pet if available
-    if (customer?.pets.length === 1) {
-      setSelectedPet(customer.pets[0].id);
-    } else {
-      setSelectedPet(null);
-    }
     setSearchQuery("");
   };
 
   const handleClearCustomer = () => {
     setSelectedCustomer(null);
-    setSelectedPet(null);
   };
 
   return (
@@ -97,66 +91,61 @@ export function POSCustomerSelector() {
                   {formatPhoneDisplay(selectedCustomer.phone)}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearCustomer}
-              >
+              <Button variant="ghost" size="sm" onClick={handleClearCustomer}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
             {selectedCustomer.pets.length > 0 && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">เลือกสัตว์เลี้ยง</label>
-                <Select
-                  value={selectedPetId?.toString() || ""}
-                  onValueChange={(value) => setSelectedPet(Number(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกสัตว์เลี้ยง" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectedCustomer.pets.map((pet) => (
-                      <SelectItem key={pet.id} value={pet.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          {pet.type === "DOG" ? (
-                            <Dog className="h-4 w-4 text-dog" />
-                          ) : (
-                            <Cat className="h-4 w-4 text-cat" />
-                          )}
-                          <span>{pet.name}</span>
-                          <span className="text-muted-foreground">
-                            ({pet.breed}, {pet.weight} kg)
-                          </span>
+                <label className="text-sm font-medium">
+                  เลือกสัตว์เลี้ยง (เลือกได้หลายตัว)
+                </label>
+                <div className="grid gap-2">
+                  {selectedCustomer.pets.map((pet) => {
+                    const isSelected = selectedPetIds.includes(pet.id);
+                    return (
+                      <button
+                        key={pet.id}
+                        type="button"
+                        onClick={() => togglePetSelection(pet.id)}
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg border transition-all text-left cursor-pointer",
+                          isSelected
+                            ? pet.type === "DOG"
+                              ? "bg-dog/10 border-dog/50"
+                              : "bg-cat/10 border-cat/50"
+                            : "hover:bg-accent/50",
+                        )}
+                      >
+                        {pet.type === "DOG" ? (
+                          <Dog
+                            className={cn(
+                              "h-6 w-6",
+                              isSelected ? "text-dog" : "text-muted-foreground",
+                            )}
+                          />
+                        ) : (
+                          <Cat
+                            className={cn(
+                              "h-6 w-6",
+                              isSelected ? "text-cat" : "text-muted-foreground",
+                            )}
+                          />
+                        )}
+                        <div className="flex-1">
+                          <p className="font-medium">{pet.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {pet.breed} - {pet.weight} kg
+                          </p>
                         </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {selectedPet && (
-                  <div
-                    className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border",
-                      selectedPet.type === "DOG"
-                        ? "bg-dog/5 border-dog/20"
-                        : "bg-cat/5 border-cat/20"
-                    )}
-                  >
-                    {selectedPet.type === "DOG" ? (
-                      <Dog className="h-8 w-8 text-dog" />
-                    ) : (
-                      <Cat className="h-8 w-8 text-cat" />
-                    )}
-                    <div>
-                      <p className="font-medium">{selectedPet.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedPet.breed} - {selectedPet.weight} kg
-                      </p>
-                    </div>
-                  </div>
-                )}
+                        {isSelected && (
+                          <Badge className="bg-primary">เลือกแล้ว</Badge>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -178,7 +167,7 @@ export function POSCustomerSelector() {
                   type="button"
                   key={customer.id}
                   onClick={() => handleSelectCustomer(customer.id)}
-                  className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors text-left"
+                  className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors text-left cursor-pointer"
                 >
                   <div>
                     <p className="font-medium">{customer.name}</p>
@@ -194,7 +183,7 @@ export function POSCustomerSelector() {
                           "h-6 w-6 rounded-full flex items-center justify-center",
                           pet.type === "DOG"
                             ? "bg-dog/10 text-dog"
-                            : "bg-cat/10 text-cat"
+                            : "bg-cat/10 text-cat",
                         )}
                       >
                         {pet.type === "DOG" ? (
