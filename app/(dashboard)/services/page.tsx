@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { ServiceList } from "@/components/services/service-list";
 import { ServiceDialog } from "@/components/services/service-dialog";
 import { ServiceConfigDialog } from "@/components/services/service-config-dialog";
+import { useServices } from "@/lib/hooks/use-services";
 
 export default function ServicesPage() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const { services, loading, error, fetchServices } = useServices();
 
   return (
     <div className="space-y-6">
@@ -27,16 +29,31 @@ export default function ServicesPage() {
             <Settings className="mr-2 h-4 w-4" />
             ตั้งค่าประเภท/ขนาด
           </Button>
-          <Button onClick={() => setIsDialogOpen(true)}>
+          <Button onClick={() => setIsAddServiceOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             เพิ่มบริการใหม่
           </Button>
         </div>
       </div>
 
-      <ServiceList />
+      {error && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          เกิดข้อผิดพลาด: {error}
+        </div>
+      )}
 
-      <ServiceDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
+      <ServiceList
+        services={services}
+        loading={loading}
+        onRefresh={fetchServices}
+      />
+
+      <ServiceDialog
+        open={isAddServiceOpen}
+        onOpenChange={setIsAddServiceOpen}
+        service={null}
+        onSuccess={fetchServices}
+      />
       <ServiceConfigDialog open={isConfigOpen} onOpenChange={setIsConfigOpen} />
     </div>
   );

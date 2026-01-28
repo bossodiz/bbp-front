@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Dog, Cat } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -44,25 +44,41 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useCustomerStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import { useCustomers } from "@/lib/hooks/use-customers";
+import { useBreeds } from "@/lib/hooks/use-breeds";
 import type { Pet } from "@/lib/types";
 import { petTypeLabels } from "@/lib/types";
-import { commonDogBreeds, commonCatBreeds } from "@/lib/mock-data";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const petSchema = z.object({
-  name: z.string().min(1, "กรุณากรอกชื่อสัตว์เลี้ยง"),
-  type: z.enum(["DOG", "CAT"], {
-    required_error: "กรุณาเลือกประเภทสัตว์",
-  }),
-  breed: z.string().min(1, "กรุณากรอกสายพันธุ์"),
-  weight: z.coerce
-    .number({ invalid_type_error: "กรุณากรอกน้ำหนัก" })
-    .positive("น้ำหนักต้องมากกว่า 0")
-    .max(200, "น้ำหนักไม่ถูกต้อง"),
-  note: z.string().optional(),
-});
+const petSchema = z
+  .object({
+    name: z.string().min(1, "กรุณากรอกชื่อสัตว์เลี้ยง"),
+    type: z.enum(["DOG", "CAT"], {
+      required_error: "กรุณาเลือกประเภทสัตว์",
+    }),
+    isMixedBreed: z.boolean().default(false),
+    breed: z.string().min(1, "กรุณากรอกสายพันธุ์"),
+    breed2: z.string().optional(),
+    weight: z.coerce
+      .number({ invalid_type_error: "กรุณากรอกน้ำหนัก" })
+      .positive("น้ำหนักต้องมากกว่า 0")
+      .max(200, "น้ำหนักไม่ถูกต้อง"),
+    note: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // If mixed breed is checked, breed2 must be filled
+      if (data.isMixedBreed && !data.breed2) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "กรุณาเลือกสายพันธุ์ที่ 2",
+      path: ["breed2"],
+    },
+  );
 
 type PetFormData = z.infer<typeof petSchema>;
 
@@ -71,6 +87,7 @@ interface PetDialogProps {
   onOpenChange: (open: boolean) => void;
   customerId: number;
   pet?: Pet | null;
+  onSuccess?: () => void;
 }
 
 export function PetDialog({
@@ -78,30 +95,42 @@ export function PetDialog({
   onOpenChange,
   customerId,
   pet,
+  onSuccess,
 }: PetDialogProps) {
-  const { addPet, updatePet } = useCustomerStore();
+  const { createPet, updatePet } = useCustomers();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = pet !== null && pet !== undefined;
   const [breedOpen, setBreedOpen] = useState(false);
+  const [breed2Open, setBreed2Open] = useState(false);
 
   const form = useForm<PetFormData>({
     resolver: zodResolver(petSchema),
     defaultValues: {
       name: "",
       type: undefined,
+      isMixedBreed: false,
       breed: "",
+      breed2: "",
       weight: undefined,
       note: "",
     },
   });
 
   const selectedType = form.watch("type");
+  const isMixedBreed = form.watch("isMixedBreed");
+
+  // Fetch breeds from API based on selected pet type (exclude mixed breeds for selection)
+  const { breeds, loading: breedsLoading } = useBreeds({
+    petTypeId: selectedType,
+    active: true,
+    includeMixed: false, // Only show pure breeds for selection
+    autoFetch: !!selectedType,
+  });
 
   // Get breed list based on selected pet type
   const breedList = useMemo(() => {
-    if (selectedType === "DOG") return commonDogBreeds;
-    if (selectedType === "CAT") return commonCatBreeds;
-    return [];
-  }, [selectedType]);
+    return breeds.map((breed) => breed.name);
+  }, [breeds]);
 
   useEffect(() => {
     if (open) {
@@ -109,7 +138,9 @@ export function PetDialog({
         form.reset({
           name: pet.name,
           type: pet.type,
+          isMixedBreed: pet.isMixedBreed || false,
           breed: pet.breed,
+          breed2: pet.breed2 || "",
           weight: pet.weight,
           note: pet.note || "",
         });
@@ -117,7 +148,9 @@ export function PetDialog({
         form.reset({
           name: "",
           type: undefined,
+          isMixedBreed: false,
           breed: "",
+          breed2: "",
           weight: undefined,
           note: "",
         });
@@ -129,30 +162,52 @@ export function PetDialog({
   useEffect(() => {
     if (!isEditing && selectedType) {
       form.setValue("breed", "");
+      form.setValue("breed2", "");
     }
   }, [selectedType, isEditing, form]);
 
-  const onSubmit = (data: PetFormData) => {
-    if (isEditing && pet) {
-      updatePet(customerId, pet.id, {
-        name: data.name,
-        type: data.type,
-        breed: data.breed,
-        weight: data.weight,
-        note: data.note,
-      });
-      toast.success("แก้ไขข้อมูลสัตว์เลี้ยงเรียบร้อยแล้ว");
-    } else {
-      addPet(customerId, {
-        name: data.name,
-        type: data.type,
-        breed: data.breed,
-        weight: data.weight,
-        note: data.note,
-      });
-      toast.success("เพิ่มสัตว์เลี้ยงเรียบร้อยแล้ว");
+  // Reset breed2 when isMixedBreed changes
+  useEffect(() => {
+    if (!isMixedBreed) {
+      form.setValue("breed2", "");
     }
-    onOpenChange(false);
+  }, [isMixedBreed, form]);
+
+  const onSubmit = async (data: PetFormData) => {
+    try {
+      setIsSubmitting(true);
+
+      if (isEditing && pet) {
+        await updatePet(pet.id, {
+          name: data.name,
+          type: data.type,
+          breed: data.breed,
+          breed2: data.isMixedBreed ? data.breed2 : undefined,
+          isMixedBreed: data.isMixedBreed,
+          weight: data.weight,
+          note: data.note,
+        });
+        toast.success("แก้ไขข้อมูลสัตว์เลี้ยงเรียบร้อยแล้ว");
+      } else {
+        await createPet(customerId, {
+          name: data.name,
+          type: data.type,
+          breed: data.breed,
+          breed2: data.isMixedBreed ? data.breed2 : undefined,
+          isMixedBreed: data.isMixedBreed,
+          weight: data.weight,
+          note: data.note,
+        });
+        toast.success("เพิ่มสัตว์เลี้ยงเรียบร้อยแล้ว");
+      }
+
+      onSuccess?.();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -203,7 +258,14 @@ export function PetDialog({
                           >
                         ).map((key) => (
                           <SelectItem key={key} value={key}>
-                            {petTypeLabels[key]}
+                            <div className="flex items-center gap-2">
+                              {key === "DOG" ? (
+                                <Dog className="h-4 w-4" />
+                              ) : (
+                                <Cat className="h-4 w-4" />
+                              )}
+                              {petTypeLabels[key]}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -235,79 +297,230 @@ export function PetDialog({
             </div>
             <FormField
               control={form.control}
-              name="breed"
+              name="isMixedBreed"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>สายพันธุ์</FormLabel>
-                  <Popover open={breedOpen} onOpenChange={setBreedOpen}>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={breedOpen}
-                          className={cn(
-                            "w-full justify-between font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                          disabled={!selectedType}
-                        >
-                          {field.value || (selectedType ? "เลือกหรือพิมพ์สายพันธุ์" : "เลือกประเภทก่อน")}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
-                      <Command>
-                        <CommandInput
-                          placeholder="พิมพ์ค้นหาหรือเพิ่มสายพันธุ์..."
-                          value={field.value}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                          }}
-                        />
-                        <CommandList>
-                          <CommandEmpty>
-                            <button
-                              type="button"
-                              className="w-full px-2 py-1.5 text-sm text-left hover:bg-muted rounded"
-                              onClick={() => {
-                                setBreedOpen(false);
-                              }}
-                            >
-                              ใช้ &quot;{field.value}&quot;
-                            </button>
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {breedList.map((breed) => (
-                              <CommandItem
-                                key={breed}
-                                value={breed}
-                                onSelect={(currentValue) => {
-                                  field.onChange(currentValue);
-                                  setBreedOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    field.value === breed
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                                {breed}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
+                <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      id="isMixedBreed"
+                      checked={field.value}
+                      onChange={field.onChange}
+                      className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                    />
+                  </FormControl>
+                  <label
+                    htmlFor="isMixedBreed"
+                    className="text-sm font-normal cursor-pointer select-none"
+                  >
+                    สายพันธุ์ผสม
+                  </label>
                 </FormItem>
               )}
             />
+            {isMixedBreed ? (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="breed"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>สายพันธุ์ที่ 1</FormLabel>
+                      <Popover open={breedOpen} onOpenChange={setBreedOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={breedOpen}
+                              className={cn(
+                                "w-full justify-between font-normal",
+                                !field.value && "text-muted-foreground",
+                              )}
+                              disabled={!selectedType}
+                            >
+                              {field.value || "เลือกสายพันธุ์"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[300px] p-0 max-h-[400px] overflow-auto"
+                          align="start"
+                        >
+                          <Command>
+                            <CommandInput
+                              placeholder="พิมพ์ค้นหาสายพันธุ์..."
+                              className="h-9"
+                            />
+                            <CommandList className="max-h-[300px]">
+                              <CommandEmpty>ไม่พบสายพันธุ์</CommandEmpty>
+                              <CommandGroup>
+                                {breedList.map((breed) => (
+                                  <CommandItem
+                                    key={breed}
+                                    value={breed}
+                                    onSelect={(currentValue) => {
+                                      field.onChange(currentValue);
+                                      setBreedOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === breed
+                                          ? "opacity-100"
+                                          : "opacity-0",
+                                      )}
+                                    />
+                                    {breed}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="breed2"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>สายพันธุ์ที่ 2</FormLabel>
+                      <Popover open={breed2Open} onOpenChange={setBreed2Open}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={breed2Open}
+                              className={cn(
+                                "w-full justify-between font-normal",
+                                !field.value && "text-muted-foreground",
+                              )}
+                              disabled={!selectedType}
+                            >
+                              {field.value || "เลือกสายพันธุ์"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[300px] p-0 max-h-[400px] overflow-auto"
+                          align="start"
+                        >
+                          <Command>
+                            <CommandInput
+                              placeholder="พิมพ์ค้นหาสายพันธุ์..."
+                              className="h-9"
+                            />
+                            <CommandList className="max-h-[300px]">
+                              <CommandEmpty>ไม่พบสายพันธุ์</CommandEmpty>
+                              <CommandGroup>
+                                {breedList.map((breed) => (
+                                  <CommandItem
+                                    key={breed}
+                                    value={breed}
+                                    onSelect={(currentValue) => {
+                                      field.onChange(currentValue);
+                                      setBreed2Open(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === breed
+                                          ? "opacity-100"
+                                          : "opacity-0",
+                                      )}
+                                    />
+                                    {breed}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : (
+              <FormField
+                control={form.control}
+                name="breed"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>สายพันธุ์</FormLabel>
+                    <Popover open={breedOpen} onOpenChange={setBreedOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={breedOpen}
+                            className={cn(
+                              "w-full justify-between font-normal",
+                              !field.value && "text-muted-foreground",
+                            )}
+                            disabled={!selectedType}
+                          >
+                            {field.value ||
+                              (selectedType
+                                ? "เลือกหรือพิมพ์สายพันธุ์"
+                                : "เลือกประเภทก่อน")}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-[300px] p-0 max-h-[400px] overflow-auto"
+                        align="start"
+                      >
+                        <Command>
+                          <CommandInput
+                            placeholder="พิมพ์ค้นหาสายพันธุ์..."
+                            className="h-9"
+                          />
+                          <CommandList className="max-h-[300px]">
+                            <CommandEmpty>ไม่พบสายพันธุ์</CommandEmpty>
+                            <CommandGroup>
+                              {breedList.map((breed) => (
+                                <CommandItem
+                                  key={breed}
+                                  value={breed}
+                                  onSelect={(currentValue) => {
+                                    field.onChange(currentValue);
+                                    setBreedOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === breed
+                                        ? "opacity-100"
+                                        : "opacity-0",
+                                    )}
+                                  />
+                                  {breed}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="note"
@@ -329,11 +542,16 @@ export function PetDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
               >
                 ยกเลิก
               </Button>
-              <Button type="submit">
-                {isEditing ? "บันทึก" : "เพิ่มสัตว์เลี้ยง"}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting
+                  ? "กำลังบันทึก..."
+                  : isEditing
+                    ? "บันทึก"
+                    : "เพิ่มสัตว์เลี้ยง"}
               </Button>
             </DialogFooter>
           </form>

@@ -14,6 +14,8 @@ export interface Pet {
   name: string;
   type: "DOG" | "CAT";
   breed: string;
+  breed2?: string;
+  isMixedBreed: boolean;
   weight: number; // น้ำหนักเป็น KG
   note?: string;
   createdAt: Date;
@@ -26,14 +28,19 @@ export interface PetTypeConfig {
   name: string;
   icon?: string;
   order: number;
+  active: boolean; // สถานะเปิด/ปิดชั่วคราว
 }
 
-// Size Configuration (customizable)
+// Size Configuration (customizable) - แยกตามประเภทสัตว์
 export interface SizeConfig {
   id: string;
+  petTypeId: string; // อ้างอิงถึง PetTypeConfig.id
   name: string;
+  minWeight?: number; // น้ำหนักต่ำสุด (kg)
+  maxWeight?: number; // น้ำหนักสูงสุด (kg)
   description?: string; // e.g. "2-4kg"
   order: number;
+  active: boolean; // สถานะเปิด/ปิดชั่วคราว
 }
 
 // Service Types
@@ -41,6 +48,10 @@ export interface Service {
   id: number;
   name: string;
   description?: string;
+  isSpecial: boolean; // บริการพิเศษไม่เกี่ยวกับประเภทสัตว์/ขนาด
+  specialPrice?: number; // ราคาเดียวสำหรับบริการพิเศษ
+  active: boolean; // สถานะเปิด/ปิดชั่วคราว
+  order: number; // ลำดับการแสดงผล
   createdAt: Date;
   updatedAt: Date;
   prices: ServicePrice[];
@@ -49,8 +60,8 @@ export interface Service {
 export interface ServicePrice {
   id: number;
   serviceId: number;
-  petTypeId: string; // Reference to PetTypeConfig.id
-  sizeId: string; // Reference to SizeConfig.id
+  petTypeId?: string; // Optional for special services
+  sizeId?: string; // Optional for special services
   price: number;
 }
 

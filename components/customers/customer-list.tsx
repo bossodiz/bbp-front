@@ -1,10 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Dog, Cat, Pencil, Trash2, Plus, Phone, Scale } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Dog,
+  Cat,
+  Pencil,
+  Trash2,
+  Plus,
+  Phone,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Collapsible,
   CollapsibleContent,
@@ -22,24 +32,40 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CustomerDialog } from "./customer-dialog";
 import { PetDialog } from "./pet-dialog";
-import { useCustomerStore } from "@/lib/store";
+import { useCustomers } from "@/lib/hooks/use-customers";
 import type { Customer, Pet } from "@/lib/types";
 import { petTypeLabels } from "@/lib/types";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
+import { formatBreedDisplay } from "@/lib/utils/pet-utils";
 import { toast } from "sonner";
 
 interface CustomerListProps {
   customers: Customer[];
+  loading?: boolean;
+  onRefresh?: () => void;
 }
 
-export function CustomerList({ customers }: CustomerListProps) {
+export function CustomerList({
+  customers,
+  loading,
+  onRefresh,
+}: CustomerListProps) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [editingPet, setEditingPet] = useState<{ customerId: number; pet: Pet | null } | null>(null);
-  const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
-  const [deletingPet, setDeletingPet] = useState<{ customerId: number; pet: Pet } | null>(null);
+  const [editingPet, setEditingPet] = useState<{
+    customerId: number;
+    pet: Pet | null;
+  } | null>(null);
+  const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(
+    null,
+  );
+  const [deletingPet, setDeletingPet] = useState<{
+    customerId: number;
+    pet: Pet;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const { deleteCustomer, deletePet } = useCustomerStore();
+  const { deleteCustomer, deletePet } = useCustomers();
 
   const toggleExpand = (id: number) => {
     const newExpanded = new Set(expandedIds);
@@ -51,21 +77,61 @@ export function CustomerList({ customers }: CustomerListProps) {
     setExpandedIds(newExpanded);
   };
 
-  const handleDeleteCustomer = () => {
+  const handleDeleteCustomer = async () => {
     if (deletingCustomer) {
-      deleteCustomer(deletingCustomer.id);
-      toast.success("ลบลูกค้าเรียบร้อยแล้ว");
-      setDeletingCustomer(null);
+      try {
+        setIsDeleting(true);
+        await deleteCustomer(deletingCustomer.id);
+        toast.success("ลบลูกค้าเรียบร้อยแล้ว");
+        setDeletingCustomer(null);
+        onRefresh?.();
+      } catch (error: any) {
+        toast.error(error.message || "เกิดข้อผิดพลาด");
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
-  const handleDeletePet = () => {
+  const handleDeletePet = async () => {
     if (deletingPet) {
-      deletePet(deletingPet.customerId, deletingPet.pet.id);
-      toast.success("ลบสัตว์เลี้ยงเรียบร้อยแล้ว");
-      setDeletingPet(null);
+      try {
+        setIsDeleting(true);
+        await deletePet(deletingPet.pet.id);
+        toast.success("ลบสัตว์เลี้ยงเรียบร้อยแล้ว");
+        setDeletingPet(null);
+        onRefresh?.();
+      } catch (error: any) {
+        toast.error(error.message || "เกิดข้อผิดพลาด");
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-10 w-10 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-9 w-9" />
+                  <Skeleton className="h-9 w-9" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   if (customers.length === 0) {
     return (
@@ -101,7 +167,9 @@ export function CustomerList({ customers }: CustomerListProps) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium truncate">{customer.name}</p>
+                          <p className="font-medium truncate">
+                            {customer.name}
+                          </p>
                           <Badge variant="secondary" className="text-xs">
                             {customer.pets.length} สัตว์เลี้ยง
                           </Badge>
@@ -169,7 +237,7 @@ export function CustomerList({ customers }: CustomerListProps) {
                                 "flex h-9 w-9 items-center justify-center rounded-lg",
                                 pet.type === "DOG"
                                   ? "bg-dog/10 text-dog"
-                                  : "bg-cat/10 text-cat"
+                                  : "bg-cat/10 text-cat",
                               )}
                             >
                               {pet.type === "DOG" ? (
@@ -180,7 +248,9 @@ export function CustomerList({ customers }: CustomerListProps) {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="text-sm font-medium">{pet.name}</p>
+                                <p className="text-sm font-medium">
+                                  {pet.name}
+                                </p>
                                 <Badge variant="outline" className="text-xs">
                                   {petTypeLabels[pet.type]}
                                 </Badge>
@@ -189,7 +259,7 @@ export function CustomerList({ customers }: CustomerListProps) {
                                 </Badge>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                {pet.breed}
+                                {formatBreedDisplay(pet)}
                                 {pet.note && ` - ${pet.note}`}
                               </p>
                             </div>
@@ -199,7 +269,10 @@ export function CustomerList({ customers }: CustomerListProps) {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() =>
-                                  setEditingPet({ customerId: customer.id, pet })
+                                  setEditingPet({
+                                    customerId: customer.id,
+                                    pet,
+                                  })
                                 }
                               >
                                 <Pencil className="h-3 w-3" />
@@ -209,7 +282,10 @@ export function CustomerList({ customers }: CustomerListProps) {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() =>
-                                  setDeletingPet({ customerId: customer.id, pet })
+                                  setDeletingPet({
+                                    customerId: customer.id,
+                                    pet,
+                                  })
                                 }
                               >
                                 <Trash2 className="h-3 w-3 text-destructive" />
@@ -232,6 +308,7 @@ export function CustomerList({ customers }: CustomerListProps) {
         open={editingCustomer !== null}
         onOpenChange={(open) => !open && setEditingCustomer(null)}
         customer={editingCustomer}
+        onSuccess={() => onRefresh?.()}
       />
 
       {/* Add/Edit Pet Dialog */}
@@ -240,6 +317,7 @@ export function CustomerList({ customers }: CustomerListProps) {
         onOpenChange={(open) => !open && setEditingPet(null)}
         customerId={editingPet?.customerId ?? 0}
         pet={editingPet?.pet}
+        onSuccess={() => onRefresh?.()}
       />
 
       {/* Delete Customer Confirmation */}
@@ -251,7 +329,8 @@ export function CustomerList({ customers }: CustomerListProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>ยืนยันการลบลูกค้า</AlertDialogTitle>
             <AlertDialogDescription>
-              คุณต้องการลบ &quot;{deletingCustomer?.name}&quot; และสัตว์เลี้ยงทั้งหมด
+              คุณต้องการลบ &quot;{deletingCustomer?.name}&quot;
+              และสัตว์เลี้ยงทั้งหมด
               {deletingCustomer?.pets && deletingCustomer.pets.length > 0 && (
                 <> ({deletingCustomer.pets.length} ตัว)</>
               )}{" "}
@@ -259,12 +338,13 @@ export function CustomerList({ customers }: CustomerListProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>ยกเลิก</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteCustomer}
+              disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              ลบ
+              {isDeleting ? "กำลังลบ..." : "ลบ"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -284,12 +364,13 @@ export function CustomerList({ customers }: CustomerListProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>ยกเลิก</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeletePet}
+              disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              ลบ
+              {isDeleting ? "กำลังลบ..." : "ลบ"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

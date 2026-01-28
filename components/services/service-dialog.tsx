@@ -25,7 +25,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useServiceStore, useServiceConfigStore } from "@/lib/store";
+import { Switch } from "@/components/ui/switch";
+import { useServices } from "@/lib/hooks/use-services";
+import { useServiceConfig } from "@/lib/hooks/use-service-config";
 import type { Service, ServicePrice } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -40,19 +42,30 @@ interface ServiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   service?: Service | null;
+  onSuccess?: () => void;
 }
 
 export function ServiceDialog({
   open,
   onOpenChange,
   service,
+  onSuccess,
 }: ServiceDialogProps) {
-  const { addService, updateService } = useServiceStore();
-  const { petTypes, sizes } = useServiceConfigStore();
+  const { createService, updateService } = useServices({ autoFetch: false });
+  const { petTypes, getSizesForPetType } = useServiceConfig();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = service !== null && service !== undefined;
 
-  const sortedPetTypes = [...petTypes].sort((a, b) => a.order - b.order);
-  const sortedSizes = [...sizes].sort((a, b) => a.order - b.order);
+  const activePetTypes = [...petTypes]
+    .filter((pt) => pt.active)
+    .sort((a, b) => a.order - b.order);
+
+  // State for service type
+  const [isSpecial, setIsSpecial] = useState(false);
+  const [specialPrice, setSpecialPrice] = useState<string>("");
+
+  // State for selected pet type (เลือกประเภทสัตว์เดียว)
+  const [selectedPetTypeId, setSelectedPetTypeId] = useState<string>("");
 
   // State for prices - key format: "petTypeId_sizeId"
   const [prices, setPrices] = useState<Record<string, number>>({});
@@ -72,30 +85,52 @@ export function ServiceDialog({
           name: service.name,
           description: service.description || "",
         });
-        // Build prices map from existing service
-        const priceMap: Record<string, number> = {};
-        service.prices.forEach((p) => {
-          priceMap[`${p.petTypeId}_${p.sizeId}`] = p.price;
-        });
-        setPrices(priceMap);
+
+        // ตั้งค่าประเภทบริการ
+        setIsSpecial(service.isSpecial);
+        if (service.isSpecial) {
+          setSpecialPrice(service.specialPrice?.toString() || "");
+        } else {
+          // Build prices map from existing service
+          const priceMap: Record<string, number> = {};
+          service.prices?.forEach((p) => {
+            if (p.petTypeId && p.sizeId) {
+              priceMap[`${p.petTypeId}_${p.sizeId}`] = p.price;
+            }
+          });
+          setPrices(priceMap);
+          // ตั้งค่าประเภทสัตว์แรกที่มีราคา
+          if (
+            service.prices &&
+            service.prices.length > 0 &&
+            service.prices[0].petTypeId
+          ) {
+            setSelectedPetTypeId(service.prices[0].petTypeId);
+          }
+        }
       } else {
         form.reset({
           name: "",
           description: "",
         });
-        // Initialize all prices to 0
-        const initialPrices: Record<string, number> = {};
-        petTypes.forEach((pt) => {
-          sizes.forEach((s) => {
-            initialPrices[`${pt.id}_${s.id}`] = 0;
-          });
-        });
-        setPrices(initialPrices);
+        setIsSpecial(false);
+        setSpecialPrice("");
+        // ตั้งค่าประเภทสัตว์แรกที่ active
+        if (activePetTypes.length > 0) {
+          setSelectedPetTypeId(activePetTypes[0].id);
+        }
+        // Initialize prices to 0
+        setPrices({});
       }
     }
-  }, [open, service, form, petTypes, sizes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, service]);
 
-  const handlePriceChange = (petTypeId: string, sizeId: string, value: string) => {
+  const handlePriceChange = (
+    petTypeId: string,
+    sizeId: string,
+    value: string,
+  ) => {
     const numValue = parseFloat(value) || 0;
     setPrices((prev) => ({
       ...prev,
@@ -103,46 +138,103 @@ export function ServiceDialog({
     }));
   };
 
-  const onSubmit = (data: ServiceFormData) => {
-    const servicePrices: Omit<ServicePrice, "id" | "serviceId">[] = [];
-    let priceId = 1;
-
-    petTypes.forEach((petType) => {
-      sizes.forEach((size) => {
-        const key = `${petType.id}_${size.id}`;
-        servicePrices.push({
-          petTypeId: petType.id,
-          sizeId: size.id,
-          price: prices[key] || 0,
-        });
-        priceId++;
-      });
-    });
-
-    if (isEditing && service) {
-      updateService(service.id, {
-        name: data.name,
-        description: data.description,
-        prices: servicePrices.map((p, i) => ({
-          ...p,
-          id: service.prices[i]?.id || i + 1,
-          serviceId: service.id,
-        })),
-      });
-      toast.success("แก้ไขบริการเรียบร้อยแล้ว");
+  const onSubmit = async (data: ServiceFormData) => {
+    // Validation
+    if (isSpecial) {
+      if (!specialPrice || parseFloat(specialPrice) <= 0) {
+        toast.error("กรุณากรอกราคาสำหรับบริการพิเศษ");
+        return;
+      }
     } else {
-      addService({
-        name: data.name,
-        description: data.description,
-        prices: servicePrices.map((p, i) => ({
-          ...p,
-          id: i + 1,
-          serviceId: 0,
-        })),
-      });
-      toast.success("เพิ่มบริการใหม่เรียบร้อยแล้ว");
+      if (!selectedPetTypeId) {
+        toast.error("กรุณาเลือกประเภทสัตว์");
+        return;
+      }
     }
-    onOpenChange(false);
+
+    try {
+      setIsSubmitting(true);
+
+      if (isSpecial) {
+        // บริการพิเศษ - ไม่มี prices
+        if (isEditing && service) {
+          await updateService(service.id, {
+            name: data.name,
+            description: data.description,
+            isSpecial: true,
+            specialPrice: parseFloat(specialPrice),
+            prices: [],
+          });
+          toast.success("แก้ไขบริการเรียบร้อยแล้ว");
+        } else {
+          await createService({
+            name: data.name,
+            description: data.description,
+            isSpecial: true,
+            specialPrice: parseFloat(specialPrice),
+            active: true,
+            order: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            prices: [],
+          });
+          toast.success("เพิ่มบริการใหม่เรียบร้อยแล้ว");
+        }
+      } else {
+        // บริการปกติ - มี prices ตามประเภทสัตว์และขนาด
+        const servicePrices: {
+          petTypeId: string;
+          sizeId: string;
+          price: number;
+        }[] = [];
+
+        // บันทึกราคาเฉพาะประเภทสัตว์ที่เลือก
+        const sizes = getSizesForPetType(selectedPetTypeId).filter(
+          (s) => s.active,
+        );
+        sizes.forEach((size) => {
+          const key = `${selectedPetTypeId}_${size.id}`;
+          servicePrices.push({
+            petTypeId: selectedPetTypeId,
+            sizeId: size.id,
+            price: prices[key] || 0,
+          });
+        });
+
+        if (isEditing && service) {
+          await updateService(service.id, {
+            name: data.name,
+            description: data.description,
+            isSpecial: false,
+            prices: servicePrices as any,
+          });
+          toast.success("แก้ไขบริการเรียบร้อยแล้ว");
+        } else {
+          await createService({
+            name: data.name,
+            description: data.description,
+            isSpecial: false,
+            active: true,
+            order: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            prices: servicePrices.map((p) => ({
+              ...p,
+              id: 0,
+              serviceId: 0,
+            })),
+          });
+          toast.success("เพิ่มบริการใหม่เรียบร้อยแล้ว");
+        }
+      }
+
+      onSuccess?.();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getPetTypeIcon = (petTypeId: string) => {
@@ -172,6 +264,53 @@ export function ServiceDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* ประเภทบริการ */}
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+              <div className="space-y-0.5">
+                <Label className="text-base font-medium">บริการพิเศษ</Label>
+                <p className="text-sm text-muted-foreground">
+                  บริการที่ไม่เกี่ยวข้องกับประเภทสัตว์และขนาด (ราคาคงที่)
+                </p>
+              </div>
+              <Switch
+                checked={isSpecial}
+                onCheckedChange={setIsSpecial}
+                disabled={isEditing}
+              />
+            </div>
+
+            {!isSpecial && (
+              <div className="space-y-4">
+                <div>
+                  <Label>เลือกประเภทสัตว์</Label>
+                  <div className="flex gap-2 mt-2">
+                    {activePetTypes.map((petType) => (
+                      <Button
+                        key={petType.id}
+                        type="button"
+                        variant={
+                          selectedPetTypeId === petType.id
+                            ? "default"
+                            : "outline"
+                        }
+                        onClick={() => setSelectedPetTypeId(petType.id)}
+                        className="flex items-center gap-2"
+                      >
+                        {getPetTypeIcon(petType.id)}
+                        {petType.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                {activePetTypes.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                    กรุณาเปิดใช้งานประเภทสัตว์ในการตั้งค่าก่อน
+                  </div>
+                )}
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="name"
@@ -202,51 +341,90 @@ export function ServiceDialog({
               )}
             />
 
-            <div className="space-y-4">
-              <Label>ราคาตามประเภทสัตว์และขนาด (บาท)</Label>
+            {/* Special Service Price */}
+            {isSpecial && (
+              <FormItem>
+                <FormLabel>ราคา</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={specialPrice}
+                    onChange={(e) => setSpecialPrice(e.target.value)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
 
-              {sortedPetTypes.map((petType) => (
-                <div key={petType.id} className="rounded-lg border p-4 space-y-3">
-                  <div className={`flex items-center gap-2 ${getPetTypeColor(petType.id)}`}>
-                    {getPetTypeIcon(petType.id)}
-                    <span className="font-medium">{petType.name}</span>
+            {/* Regular Service Prices */}
+            {!isSpecial &&
+              selectedPetTypeId &&
+              (() => {
+                const sizes = getSizesForPetType(selectedPetTypeId).filter(
+                  (s) => s.active,
+                );
+
+                if (sizes.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                      ไม่มีขนาดสำหรับประเภทสัตว์นี้
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="rounded-lg border p-4 space-y-3">
+                    <Label>กำหนดราคาตามขนาด (บาท)</Label>
+                    <div className="grid grid-cols-5 gap-2">
+                      {sizes.map((size) => (
+                        <div key={size.id} className="space-y-1">
+                          <Label className="text-xs flex flex-col">
+                            <span>{size.name}</span>
+                            {size.description && (
+                              <span className="text-muted-foreground font-normal">
+                                {size.description}
+                              </span>
+                            )}
+                          </Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={
+                              prices[`${selectedPetTypeId}_${size.id}`] || ""
+                            }
+                            onChange={(e) =>
+                              handlePriceChange(
+                                selectedPetTypeId,
+                                size.id,
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {sortedSizes.map((size) => (
-                      <div key={size.id} className="space-y-1">
-                        <Label className="text-xs flex flex-col">
-                          <span>{size.name}</span>
-                          {size.description && (
-                            <span className="text-muted-foreground font-normal">
-                              {size.description}
-                            </span>
-                          )}
-                        </Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={prices[`${petType.id}_${size.id}`] || ""}
-                          onChange={(e) =>
-                            handlePriceChange(petType.id, size.id, e.target.value)
-                          }
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+                );
+              })()}
 
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
               >
                 ยกเลิก
               </Button>
-              <Button type="submit">{isEditing ? "บันทึก" : "เพิ่มบริการ"}</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting
+                  ? "กำลังบันทึก..."
+                  : isEditing
+                    ? "บันทึก"
+                    : "เพิ่มบริการ"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
