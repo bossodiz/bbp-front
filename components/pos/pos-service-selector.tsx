@@ -25,7 +25,7 @@ import { toast } from "sonner";
 
 export function POSServiceSelector() {
   const { services } = useServiceStore();
-  const { petTypes, sizes } = useServiceConfigStore();
+  const { petTypes, getSizesForPetType } = useServiceConfigStore();
   const { addToCart, selectedPetIds, selectedCustomerId, cart } = usePOSStore();
   const { customers } = useCustomerStore();
   const [showPetSelectDialog, setShowPetSelectDialog] = useState(false);
@@ -45,38 +45,27 @@ export function POSServiceSelector() {
     );
   }, [selectedCustomer, selectedPetIds]);
 
-  const sortedSizes = useMemo(() => {
-    return [...sizes].sort((a, b) => a.order - b.order);
-  }, [sizes]);
-
   // Estimate size based on weight for the selected pet
   const estimateSizeFromWeight = useCallback(
-    (weight: number): string | null => {
-      const sortedSizes = [...sizes].sort((a, b) => a.order - b.order);
-      // Try to match based on description if it contains weight ranges
-      for (const size of sortedSizes) {
-        if (size.description) {
-          // Parse description like "2-5kg" or "10kg+"
-          const match = size.description.match(
-            /(\d+(?:\.\d+)?)\s*-?\s*(\d+(?:\.\d+)?)?/,
-          );
-          if (match) {
-            const min = parseFloat(match[1]);
-            const max = match[2] ? parseFloat(match[2]) : Infinity;
-            if (weight >= min && weight <= max) {
-              return size.id;
-            }
-          }
+    (weight: number, petTypeId: string): string | null => {
+      const sizesForType = getSizesForPetType(petTypeId).filter(
+        (s) => s.active,
+      );
+
+      // Try to match based on minWeight and maxWeight
+      for (const size of sizesForType) {
+        const min = size.minWeight ?? 0;
+        const max = size.maxWeight ?? Infinity;
+
+        if (weight >= min && weight <= max) {
+          return size.id;
         }
       }
-      // Fallback: estimate based on order
-      if (weight <= 2) return sortedSizes[0]?.id || null;
-      if (weight <= 5) return sortedSizes[1]?.id || sortedSizes[0]?.id || null;
-      if (weight <= 10) return sortedSizes[2]?.id || sortedSizes[1]?.id || null;
-      if (weight <= 20) return sortedSizes[3]?.id || sortedSizes[2]?.id || null;
-      return sortedSizes[sortedSizes.length - 1]?.id || null;
+
+      // Fallback: return first size if no match
+      return sizesForType[0]?.id || null;
     },
-    [sizes, sortedSizes],
+    [getSizesForPetType],
   );
 
   const getPetTypeName = (petTypeId: string) => {
@@ -89,13 +78,25 @@ export function POSServiceSelector() {
   };
 
   const getSizeName = (sizeId: string) => {
-    const s = sizes.find((sz) => sz.id === sizeId);
-    return s?.name || sizeId;
+    // Search in all sizes
+    const allPetTypes = petTypes;
+    for (const petType of allPetTypes) {
+      const sizes = getSizesForPetType(petType.id);
+      const s = sizes.find((sz) => sz.id === sizeId);
+      if (s) return s.name;
+    }
+    return sizeId;
   };
 
   const getSizeDescription = (sizeId: string) => {
-    const s = sizes.find((sz) => sz.id === sizeId);
-    return s?.description || "";
+    // Search in all sizes
+    const allPetTypes = petTypes;
+    for (const petType of allPetTypes) {
+      const sizes = getSizesForPetType(petType.id);
+      const s = sizes.find((sz) => sz.id === sizeId);
+      if (s) return s.description || "";
+    }
+    return "";
   };
 
   const formatCurrency = (amount: number) => {
@@ -176,8 +177,11 @@ export function POSServiceSelector() {
           {selectedPets.length > 0 ? (
             <div className="space-y-4">
               {selectedPets.map((pet) => {
-                const estimatedSizeId = estimateSizeFromWeight(pet.weight);
                 const petTypeId = getPetTypeIdForPet(pet.type);
+                const estimatedSizeId = estimateSizeFromWeight(
+                  pet.weight,
+                  petTypeId,
+                );
 
                 return (
                   <div key={pet.id} className="space-y-3">
@@ -199,71 +203,81 @@ export function POSServiceSelector() {
                         <p className="text-xs text-muted-foreground">
                           {petTypeLabels[pet.type]} - {pet.breed} ({pet.weight}{" "}
                           kg)
+                          {estimatedSizeId && (
+                            <span className="ml-1">
+                              • ขนาด: {getSizeName(estimatedSizeId)}
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>
 
                     {estimatedSizeId && (
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {services.map((service) => {
-                          const priceInfo = service.prices.find(
-                            (p) =>
-                              p.petTypeId === petTypeId &&
-                              p.sizeId === estimatedSizeId,
-                          );
+                        {services
+                          .filter((service) => service.active) // แสดงเฉพาะบริการที่เปิดใช้งาน
+                          .map((service) => {
+                            const priceInfo = service.prices.find(
+                              (p) =>
+                                p.petTypeId === petTypeId &&
+                                p.sizeId === estimatedSizeId,
+                            );
 
-                          if (!priceInfo || priceInfo.price <= 0) return null;
+                            if (!priceInfo || priceInfo.price <= 0) return null;
 
-                          // Check if this service+pet combination is already in cart
-                          const isInCart = cart.some(
-                            (item) =>
-                              item.serviceId === service.id &&
-                              item.petId === pet.id,
-                          );
+                            // Check if this service+pet combination is already in cart
+                            const isInCart = cart.some(
+                              (item) =>
+                                item.serviceId === service.id &&
+                                item.petId === pet.id,
+                            );
 
-                          return (
-                            <button
-                              key={service.id}
-                              type="button"
-                              disabled={isInCart}
-                              onClick={() =>
-                                handleAddService(
-                                  service.id,
-                                  service.name,
-                                  priceInfo.price,
-                                  pet.id,
-                                )
-                              }
-                              className={cn(
-                                "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
-                                isInCart
-                                  ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
-                                  : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
-                              )}
-                            >
-                              <div>
-                                <p className="font-medium text-sm">
-                                  {service.name}
-                                </p>
-                                <p
-                                  className={cn(
-                                    "text-lg font-semibold",
-                                    isInCart
-                                      ? "text-muted-foreground"
-                                      : "text-primary",
-                                  )}
-                                >
-                                  {formatCurrency(priceInfo.price)}
-                                </p>
-                              </div>
-                              {isInCart && (
-                                <Badge variant="secondary" className="text-xs">
-                                  เลือกแล้ว
-                                </Badge>
-                              )}
-                            </button>
-                          );
-                        })}
+                            return (
+                              <button
+                                key={service.id}
+                                type="button"
+                                disabled={isInCart}
+                                onClick={() =>
+                                  handleAddService(
+                                    service.id,
+                                    service.name,
+                                    priceInfo.price,
+                                    pet.id,
+                                  )
+                                }
+                                className={cn(
+                                  "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
+                                  isInCart
+                                    ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
+                                    : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
+                                )}
+                              >
+                                <div>
+                                  <p className="font-medium text-sm">
+                                    {service.name}
+                                  </p>
+                                  <p
+                                    className={cn(
+                                      "text-lg font-semibold",
+                                      isInCart
+                                        ? "text-muted-foreground"
+                                        : "text-primary",
+                                    )}
+                                  >
+                                    {formatCurrency(priceInfo.price)}
+                                  </p>
+                                </div>
+                                {isInCart && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    เลือกแล้ว
+                                  </Badge>
+                                )}
+                              </button>
+                            );
+                          })}
                       </div>
                     )}
                   </div>

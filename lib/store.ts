@@ -133,13 +133,16 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 interface ServiceConfigStore {
   petTypes: PetTypeConfig[];
   sizes: SizeConfig[];
-  addPetType: (petType: Omit<PetTypeConfig, "order">) => void;
+  addPetType: (petType: Omit<PetTypeConfig, "order" | "active">) => void;
   updatePetType: (id: string, data: Partial<PetTypeConfig>) => void;
   deletePetType: (id: string) => void;
+  togglePetTypeStatus: (id: string) => void;
   reorderPetTypes: (petTypes: PetTypeConfig[]) => void;
-  addSize: (size: Omit<SizeConfig, "order">) => void;
+  getSizesForPetType: (petTypeId: string) => SizeConfig[];
+  addSize: (size: Omit<SizeConfig, "order" | "active">) => void;
   updateSize: (id: string, data: Partial<SizeConfig>) => void;
   deleteSize: (id: string) => void;
+  toggleSizeStatus: (id: string) => void;
   reorderSizes: (sizes: SizeConfig[]) => void;
 }
 
@@ -150,7 +153,10 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
   addPetType: (petTypeData) => {
     const maxOrder = Math.max(...get().petTypes.map((p) => p.order), 0);
     set((state) => ({
-      petTypes: [...state.petTypes, { ...petTypeData, order: maxOrder + 1 }],
+      petTypes: [
+        ...state.petTypes,
+        { ...petTypeData, order: maxOrder + 1, active: true },
+      ],
     }));
   },
 
@@ -165,6 +171,15 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
   deletePetType: (id) => {
     set((state) => ({
       petTypes: state.petTypes.filter((p) => p.id !== id),
+      sizes: state.sizes.filter((s) => s.petTypeId !== id), // ลบ sizes ของประเภทนี้ด้วย
+    }));
+  },
+
+  togglePetTypeStatus: (id) => {
+    set((state) => ({
+      petTypes: state.petTypes.map((p) =>
+        p.id === id ? { ...p, active: !p.active } : p,
+      ),
     }));
   },
 
@@ -172,10 +187,25 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
     set({ petTypes });
   },
 
+  getSizesForPetType: (petTypeId) => {
+    return get()
+      .sizes.filter((s) => s.petTypeId === petTypeId)
+      .sort((a, b) => a.order - b.order);
+  },
+
   addSize: (sizeData) => {
-    const maxOrder = Math.max(...get().sizes.map((s) => s.order), 0);
+    const sizesForType = get().sizes.filter(
+      (s) => s.petTypeId === sizeData.petTypeId,
+    );
+    const maxOrder =
+      sizesForType.length > 0
+        ? Math.max(...sizesForType.map((s) => s.order))
+        : 0;
     set((state) => ({
-      sizes: [...state.sizes, { ...sizeData, order: maxOrder + 1 }],
+      sizes: [
+        ...state.sizes,
+        { ...sizeData, order: maxOrder + 1, active: true },
+      ],
     }));
   },
 
@@ -191,6 +221,14 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
     }));
   },
 
+  toggleSizeStatus: (id) => {
+    set((state) => ({
+      sizes: state.sizes.map((s) =>
+        s.id === id ? { ...s, active: !s.active } : s,
+      ),
+    }));
+  },
+
   reorderSizes: (sizes) => {
     set({ sizes });
   },
@@ -200,10 +238,11 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
 interface ServiceStore {
   services: Service[];
   addService: (
-    service: Omit<Service, "id" | "createdAt" | "updatedAt">,
+    service: Omit<Service, "id" | "createdAt" | "updatedAt" | "active">,
   ) => Service;
   updateService: (id: number, data: Partial<Service>) => void;
   deleteService: (id: number) => void;
+  toggleServiceStatus: (id: number) => void;
 }
 
 let serviceIdCounter = Math.max(...mockServices.map((s) => s.id)) + 1;
@@ -215,6 +254,7 @@ export const useServiceStore = create<ServiceStore>((set) => ({
     const newService: Service = {
       ...serviceData,
       id: serviceIdCounter++,
+      active: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -233,6 +273,14 @@ export const useServiceStore = create<ServiceStore>((set) => ({
   deleteService: (id) => {
     set((state) => ({
       services: state.services.filter((s) => s.id !== id),
+    }));
+  },
+
+  toggleServiceStatus: (id) => {
+    set((state) => ({
+      services: state.services.map((s) =>
+        s.id === id ? { ...s, active: !s.active, updatedAt: new Date() } : s,
+      ),
     }));
   },
 }));

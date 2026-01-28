@@ -1,19 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CustomerList } from "@/components/customers/customer-list";
 import { CustomerDialog } from "@/components/customers/customer-dialog";
-import { useCustomerStore } from "@/lib/store";
+import { useCustomers } from "@/lib/hooks/use-customers";
 
 export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { searchCustomers } = useCustomerStore();
+  const { customers, loading, error, fetchCustomers } = useCustomers();
 
-  const filteredCustomers = searchCustomers(searchQuery);
+  // Fetch customers on mount
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery) {
+        fetchCustomers(searchQuery);
+      } else {
+        fetchCustomers();
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, fetchCustomers]);
 
   return (
     <div className="space-y-6">
@@ -39,14 +55,26 @@ export default function CustomersPage() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
+          disabled={loading}
         />
       </div>
 
-      <CustomerList customers={filteredCustomers} />
+      {error && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+          เกิดข้อผิดพลาด: {error}
+        </div>
+      )}
+
+      <CustomerList
+        customers={customers}
+        loading={loading}
+        onRefresh={fetchCustomers}
+      />
 
       <CustomerDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
+        onSuccess={() => fetchCustomers()}
       />
     </div>
   );
