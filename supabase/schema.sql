@@ -9,9 +9,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ===================================
 -- DROP EXISTING TABLES (CASCADE)
 -- ===================================
-DROP TABLE IF EXISTS payments CASCADE;
-DROP TABLE IF EXISTS pos_order_items CASCADE;
-DROP TABLE IF EXISTS pos_orders CASCADE;
+DROP TABLE IF EXISTS sale_items CASCADE;
+DROP TABLE IF EXISTS sales CASCADE;
+DROP TABLE IF EXISTS booking_pets CASCADE;
 DROP TABLE IF EXISTS bookings CASCADE;
 DROP TABLE IF EXISTS promotions CASCADE;
 DROP TABLE IF EXISTS service_prices CASCADE;
@@ -64,7 +64,7 @@ CREATE TABLE pets (
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   
   CONSTRAINT check_pet_type CHECK (type IN ('DOG', 'CAT')),
-  CONSTRAINT check_pet_weight CHECK (weight > 0),
+  CONSTRAINT check_pet_weight CHECK (weight >= 0),
   CONSTRAINT check_mixed_breed CHECK (
     (is_mixed_breed = false AND breed_2 IS NULL) OR
     (is_mixed_breed = true AND breed IS NOT NULL AND breed_2 IS NOT NULL)
@@ -223,8 +223,6 @@ CREATE TABLE bookings (
   customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
   customer_name VARCHAR(255) NOT NULL,
   phone VARCHAR(20) NOT NULL,
-  pet_type VARCHAR(10) NOT NULL,
-  service_type VARCHAR(255) NOT NULL,
   booking_date DATE NOT NULL,
   booking_time TIME NOT NULL,
   note TEXT,
@@ -235,7 +233,6 @@ CREATE TABLE bookings (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   
-  CONSTRAINT check_booking_pet_type CHECK (pet_type IN ('DOG', 'CAT')),
   CONSTRAINT check_deposit_status CHECK (deposit_status IN ('NONE', 'HELD', 'USED', 'FORFEITED')),
   CONSTRAINT check_booking_status CHECK (status IN ('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED')),
   CONSTRAINT check_deposit_amount CHECK (deposit_amount >= 0)
@@ -246,74 +243,84 @@ CREATE INDEX idx_bookings_datetime ON bookings(booking_date, booking_time);
 CREATE INDEX idx_bookings_status ON bookings(status);
 
 -- ===================================
--- 10. POS_ORDERS TABLE
+-- 10. BOOKING_PETS TABLE (Many-to-Many)
 -- ===================================
-CREATE TABLE pos_orders (
+CREATE TABLE booking_pets (
   id SERIAL PRIMARY KEY,
-  order_number VARCHAR(50) UNIQUE NOT NULL,
-  customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
-  pet_id INTEGER REFERENCES pets(id) ON DELETE SET NULL,
+  booking_id INTEGER NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+  pet_id INTEGER NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+  service_type VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  
+  CONSTRAINT unique_booking_pet UNIQUE(booking_id, pet_id)
+);
+
+CREATE INDEX idx_booking_pets_booking_id ON booking_pets(booking_id);
+CREATE INDEX idx_booking_pets_pet_id ON booking_pets(pet_id);
+
+-- ===================================
+-- 11. SALES TABLE (รายได้จากการขาย)
+-- ===================================
+CREATE TABLE sales (
+  id SERIAL PRIMARY KEY,
   booking_id INTEGER REFERENCES bookings(id) ON DELETE SET NULL,
-  subtotal DECIMAL(10,2) NOT NULL,
-  discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
-  deposit_used DECIMAL(10,2) NOT NULL DEFAULT 0,
-  total_amount DECIMAL(10,2) NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+  customer_name TEXT NOT NULL,
+  customer_phone TEXT,
+  subtotal DECIMAL(10, 2) NOT NULL,
+  discount_amount DECIMAL(10, 2) DEFAULT 0,
+  promotion_id INTEGER REFERENCES promotions(id) ON DELETE SET NULL,
+  custom_discount DECIMAL(10, 2) DEFAULT 0,
+  deposit_used DECIMAL(10, 2) DEFAULT 0,
+  total_amount DECIMAL(10, 2) NOT NULL,
+  payment_method TEXT NOT NULL CHECK (payment_method IN ('CASH', 'QR', 'CREDIT_CARD')),
+  cash_received DECIMAL(10, 2),
+  change DECIMAL(10, 2),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('Asia/Bangkok', NOW()),
   
-  CONSTRAINT check_pos_status CHECK (status IN ('PENDING', 'COMPLETED', 'CANCELLED')),
-  CONSTRAINT check_subtotal CHECK (subtotal >= 0),
-  CONSTRAINT check_discount CHECK (discount_amount >= 0),
-  CONSTRAINT check_deposit CHECK (deposit_used >= 0),
-  CONSTRAINT check_total CHECK (total_amount >= 0)
+  CONSTRAINT check_sales_subtotal CHECK (subtotal >= 0),
+  CONSTRAINT check_sales_discount CHECK (discount_amount >= 0),
+  CONSTRAINT check_sales_custom_discount CHECK (custom_discount >= 0),
+  CONSTRAINT check_sales_deposit CHECK (deposit_used >= 0),
+  CONSTRAINT check_sales_total CHECK (total_amount >= 0)
 );
 
-CREATE INDEX idx_pos_orders_customer_id ON pos_orders(customer_id);
-CREATE INDEX idx_pos_orders_created_at ON pos_orders(created_at DESC);
-CREATE INDEX idx_pos_orders_order_number ON pos_orders(order_number);
-CREATE INDEX idx_pos_orders_status ON pos_orders(status);
+CREATE INDEX idx_sales_booking_id ON sales(booking_id);
+CREATE INDEX idx_sales_customer_id ON sales(customer_id);
+CREATE INDEX idx_sales_created_at ON sales(created_at DESC);
+CREATE INDEX idx_sales_payment_method ON sales(payment_method);
+
+COMMENT ON TABLE sales IS 'ตารางบันทึกข้อมูลการขาย/รายได้';
+COMMENT ON COLUMN sales.booking_id IS 'อ้างอิงไปยังการนัดหมาย (ถ้ามี)';
+COMMENT ON COLUMN sales.customer_id IS 'อ้างอิงไปยังลูกค้า (ถ้ามี)';
+COMMENT ON COLUMN sales.deposit_used IS 'ยอดมัดจำที่ใช้หักลบ';
+COMMENT ON COLUMN sales.payment_method IS 'วิธีการชำระเงิน: CASH, QR, CREDIT_CARD';
 
 -- ===================================
--- 10. POS ORDER ITEMS TABLE
+-- 12. SALE_ITEMS TABLE (รายการบริการในแต่ละการขาย)
 -- ===================================
-CREATE TABLE pos_order_items (
+CREATE TABLE sale_items (
   id SERIAL PRIMARY KEY,
-  pos_order_id INTEGER NOT NULL REFERENCES pos_orders(id) ON DELETE CASCADE,
-  service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE RESTRICT,
-  service_name VARCHAR(255) NOT NULL,
-  pet_type_id VARCHAR(50),
-  size_id VARCHAR(50),
-  original_price DECIMAL(10,2) NOT NULL,
-  final_price DECIMAL(10,2) NOT NULL,
-  is_price_modified BOOLEAN NOT NULL DEFAULT false,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  sale_id INTEGER NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+  service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
+  service_name TEXT NOT NULL,
+  pet_id INTEGER REFERENCES pets(id) ON DELETE SET NULL,
+  pet_name TEXT,
+  pet_type TEXT CHECK (pet_type IN ('DOG', 'CAT') OR pet_type IS NULL),
+  original_price DECIMAL(10, 2) NOT NULL,
+  final_price DECIMAL(10, 2) NOT NULL,
+  is_price_modified BOOLEAN DEFAULT FALSE,
   
-  CONSTRAINT check_original_price CHECK (original_price >= 0),
-  CONSTRAINT check_final_price CHECK (final_price >= 0)
+  CONSTRAINT check_sale_items_original_price CHECK (original_price >= 0),
+  CONSTRAINT check_sale_items_final_price CHECK (final_price >= 0)
 );
 
-CREATE INDEX idx_pos_order_items_pos_order_id ON pos_order_items(pos_order_id);
-CREATE INDEX idx_pos_order_items_service_id ON pos_order_items(service_id);
+CREATE INDEX idx_sale_items_sale_id ON sale_items(sale_id);
+CREATE INDEX idx_sale_items_service_id ON sale_items(service_id);
+CREATE INDEX idx_sale_items_pet_id ON sale_items(pet_id);
 
--- ===================================
--- 11. PAYMENTS TABLE
--- ===================================
-CREATE TABLE payments (
-  id SERIAL PRIMARY KEY,
-  pos_order_id INTEGER NOT NULL REFERENCES pos_orders(id) ON DELETE CASCADE,
-  method VARCHAR(20) NOT NULL,
-  amount DECIMAL(10,2) NOT NULL,
-  reference_number VARCHAR(100),
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  
-  CONSTRAINT check_payment_method CHECK (method IN ('CASH', 'QR', 'CREDIT_CARD')),
-  CONSTRAINT check_payment_amount CHECK (amount > 0)
-);
-
-CREATE INDEX idx_payments_pos_order_id ON payments(pos_order_id);
-CREATE INDEX idx_payments_method ON payments(method);
-CREATE INDEX idx_payments_created_at ON payments(created_at DESC);
+COMMENT ON TABLE sale_items IS 'ตารางรายการบริการในแต่ละการขาย';
+COMMENT ON COLUMN sale_items.is_price_modified IS 'ระบุว่ามีการแก้ไขราคาหรือไม่';
 
 -- ===================================
 -- TRIGGERS: AUTO UPDATE updated_at
@@ -351,9 +358,6 @@ CREATE TRIGGER update_promotions_updated_at BEFORE UPDATE ON promotions
 CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON bookings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_pos_orders_updated_at BEFORE UPDATE ON pos_orders
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_breeds_updated_at BEFORE UPDATE ON breeds
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -362,69 +366,125 @@ CREATE TRIGGER set_service_order BEFORE INSERT ON services
   FOR EACH ROW EXECUTE FUNCTION set_service_order_index();
 
 -- ===================================
--- INSERT DEFAULT DATA
+-- INSERT INITIAL DATA
 -- ===================================
 
--- Default Pet Types
-INSERT INTO pet_type_configs (id, name, icon, order_index, active) VALUES
-  ('DOG', 'หมา', 'dog', 1, true),
-  ('CAT', 'แมว', 'cat', 2, true);
+-- Pet Type Configs
+INSERT INTO pet_type_configs (id, name, icon, order_index, active, created_at, updated_at) VALUES 
+('CAT', 'แมว', 'cat', 2, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+('DOG', 'หมา', 'dog', 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00');
 
--- Default Sizes for Dogs
-INSERT INTO size_configs (id, pet_type_id, name, min_weight, max_weight, description, order_index, active) VALUES
-  ('DOG_XS', 'DOG', 'XS', 0, 2, 'ไม่เกิน 2kg', 1, true),
-  ('DOG_S', 'DOG', 'S', 2, 5, '2-5kg', 2, true),
-  ('DOG_M', 'DOG', 'M', 5, 10, '5-10kg', 3, true),
-  ('DOG_L', 'DOG', 'L', 10, 20, '10-20kg', 4, true),
-  ('DOG_XL', 'DOG', 'XL', 20, NULL, '20kg ขึ้นไป', 5, true);
+-- Size Configs
+INSERT INTO size_configs (id, pet_type_id, name, min_weight, max_weight, description, order_index, active, created_at, updated_at) VALUES 
+('CAT_L', 'CAT', 'L', 5.00, 7.90, '5 - 7.9 KG', 4, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 17:23:14.695591+00'), 
+('CAT_M', 'CAT', 'M', 4.00, 4.90, '4 - 4.9 KG', 3, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 17:22:51.889826+00'), 
+('CAT_S', 'CAT', 'S', 2.00, 3.90, '2 - 3.9 KG', 2, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 17:22:38.320789+00'), 
+('CAT_XL', 'CAT', 'XL', 8.00, 30.00, '8 KG ขึ้นไป', 5, true, '2026-01-28 17:30:37.43144+00', '2026-01-28 17:30:37.43144+00'), 
+('CAT_XS', 'CAT', 'XS', 0.00, 1.90, 'ไม่เกิน 2 KG', 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 17:22:12.573336+00'), 
+('DOG_L', 'DOG', 'L', 9.00, 14.90, '9 - 14.9 KG', 4, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 17:37:46.035596+00'), 
+('DOG_M', 'DOG', 'M', 5.00, 8.90, '5 - 8.9 KG', 3, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 17:37:46.111899+00'), 
+('DOG_S', 'DOG', 'S', 2.00, 4.90, '2 - 4.9 KG', 2, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 17:37:46.185277+00'), 
+('DOG_XL', 'DOG', 'XL', 15.00, 19.90, '15 - 19.9 KG', 5, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 17:37:45.933948+00'), 
+('DOG_XS', 'DOG', 'XS', 0.00, 1.90, 'ไม่เกิน 2 KG', 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 17:36:59.163414+00'), 
+('DOG_XXL', 'DOG', 'XXL', 20.00, 25.00, '20 - 25 KG', 6, true, '2026-01-28 17:37:19.716583+00', '2026-01-28 17:37:19.716583+00');
 
--- Default Sizes for Cats
-INSERT INTO size_configs (id, pet_type_id, name, min_weight, max_weight, description, order_index, active) VALUES
-  ('CAT_XS', 'CAT', 'XS', 0, 1.5, 'ไม่เกิน 1.5kg', 1, true),
-  ('CAT_S', 'CAT', 'S', 1.5, 3, '1.5-3kg', 2, true),
-  ('CAT_M', 'CAT', 'M', 3, 5, '3-5kg', 3, true),
-  ('CAT_L', 'CAT', 'L', 5, NULL, '5kg ขึ้นไป', 4, true);
+-- Breeds
+INSERT INTO breeds (id, pet_type_id, name, is_mixed, parent_breed_1_id, parent_breed_2_id, order_index, active, created_at, updated_at) VALUES 
+(1, 'DOG', 'ชิวาวา', false, null, null, 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(2, 'DOG', 'ปอมเมอเรเนียน', false, null, null, 2, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(3, 'DOG', 'ปั๊ก', false, null, null, 3, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(4, 'DOG', 'ยอร์คเชียร์ เทอร์เรีย', false, null, null, 4, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(5, 'DOG', 'ชิสุ', false, null, null, 5, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(6, 'DOG', 'มอลทีส', false, null, null, 6, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(7, 'DOG', 'บีเกิ้ล', false, null, null, 7, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(8, 'DOG', 'โคเกอร์ สแปเนียล', false, null, null, 8, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(9, 'DOG', 'โกลเด้น รีทรีฟเวอร์', false, null, null, 9, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(10, 'DOG', 'ลาบราดอร์ รีทรีฟเวอร์', false, null, null, 10, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(11, 'DOG', 'ฮัสกี้ไซบีเรียน', false, null, null, 11, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(12, 'DOG', 'ไทยหลังอาน', false, null, null, 12, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(13, 'DOG', 'ไทยบางแก้ว', false, null, null, 13, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(14, 'DOG', 'จิ้งจอกญี่ปุ่น (ชิบะ อินุ)', false, null, null, 14, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(15, 'DOG', 'คอร์กี้', false, null, null, 15, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(16, 'DOG', 'ฝรั่งเศส บูลด็อก', false, null, null, 16, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(17, 'DOG', 'พุดเดิ้ล', false, null, null, 17, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(18, 'DOG', 'เยอรมัน เชพเพิร์ด', false, null, null, 18, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(19, 'DOG', 'ดัลเมเชี่ยน', false, null, null, 19, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(20, 'DOG', 'ดอเบอร์แมน', false, null, null, 20, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(21, 'CAT', 'เปอร์เซีย', false, null, null, 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(22, 'CAT', 'แมวไทย', false, null, null, 2, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(23, 'CAT', 'สก็อตติช โฟลด์', false, null, null, 3, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(24, 'CAT', 'อเมริกัน ช็อตแฮร์', false, null, null, 4, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(25, 'CAT', 'บริติช ช็อตแฮร์', false, null, null, 5, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(26, 'CAT', 'เมนคูน', false, null, null, 6, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(27, 'CAT', 'แร็กดอลล์', false, null, null, 7, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(28, 'CAT', 'สฟิงซ์', false, null, null, 8, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(29, 'CAT', 'วิเชียรมาศ', false, null, null, 9, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(30, 'CAT', 'บังกอล', false, null, null, 10, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(31, 'CAT', 'อบิสซิเนียน', false, null, null, 11, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(32, 'CAT', 'รัสเซียน บลู', false, null, null, 12, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(33, 'CAT', 'เทอร์กิช แองโกรา', false, null, null, 13, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(34, 'CAT', 'มันชกิ้น', false, null, null, 14, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(35, 'CAT', 'แมวมงคล', false, null, null, 15, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00');
 
--- Default Dog Breeds
-INSERT INTO breeds (pet_type_id, name, is_mixed, parent_breed_1_id, parent_breed_2_id, order_index, active) VALUES
-  ('DOG', 'ชิวาวา', false, NULL, NULL, 1, true),
-  ('DOG', 'ปอมเมอเรเนียน', false, NULL, NULL, 2, true),
-  ('DOG', 'ปั๊ก', false, NULL, NULL, 3, true),
-  ('DOG', 'ยอร์คเชียร์ เทอร์เรีย', false, NULL, NULL, 4, true),
-  ('DOG', 'ชิสุ', false, NULL, NULL, 5, true),
-  ('DOG', 'มอลทีส', false, NULL, NULL, 6, true),
-  ('DOG', 'บีเกิ้ล', false, NULL, NULL, 7, true),
-  ('DOG', 'โคเกอร์ สแปเนียล', false, NULL, NULL, 8, true),
-  ('DOG', 'โกลเด้น รีทรีฟเวอร์', false, NULL, NULL, 9, true),
-  ('DOG', 'ลาบราดอร์ รีทรีฟเวอร์', false, NULL, NULL, 10, true),
-  ('DOG', 'ฮัสกี้ไซบีเรียน', false, NULL, NULL, 11, true),
-  ('DOG', 'ไทยหลังอาน', false, NULL, NULL, 12, true),
-  ('DOG', 'ไทยบางแก้ว', false, NULL, NULL, 13, true),
-  ('DOG', 'จิ้งจอกญี่ปุ่น (ชิบะ อินุ)', false, NULL, NULL, 14, true),
-  ('DOG', 'คอร์กี้', false, NULL, NULL, 15, true),
-  ('DOG', 'ฝรั่งเศส บูลด็อก', false, NULL, NULL, 16, true),
-  ('DOG', 'พุดเดิ้ล', false, NULL, NULL, 17, true),
-  ('DOG', 'เยอรมัน เชพเพิร์ด', false, NULL, NULL, 18, true),
-  ('DOG', 'ดัลเมเชี่ยน', false, NULL, NULL, 19, true),
-  ('DOG', 'ดอเบอร์แมน', false, NULL, NULL, 20, true);
+-- Reset breeds sequence to continue from 35
+SELECT setval('breeds_id_seq', 35, true);
 
--- Default Cat Breeds
-INSERT INTO breeds (pet_type_id, name, is_mixed, parent_breed_1_id, parent_breed_2_id, order_index, active) VALUES
-  ('CAT', 'เปอร์เซีย', false, NULL, NULL, 1, true),
-  ('CAT', 'แมวไทย', false, NULL, NULL, 2, true),
-  ('CAT', 'สก็อตติช โฟลด์', false, NULL, NULL, 3, true),
-  ('CAT', 'อเมริกัน ช็อตแฮร์', false, NULL, NULL, 4, true),
-  ('CAT', 'บริติช ช็อตแฮร์', false, NULL, NULL, 5, true),
-  ('CAT', 'เมนคูน', false, NULL, NULL, 6, true),
-  ('CAT', 'แร็กดอลล์', false, NULL, NULL, 7, true),
-  ('CAT', 'สฟิงซ์', false, NULL, NULL, 8, true),
-  ('CAT', 'วิเชียรมาศ', false, NULL, NULL, 9, true),
-  ('CAT', 'บังกอล', false, NULL, NULL, 10, true),
-  ('CAT', 'อบิสซิเนียน', false, NULL, NULL, 11, true),
-  ('CAT', 'รัสเซียน บลู', false, NULL, NULL, 12, true),
-  ('CAT', 'เทอร์กิช แองโกรา', false, NULL, NULL, 13, true),
-  ('CAT', 'มันชกิ้น', false, NULL, NULL, 14, true),
-  ('CAT', 'แมวมงคล', false, NULL, NULL, 15, true);
+-- Services
+INSERT INTO services (id, name, description, active, created_at, updated_at, order_index, is_special, special_price) VALUES 
+(1, 'อาบน้ำ (ขนสั้น)', 'รวมบริการ ตัดเล็บ ไถขนเท้า ท้อง ก้น บีบต่อม เช็ดรอบใบหูชั้นนอก เช็ดรอบดวงตา', true, '2026-01-28 17:44:35.040692+00', '2026-01-28 18:11:23.975073+00', 1, false, null), 
+(2, 'อาบน้ำ (ขนยาว)', 'รวมบริการ ตัดเล็บ ไถขนเท้า ท้อง ก้น บีบต่อม เช็ดรอบใบหูชั้นนอก เช็ดรอบดวงตา', true, '2026-01-28 17:48:27.914851+00', '2026-01-28 18:11:23.975073+00', 2, false, null), 
+(3, 'อาบน้ำ (ขน 2 ชั้น)', 'รวมบริการ ตัดเล็บ ไถขนเท้า ท้อง ก้น บีบต่อม เช็ดรอบใบหูชั้นนอก เช็ดรอบดวงตา', true, '2026-01-28 17:49:13.542339+00', '2026-01-28 18:11:23.975073+00', 3, false, null), 
+(4, 'ตัดขน (ปัตตาเลียน)', 'ไถปัตตาเลียนทั้งตัว', true, '2026-01-28 17:50:19.68013+00', '2026-01-28 18:11:23.975073+00', 4, false, null), 
+(5, 'ตัดขน (กรรไกร)', 'ตัดกรรไกรทั้งตัว', true, '2026-01-28 17:51:49.316227+00', '2026-01-28 18:11:23.975073+00', 5, false, null), 
+(6, 'SPA', 'อาบน้ำ SPA ด้วยแชมพูสูตรพิเศษ', true, '2026-01-28 17:52:44.909582+00', '2026-01-28 18:11:23.975073+00', 6, false, null), 
+(7, 'TREATMENT', 'ทรีตเมนต์สูตรพิเศษ ขนนุ่ม เงา งาม', true, '2026-01-28 17:53:54.199621+00', '2026-01-28 18:11:23.975073+00', 7, false, null), 
+(8, 'อาบน้ำ (แมวไทย)', 'รวมบริการ ตัดเล็บ ไถขนเท้า ท้อง ก้น เช็ดรอบใบหูชั้นนอก เช็ดรอบดวงตา', true, '2026-01-28 17:55:28.115613+00', '2026-01-28 18:11:48.885845+00', 1, false, null), 
+(9, 'อาบน้ำ (ขนสั้น)', 'รวมบริการ ตัดเล็บ ไถขนเท้า ท้อง ก้น เช็ดรอบใบหูชั้นนอก เช็ดรอบดวงตา', true, '2026-01-28 17:55:59.721174+00', '2026-01-28 18:11:49.296896+00', 2, false, null), 
+(10, 'อาบน้ำ (ขนยาว)', 'รวมบริการ ตัดเล็บ ไถขนเท้า ท้อง ก้น เช็ดรอบใบหูชั้นนอก เช็ดรอบดวงตา', true, '2026-01-28 18:01:48.778281+00', '2026-01-28 18:11:49.760613+00', 3, false, null), 
+(11, 'ตัดขน (ปัตตาเลียน)', 'ไถปัตตาเลียนทั้งตัว', true, '2026-01-28 18:02:44.602697+00', '2026-01-28 18:11:50.193631+00', 4, false, null), 
+(12, 'SPA', 'อาบน้ำ SPA ด้วยแชมพูสูตรพิเศษ', true, '2026-01-28 18:03:26.409105+00', '2026-01-28 18:11:50.629393+00', 5, false, null), 
+(13, 'TREATMENT', 'ทรีตเมนต์สูตรพิเศษ ขนนุ่ม เงา งาม', true, '2026-01-28 18:03:49.618421+00', '2026-01-28 18:11:51.052674+00', 6, false, null), 
+(14, 'ขจัดคราบมัน', 'ครีมทำความสะอาดคราบมันที่หาง และอาบทั้งตัว', true, '2026-01-28 18:04:34.104197+00', '2026-01-28 18:11:51.535599+00', 7, false, null), 
+(15, 'สางขนพันกัน 4 จุดขึ้นไป', '4 จุด ขึ้นไป 100-300 บาท', true, '2026-01-28 18:33:31.502016+00', '2026-01-28 18:33:50.689008+00', 1, true, 100.00), 
+(16, 'ขนพันกัน (ติดกันเป็นแผง)', 'สางขนพันกันกรณีติดกันเป็นแผง', true, '2026-01-28 18:34:43.69305+00', '2026-01-28 18:38:10.356172+00', 2, true, 300.00), 
+(17, 'ขนพันกัน (ติดกันเป็นแผงทั้งตัว)', 'สางขนพันกันกรณีติดกันเป็นแผงทั้งตัว', true, '2026-01-28 18:38:59.822588+00', '2026-01-28 18:38:59.822588+00', 3, true, 500.00), 
+(18, 'บริการดูแลพิเศษเฉพาะตัว', 'กรณีดื้อ ซน ดีด กลัวเสียงไดร์ กลัวน้ำ ไม่ยอม ความยาก และใช้เวลานาน 100-300 บาท', true, '2026-01-28 18:41:49.821376+00', '2026-01-28 18:41:49.821376+00', 4, true, 100.00);
+
+-- Reset services sequence to continue from 18
+SELECT setval('services_id_seq', 18, true);
+
+-- Customers (Sample Data)
+INSERT INTO customers (id, name, phone, created_at, updated_at) VALUES 
+(1, 'บอส', '0818092589', '2026-01-28 13:42:15.022674+00', '2026-01-28 13:42:15.022674+00'), 
+(2, 'แอร์', '0882414554', '2026-01-28 16:36:06.416563+00', '2026-01-28 16:36:06.416563+00');
+
+-- Reset customers sequence to continue from 2
+SELECT setval('customers_id_seq', 2, true);
+
+-- Pets (Sample Data)
+INSERT INTO pets (id, customer_id, name, type, breed, breed_2, is_mixed_breed, weight, note, created_at, updated_at) VALUES 
+(1, 1, 'ไข่ดาว', 'CAT', 'แมวไทย', null, false, 4.50, 'ดุมาก กัดด้วย', '2026-01-28 16:35:45.767133+00', '2026-01-28 16:35:45.767133+00'), 
+(2, 2, 'นอตี้', 'DOG', 'ปอมเมอเรเนียน', null, false, 4.00, null, '2026-01-28 16:36:25.596955+00', '2026-01-28 16:36:25.596955+00'), 
+(3, 2, 'เคร่า', 'CAT', 'สก็อตติช โฟลด์', null, false, 3.50, null, '2026-01-28 16:54:18.576153+00', '2026-01-28 16:54:18.576153+00');
+
+-- Reset pets sequence to continue from 3
+SELECT setval('pets_id_seq', 3, true);
+
+-- Promotions (Sample Data)
+INSERT INTO promotions (id, name, type, value, free_service_id, active, start_date, end_date, created_at, updated_at) VALUES 
+(1, 'ส่วนลด 10%', 'PERCENT', 10.00, null, true, null, null, NOW(), NOW()),
+(2, 'ส่วนลด 50 บาท', 'AMOUNT', 50.00, null, true, null, null, NOW(), NOW()),
+(3, 'ส่วนลด 100 บาท', 'AMOUNT', 100.00, null, true, null, null, NOW(), NOW());
+
+-- Reset promotions sequence to continue from 3
+SELECT setval('promotions_id_seq', 3, true);
+
+-- Service Prices
+-- Note: Add your service_prices data here
+-- Example structure:
+-- INSERT INTO service_prices (service_id, pet_type_id, size_id, price, created_at, updated_at) VALUES
+-- (1, 'DOG', 'DOG_XS', 250.00, NOW(), NOW());
+-- You can import from service_prices_rows.sql file
 
 -- ===================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -439,9 +499,9 @@ ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE service_prices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE promotions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pos_orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pos_order_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE booking_pets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE breeds ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Allow all operations for authenticated users (ยังไม่มีระบบ auth)
@@ -472,21 +532,17 @@ CREATE POLICY "Allow service role full access on promotions" ON promotions
 CREATE POLICY "Allow service role full access on bookings" ON bookings
   FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Allow service role full access on pos_orders" ON pos_orders
+CREATE POLICY "Allow service role full access on booking_pets" ON booking_pets
   FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Allow service role full access on pos_order_items" ON pos_order_items
+CREATE POLICY "Allow service role full access on sales" ON sales
   FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Allow service role full access on payments" ON payments
+CREATE POLICY "Allow service role full access on sale_items" ON sale_items
   FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Allow service role full access on breeds" ON breeds
   FOR ALL USING (true) WITH CHECK (true);
-
--- Allow anon read access to configurations (for public display)
-CREATE POLICY "Allow anon read on pet_type_configs" ON pet_type_configs
-  FOR SELECT USING (true);
 
 CREATE POLICY "Allow anon read on size_configs" ON size_configs
   FOR SELECT USING (true);
@@ -507,32 +563,37 @@ CREATE POLICY "Allow anon read on breeds" ON breeds
 -- Service History View
 CREATE OR REPLACE VIEW service_history AS
 SELECT 
-  po.id AS order_id,
-  po.order_number,
+  s.id AS sale_id,
   c.id AS customer_id,
   c.name AS customer_name,
   c.phone,
   p.id AS pet_id,
   p.name AS pet_name,
   p.type AS pet_type,
-  poi.service_name,
-  poi.final_price,
-  po.total_amount,
-  po.created_at AS service_date
-FROM pos_orders po
-LEFT JOIN customers c ON po.customer_id = c.id
-LEFT JOIN pets p ON po.pet_id = p.id
-LEFT JOIN pos_order_items poi ON po.id = poi.pos_order_id
-WHERE po.status = 'COMPLETED'
-ORDER BY po.created_at DESC;
+  si.service_name,
+  si.final_price,
+  s.total_amount,
+  s.created_at AS service_date
+FROM sales s
+LEFT JOIN customers c ON s.customer_id = c.id
+LEFT JOIN sale_items si ON s.id = si.sale_id
+LEFT JOIN pets p ON si.pet_id = p.id
+ORDER BY s.created_at DESC;
 
 -- Dashboard Stats View
 CREATE OR REPLACE VIEW dashboard_stats AS
 SELECT
   (SELECT COUNT(*) FROM customers) AS total_customers,
   (SELECT COUNT(*) FROM bookings WHERE status = 'PENDING') AS pending_bookings,
-  (SELECT COUNT(*) FROM pos_orders WHERE DATE(created_at) = CURRENT_DATE) AS today_orders,
-  (SELECT COALESCE(SUM(total_amount), 0) FROM pos_orders WHERE DATE(created_at) = CURRENT_DATE) AS today_revenue;
+  (SELECT COUNT(*) FROM sales WHERE DATE(created_at) = CURRENT_DATE) AS today_orders,
+  (SELECT COALESCE(SUM(total_amount), 0) FROM sale
+-- Dashboard Stats View
+CREATE OR REPLACE VIEW dashboard_stats AS
+SELECT
+  (SELECT COUNT(*) FROM customers) AS total_customers,
+  (SELECT COUNT(*) FROM bookings WHERE status = 'PENDING') AS pending_bookings,
+  (SELECT COUNT(*) FROM sales WHERE DATE(created_at) = CURRENT_DATE) AS today_orders,
+  (SELECT COALESCE(SUM(total_amount), 0) FROM sales WHERE DATE(created_at) = CURRENT_DATE) AS today_revenue;
 
 -- ===================================
 -- FUNCTIONS
@@ -555,40 +616,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function: Generate Order Number
-CREATE OR REPLACE FUNCTION generate_order_number()
-RETURNS VARCHAR(50) AS $$
-DECLARE
-  order_date TEXT;
-  order_count INTEGER;
-  new_order_number VARCHAR(50);
-BEGIN
-  order_date := TO_CHAR(CURRENT_DATE, 'YYYYMMDD');
-  
-  SELECT COUNT(*) + 1 INTO order_count
-  FROM pos_orders
-  WHERE DATE(created_at) = CURRENT_DATE;
-  
-  new_order_number := 'ORD-' || order_date || '-' || LPAD(order_count::TEXT, 4, '0');
-  
-  RETURN new_order_number;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger: Auto-generate order number
-CREATE OR REPLACE FUNCTION set_order_number()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.order_number IS NULL OR NEW.order_number = '' THEN
-    NEW.order_number := generate_order_number();
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER set_pos_order_number BEFORE INSERT ON pos_orders
-  FOR EACH ROW EXECUTE FUNCTION set_order_number();
-
 -- ===================================
 -- COMPLETED
 -- ===================================
@@ -597,3 +624,4 @@ CREATE TRIGGER set_pos_order_number BEFORE INSERT ON pos_orders
 -- 1. Run this SQL in Supabase SQL Editor
 -- 2. Install @supabase/supabase-js in your Next.js project
 -- 3. Create API routes for CRUD operations
+

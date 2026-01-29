@@ -34,8 +34,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { usePOSStore, usePromotionStore, useBookingStore } from "@/lib/store";
-import type { PaymentMethod } from "@/lib/types";
+import {
+  usePOSStore,
+  usePromotionStore,
+  useBookingStore,
+  useCustomerStore,
+} from "@/lib/store";
+import type { PaymentMethod, Booking } from "@/lib/types";
 import { paymentMethodLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -49,10 +54,12 @@ export function POSCart() {
     appliedPromotionId,
     setAppliedPromotion,
     selectedBookingId,
+    selectedCustomerId,
     resetPOS,
   } = usePOSStore();
   const { promotions } = usePromotionStore();
   const { getBookingById, useDeposit } = useBookingStore();
+  const customers = useCustomerStore((state) => state.customers);
 
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState("");
@@ -60,8 +67,40 @@ export function POSCart() {
   const [customDiscount, setCustomDiscount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [cashReceived, setCashReceived] = useState("");
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const priceInputRef = useRef<HTMLInputElement>(null);
   const cashInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch booking from API if selectedBookingId exists
+  useEffect(() => {
+    if (!selectedBookingId) {
+      setBooking(null);
+      return;
+    }
+
+    const fetchBooking = async () => {
+      try {
+        // Try local store first
+        let bookingData = getBookingById(selectedBookingId);
+
+        // If not in local store, fetch from API
+        if (!bookingData) {
+          const response = await fetch(`/api/bookings/${selectedBookingId}`);
+          if (response.ok) {
+            bookingData = await response.json();
+          }
+        }
+
+        setBooking(bookingData || null);
+      } catch (error) {
+        console.error("Error fetching booking:", error);
+        setBooking(null);
+      }
+    };
+
+    fetchBooking();
+  }, [selectedBookingId, getBookingById]);
 
   useEffect(() => {
     if (editingItemId && priceInputRef.current) {
@@ -80,7 +119,6 @@ export function POSCart() {
     }
   }, [showPaymentDialog, paymentMethod]);
 
-  const booking = selectedBookingId ? getBookingById(selectedBookingId) : null;
   const appliedPromotion = promotions.find((p) => p.id === appliedPromotionId);
   const activePromotions = promotions.filter((p) => p.active);
 
@@ -154,7 +192,7 @@ export function POSCart() {
     }
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (cart.length === 0) {
       toast.error("กรุณาเลือกบริการก่อน");
       return;
@@ -165,19 +203,72 @@ export function POSCart() {
       return;
     }
 
-    // Use deposit if applicable
-    const bookingToUse = selectedBookingId
-      ? getBookingById(selectedBookingId)
-      : null;
-    if (bookingToUse?.depositStatus === "HELD") {
-      useDeposit(bookingToUse.id);
-    }
+    setIsSaving(true);
 
-    toast.success("ชำระเงินสำเร็จ!");
-    setShowPaymentDialog(false);
-    resetPOS();
-    setCashReceived("");
-    setPaymentMethod("CASH");
+    try {
+      // Get customer info
+      const customer = selectedCustomerId
+        ? customers.find((c) => c.id === selectedCustomerId)
+        : null;
+
+      // Prepare sale data
+      const saleData = {
+        bookingId: selectedBookingId,
+        customerId: customer?.id || null,
+        customerName: customer?.name || booking?.customerName || "ลูกค้าทั่วไป",
+        customerPhone: customer?.phone || booking?.phone || null,
+        items: cart.map((item) => ({
+          serviceId: item.serviceId,
+          serviceName: item.serviceName,
+          petId: item.petId,
+          petName: item.petName,
+          petType: item.petType,
+          originalPrice: item.originalPrice,
+          finalPrice: item.finalPrice,
+          isPriceModified: item.isPriceModified,
+        })),
+        subtotal,
+        discountAmount,
+        promotionId: appliedPromotionId,
+        customDiscount: customDiscountAmount,
+        depositUsed,
+        totalAmount,
+        paymentMethod,
+        cashReceived: paymentMethod === "CASH" ? cashReceivedNum : null,
+        change: paymentMethod === "CASH" ? change : null,
+      };
+
+      // Save to database
+      const response = await fetch("/api/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(saleData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "ไม่สามารถบันทึกข้อมูลได้");
+      }
+
+      // Use deposit if applicable
+      const bookingToUse = selectedBookingId
+        ? getBookingById(selectedBookingId)
+        : null;
+      if (bookingToUse?.depositStatus === "HELD") {
+        useDeposit(bookingToUse.id);
+      }
+
+      toast.success("ชำระเงินและบันทึกข้อมูลสำเร็จ!");
+      setShowPaymentDialog(false);
+      resetPOS();
+      setCashReceived("");
+      setPaymentMethod("CASH");
+    } catch (error: any) {
+      console.error("Error saving sale:", error);
+      toast.error(error.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -469,10 +560,13 @@ export function POSCart() {
             <Button
               variant="outline"
               onClick={() => setShowPaymentDialog(false)}
+              disabled={isSaving}
             >
               ยกเลิก
             </Button>
-            <Button onClick={handlePayment}>ยืนยันชำระเงิน</Button>
+            <Button onClick={handlePayment} disabled={isSaving}>
+              {isSaving ? "กำลังบันทึก..." : "ยืนยันชำระเงิน"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

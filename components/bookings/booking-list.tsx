@@ -13,6 +13,7 @@ import {
   Ban,
   ShoppingCart,
   Calendar,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,10 +36,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { BookingDialog } from "./booking-dialog";
-import { useBookingStore } from "@/lib/store";
+import { useBookings } from "@/lib/hooks/use-bookings";
 import type { Booking, DepositStatus } from "@/lib/types";
 import { petTypeLabels, depositStatusLabels } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, formatPhoneDisplay, getBangkokDateString } from "@/lib/utils";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -51,14 +52,16 @@ const depositStatusColors: Record<DepositStatus, string> = {
 
 export function BookingList() {
   const router = useRouter();
-  const { bookings, deleteBooking, forfeitDeposit } = useBookingStore();
+  const today = getBangkokDateString();
+  const { bookings, loading, deleteBooking, forfeitDeposit, fetchBookings } =
+    useBookings({ fromDate: today });
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [deletingBooking, setDeletingBooking] = useState<Booking | null>(null);
   const [forfeitingBooking, setForfeitingBooking] = useState<Booking | null>(
     null,
   );
 
-  // Group bookings by date
+  // Helper to get pets for a booking
   const groupedBookings = useMemo(() => {
     return bookings.reduce(
       (acc, booking) => {
@@ -80,19 +83,27 @@ export function BookingList() {
     );
   }, [groupedBookings]);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deletingBooking) {
-      deleteBooking(deletingBooking.id);
-      toast.success("ลบนัดหมายเรียบร้อยแล้ว");
-      setDeletingBooking(null);
+      try {
+        await deleteBooking(deletingBooking.id);
+        toast.success("ลบนัดหมายเรียบร้อยแล้ว");
+        setDeletingBooking(null);
+      } catch (error: any) {
+        toast.error(error.message || "ไม่สามารถลบนัดหมายได้");
+      }
     }
   };
 
-  const handleForfeit = () => {
+  const handleForfeit = async () => {
     if (forfeitingBooking) {
-      forfeitDeposit(forfeitingBooking.id);
-      toast.success("ยึดมัดจำเรียบร้อยแล้ว");
-      setForfeitingBooking(null);
+      try {
+        await forfeitDeposit(forfeitingBooking.id);
+        toast.success("ยึดมัดจำเรียบร้อยแล้ว");
+        setForfeitingBooking(null);
+      } catch (error: any) {
+        toast.error(error.message || "ไม่สามารถยึดมัดจำได้");
+      }
     }
   };
 
@@ -107,7 +118,16 @@ export function BookingList() {
       minimumFractionDigits: 0,
     }).format(amount);
   };
-
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground mt-2">กำลังโหลด...</p>
+        </CardContent>
+      </Card>
+    );
+  }
   if (bookings.length === 0) {
     return (
       <Card>
@@ -146,52 +166,75 @@ export function BookingList() {
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {dateBookings
                   .sort((a, b) => a.bookingTime.localeCompare(b.bookingTime))
-                  .map((booking) => (
-                    <Card key={booking.id} className="overflow-hidden h-full">
-                      <CardContent className="p-4 h-full flex flex-col">
-                        <div className="flex items-start gap-3">
-                          <div
-                            className={cn(
-                              "flex h-10 w-10 items-center justify-center rounded-lg shrink-0",
-                              booking.petType === "DOG"
-                                ? "bg-dog/10 text-dog"
-                                : "bg-cat/10 text-cat",
-                            )}
-                          >
-                            {booking.petType === "DOG" ? (
-                              <Dog className="h-5 w-5" />
-                            ) : (
-                              <Cat className="h-5 w-5" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">
-                              {booking.customerName}
-                            </p>
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Phone className="h-3 w-3" />
-                              <span>{booking.phone}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1 text-sm font-medium">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span>{booking.bookingTime}</span>
-                          </div>
-                        </div>
+                  .map((booking) => {
+                    const pets = booking.pets || [];
 
-                        <div className="mt-3 space-y-2 flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">
-                              บริการ:
-                            </span>
-                            <span className="text-sm font-medium">
-                              {booking.serviceType}
-                            </span>
+                    return (
+                      <Card
+                        key={booking.id}
+                        className="overflow-hidden flex flex-col"
+                      >
+                        <CardContent className="py-0 px-4 flex-1 flex flex-col">
+                          <div className="flex-1">
+                            {/* Header: Customer name, phone, time */}
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <p className="font-medium text-base">
+                                  {booking.customerName}
+                                </p>
+                                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                  <Phone className="h-3 w-3" />
+                                  <span>
+                                    {formatPhoneDisplay(booking.phone)}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 text-sm font-medium">
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                <span>{booking.bookingTime}</span>
+                              </div>
+                            </div>
+
+                            {/* Pet list with services */}
+                            {pets.length > 0 && (
+                              <div className="space-y-1 mb-3">
+                                {pets.map((pet) => (
+                                  <div
+                                    key={pet.petId}
+                                    className="flex items-center gap-2 text-sm"
+                                  >
+                                    {pet.type === "DOG" ? (
+                                      <Dog className="h-4 w-4 text-dog shrink-0" />
+                                    ) : (
+                                      <Cat className="h-4 w-4 text-cat shrink-0" />
+                                    )}
+                                    <span className="font-medium">
+                                      {pet.name}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                      {pet.breed || "ไม่ระบุสายพันธุ์"}
+                                    </span>
+                                    <span className="ml-auto text-muted-foreground">
+                                      {pet.service}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Note */}
+                            {booking.note && (
+                              <div className="mb-3">
+                                <p className="text-sm">
+                                  <span className="font-medium">หมายเหตุ:</span>{" "}
+                                  {booking.note}
+                                </p>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">
-                              มัดจำ:
-                            </span>
+
+                          {/* Footer: Deposit status and actions */}
+                          <div className="flex items-center justify-between pt-3 border-t">
                             <Badge
                               variant="outline"
                               className={cn(
@@ -203,62 +246,59 @@ export function BookingList() {
                                 ? "ไม่มีมัดจำ"
                                 : `${formatCurrency(booking.depositAmount)} (${depositStatusLabels[booking.depositStatus]})`}
                             </Badge>
-                          </div>
-                          {booking.note && (
-                            <p className="text-xs text-muted-foreground border-t pt-2">
-                              {booking.note}
-                            </p>
-                          )}
-                        </div>
 
-                        <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t mt-auto">
-                          {(booking.depositStatus === "NONE" ||
-                            booking.depositStatus === "HELD") && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenPOS(booking)}
-                            >
-                              <ShoppingCart className="mr-1 h-3 w-3" />
-                              เปิด POS
-                            </Button>
-                          )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                จัดการ
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => setEditingBooking(booking)}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                แก้ไข
-                              </DropdownMenuItem>
-                              {booking.depositStatus === "HELD" && (
-                                <DropdownMenuItem
-                                  onClick={() => setForfeitingBooking(booking)}
-                                  className="text-destructive"
+                            <div className="flex items-center gap-2">
+                              {(booking.depositStatus === "NONE" ||
+                                booking.depositStatus === "HELD") && (
+                                <Button
+                                  variant="success"
+                                  size="sm"
+                                  onClick={() => handleOpenPOS(booking)}
                                 >
-                                  <Ban className="mr-2 h-4 w-4" />
-                                  ยึดมัดจำ
-                                </DropdownMenuItem>
+                                  <ShoppingCart className="mr-1 h-3 w-3" />
+                                  เปิด POS
+                                </Button>
                               )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => setDeletingBooking(booking)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                ลบนัดหมาย
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    จัดการ
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => setEditingBooking(booking)}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    แก้ไข
+                                  </DropdownMenuItem>
+                                  {booking.depositStatus === "HELD" && (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        setForfeitingBooking(booking)
+                                      }
+                                      className="text-destructive"
+                                    >
+                                      <Ban className="mr-2 h-4 w-4" />
+                                      ยึดมัดจำ
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => setDeletingBooking(booking)}
+                                    className="text-destructive"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    ลบนัดหมาย
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
               </div>
             </div>
           );
@@ -268,8 +308,13 @@ export function BookingList() {
       {/* Edit Booking Dialog */}
       <BookingDialog
         open={editingBooking !== null}
-        onOpenChange={(open) => !open && setEditingBooking(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingBooking(null);
+          }
+        }}
         booking={editingBooking}
+        onSuccess={fetchBookings}
       />
 
       {/* Delete Confirmation */}

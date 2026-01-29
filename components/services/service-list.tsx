@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ServiceDialog } from "./service-dialog";
 import { useServices } from "@/lib/hooks/use-services";
-import { useServiceConfig } from "@/lib/hooks/use-service-config";
+import { useServiceConfigContext } from "@/lib/contexts/service-config-context";
 import type { Service } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -45,7 +45,7 @@ export function ServiceList({
     deleteService: deleteServiceAPI,
     toggleServiceStatus: toggleServiceAPI,
   } = useServices({ autoFetch: false });
-  const { petTypes, getSizesForPetType } = useServiceConfig();
+  const { petTypes, getSizesForPetType } = useServiceConfigContext();
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deletingService, setDeletingService] = useState<Service | null>(null);
 

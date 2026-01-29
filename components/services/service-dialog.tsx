@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useServices } from "@/lib/hooks/use-services";
-import { useServiceConfig } from "@/lib/hooks/use-service-config";
+import { useServiceConfigContext } from "@/lib/contexts/service-config-context";
 import type { Service, ServicePrice } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -52,7 +52,7 @@ export function ServiceDialog({
   onSuccess,
 }: ServiceDialogProps) {
   const { createService, updateService } = useServices({ autoFetch: false });
-  const { petTypes, getSizesForPetType } = useServiceConfig();
+  const { petTypes, getSizesForPetType } = useServiceConfigContext();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = service !== null && service !== undefined;
 

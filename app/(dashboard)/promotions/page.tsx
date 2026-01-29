@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PromotionList } from "@/components/promotions/promotion-list";
-import { PromotionDialog } from "@/components/promotions/promotion-dialog";
 
 export default function PromotionsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -24,9 +23,10 @@ export default function PromotionsPage() {
         </Button>
       </div>
 
-      <PromotionList />
-
-      <PromotionDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
+      <PromotionList
+        addDialogOpen={isDialogOpen}
+        onAddDialogChange={setIsDialogOpen}
+      />
     </div>
   );
 }

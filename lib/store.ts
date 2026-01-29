@@ -8,14 +8,118 @@ import type {
   PetTypeConfig,
   SizeConfig,
 } from "./types";
-import {
-  mockCustomers,
-  mockServices,
-  mockPromotions,
-  mockBookings,
-  defaultPetTypes,
-  defaultSizes,
-} from "./mock-data";
+
+// Default Pet Types for service pricing
+const defaultPetTypes: PetTypeConfig[] = [
+  { id: "DOG", name: "หมา", icon: "dog", order: 1, active: true },
+  { id: "CAT", name: "แมว", icon: "cat", order: 2, active: true },
+];
+
+// Default Sizes for service pricing - แยกตามประเภทสัตว์
+const defaultSizes: SizeConfig[] = [
+  // หมา
+  {
+    id: "DOG_XS",
+    petTypeId: "DOG",
+    name: "XS",
+    minWeight: 0,
+    maxWeight: 2,
+    description: "ไม่เกิน 2kg",
+    order: 1,
+    active: true,
+  },
+  {
+    id: "DOG_S",
+    petTypeId: "DOG",
+    name: "S",
+    minWeight: 2,
+    maxWeight: 5,
+    description: "2-5kg",
+    order: 2,
+    active: true,
+  },
+  {
+    id: "DOG_M",
+    petTypeId: "DOG",
+    name: "M",
+    minWeight: 5,
+    maxWeight: 10,
+    description: "5-10kg",
+    order: 3,
+    active: true,
+  },
+  {
+    id: "DOG_L",
+    petTypeId: "DOG",
+    name: "L",
+    minWeight: 10,
+    maxWeight: 20,
+    description: "10-20kg",
+    order: 4,
+    active: true,
+  },
+  {
+    id: "DOG_XL",
+    petTypeId: "DOG",
+    name: "XL",
+    minWeight: 20,
+    maxWeight: undefined,
+    description: "20kg ขึ้นไป",
+    order: 5,
+    active: true,
+  },
+  // แมว
+  {
+    id: "CAT_XS",
+    petTypeId: "CAT",
+    name: "XS",
+    minWeight: 0,
+    maxWeight: 1.5,
+    description: "ไม่เกิน 1.5kg",
+    order: 1,
+    active: true,
+  },
+  {
+    id: "CAT_S",
+    petTypeId: "CAT",
+    name: "S",
+    minWeight: 1.5,
+    maxWeight: 3,
+    description: "1.5-3kg",
+    order: 2,
+    active: true,
+  },
+  {
+    id: "CAT_M",
+    petTypeId: "CAT",
+    name: "M",
+    minWeight: 3,
+    maxWeight: 5,
+    description: "3-5kg",
+    order: 3,
+    active: true,
+  },
+  {
+    id: "CAT_L",
+    petTypeId: "CAT",
+    name: "L",
+    minWeight: 5,
+    maxWeight: 8,
+    description: "5-8kg",
+    order: 4,
+    active: true,
+  },
+  {
+    id: "CAT_XL",
+    petTypeId: "CAT",
+    name: "XL",
+    minWeight: 8,
+    maxWeight: undefined,
+    description: "8kg ขึ้นไป",
+    order: 5,
+    active: true,
+  },
+];
 
 // Customer Store
 interface CustomerStore {
@@ -34,12 +138,11 @@ interface CustomerStore {
   searchCustomers: (query: string) => Customer[];
 }
 
-let customerIdCounter = Math.max(...mockCustomers.map((c) => c.id)) + 1;
-let petIdCounter =
-  Math.max(...mockCustomers.flatMap((c) => c.pets.map((p) => p.id))) + 1;
+let customerIdCounter = 1;
+let petIdCounter = 1;
 
 export const useCustomerStore = create<CustomerStore>((set, get) => ({
-  customers: mockCustomers,
+  customers: [],
 
   addCustomer: (customerData) => {
     const newCustomer: Customer = {
@@ -245,10 +348,10 @@ interface ServiceStore {
   toggleServiceStatus: (id: number) => void;
 }
 
-let serviceIdCounter = Math.max(...mockServices.map((s) => s.id)) + 1;
+let serviceIdCounter = 1;
 
 export const useServiceStore = create<ServiceStore>((set) => ({
-  services: mockServices,
+  services: [],
 
   addService: (serviceData) => {
     const newService: Service = {
@@ -294,10 +397,10 @@ interface PromotionStore {
   togglePromotion: (id: number) => void;
 }
 
-let promotionIdCounter = Math.max(...mockPromotions.map((p) => p.id)) + 1;
+let promotionIdCounter = 1;
 
 export const usePromotionStore = create<PromotionStore>((set) => ({
-  promotions: mockPromotions,
+  promotions: [],
 
   addPromotion: (promotionData) => {
     const newPromotion: Promotion = {
@@ -344,10 +447,10 @@ interface BookingStore {
   getBookingById: (id: number) => Booking | undefined;
 }
 
-let bookingIdCounter = Math.max(...mockBookings.map((b) => b.id)) + 1;
+let bookingIdCounter = 1;
 
 export const useBookingStore = create<BookingStore>((set, get) => ({
-  bookings: mockBookings,
+  bookings: [],
 
   addBooking: (bookingData) => {
     const newBooking: Booking = {

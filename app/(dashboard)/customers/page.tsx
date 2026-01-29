@@ -13,20 +13,14 @@ export default function CustomersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { customers, loading, error, fetchCustomers } = useCustomers();
 
-  // Fetch customers on mount
+  // Fetch customers on mount and when search changes (with debounce)
   useEffect(() => {
-    fetchCustomers();
-  }, [fetchCustomers]);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery) {
-        fetchCustomers(searchQuery);
-      } else {
-        fetchCustomers();
-      }
-    }, 300);
+    const timer = setTimeout(
+      () => {
+        fetchCustomers(searchQuery || undefined);
+      },
+      searchQuery ? 300 : 0,
+    ); // No delay for initial load
 
     return () => clearTimeout(timer);
   }, [searchQuery, fetchCustomers]);
