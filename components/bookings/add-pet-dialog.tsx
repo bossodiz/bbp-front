@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Check, ChevronsUpDown, Dog, Cat, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -36,20 +42,12 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useCustomers } from "@/lib/hooks/use-customers";
 import { useBreeds } from "@/lib/hooks/use-breeds";
-import type { Pet } from "@/lib/types";
+import type { NewPetData } from "@/lib/types";
 import { petTypeLabels } from "@/lib/types";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const petSchema = z
   .object({
@@ -62,13 +60,12 @@ const petSchema = z
     breed2: z.string().optional(),
     weight: z.coerce
       .number({ invalid_type_error: "กรุณากรอกน้ำหนัก" })
-      .positive("น้ำหนักต้องมากกว่า 0")
+      .min(0, "น้ำหนักต้องมากกว่าหรือเท่ากับ 0")
       .max(200, "น้ำหนักไม่ถูกต้อง"),
     note: z.string().optional(),
   })
   .refine(
     (data) => {
-      // If mixed breed is checked, breed2 must be filled
       if (data.isMixedBreed && !data.breed2) {
         return false;
       }
@@ -82,24 +79,17 @@ const petSchema = z
 
 type PetFormData = z.infer<typeof petSchema>;
 
-interface PetDialogProps {
+interface AddPetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  customerId: number;
-  pet?: Pet | null;
-  onSuccess?: () => void;
+  onAddPet: (pet: NewPetData) => void;
 }
 
-export function PetDialog({
+export function AddPetDialog({
   open,
   onOpenChange,
-  customerId,
-  pet,
-  onSuccess,
-}: PetDialogProps) {
-  const { createPet, updatePet } = useCustomers();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const isEditing = pet !== null && pet !== undefined;
+  onAddPet,
+}: AddPetDialogProps) {
   const [breedOpen, setBreedOpen] = useState(false);
   const [breed2Open, setBreed2Open] = useState(false);
   const [breedSearchValue, setBreedSearchValue] = useState("");
@@ -109,11 +99,11 @@ export function PetDialog({
     resolver: zodResolver(petSchema),
     defaultValues: {
       name: "",
-      type: undefined,
+      type: "DOG",
       isMixedBreed: false,
       breed: "",
       breed2: "",
-      weight: undefined,
+      weight: 0,
       note: "",
     },
   });
@@ -121,162 +111,52 @@ export function PetDialog({
   const selectedType = form.watch("type");
   const isMixedBreed = form.watch("isMixedBreed");
 
-  // Fetch breeds from API based on selected pet type (exclude mixed breeds for selection)
-  const {
-    breeds,
-    loading: breedsLoading,
-    createBreed,
-  } = useBreeds({
+  const { breeds } = useBreeds({
     petTypeId: selectedType,
     active: true,
-    includeMixed: false, // Only show pure breeds for selection
+    includeMixed: false,
     autoFetch: !!selectedType,
   });
 
-  // Get breed list based on selected pet type
   const breedList = useMemo(() => {
     return breeds.map((breed) => breed.name);
   }, [breeds]);
 
-  useEffect(() => {
-    if (open) {
-      if (pet) {
-        form.reset({
-          name: pet.name,
-          type: pet.type,
-          isMixedBreed: pet.isMixedBreed || false,
-          breed: pet.breed,
-          breed2: pet.breed2 || "",
-          weight: pet.weight,
-          note: pet.note || "",
-        });
-      } else {
-        form.reset({
-          name: "",
-          type: undefined,
-          isMixedBreed: false,
-          breed: "",
-          breed2: "",
-          weight: undefined,
-          note: "",
-        });
-      }
-    }
-  }, [open, pet, form]);
-
-  // Reset breed when type changes
-  useEffect(() => {
-    if (!isEditing && selectedType) {
-      form.setValue("breed", "");
-      form.setValue("breed2", "");
-    }
-  }, [selectedType, isEditing, form]);
-
-  // Reset breed2 when isMixedBreed changes
-  useEffect(() => {
-    if (!isMixedBreed) {
-      form.setValue("breed2", "");
-    }
-  }, [isMixedBreed, form]);
-
-  const onSubmit = async (data: PetFormData) => {
-    try {
-      setIsSubmitting(true);
-
-      // Check if breed exists in the list, if not create it
-      const breedExists = breedList.includes(data.breed);
-      if (!breedExists && data.type) {
-        try {
-          const maxOrder =
-            breeds.length > 0
-              ? Math.max(...breeds.map((b) => b.order_index))
-              : 0;
-          await createBreed({
-            pet_type_id: data.type,
-            name: data.breed,
-            is_mixed: false,
-            order_index: maxOrder + 1,
-            active: true,
-          });
-          toast.success(`เพิ่มสายพันธุ์ "${data.breed}" เรียบร้อยแล้ว`);
-        } catch (error: any) {
-          console.error("Error creating breed:", error);
-          // Continue even if breed creation fails
-        }
-      }
-
-      // Check breed2 if mixed breed
-      if (data.isMixedBreed && data.breed2) {
-        const breed2Exists = breedList.includes(data.breed2);
-        if (!breed2Exists && data.type) {
-          try {
-            const maxOrder =
-              breeds.length > 0
-                ? Math.max(...breeds.map((b) => b.order_index))
-                : 0;
-            await createBreed({
-              pet_type_id: data.type,
-              name: data.breed2,
-              is_mixed: false,
-              order_index: maxOrder + 2,
-              active: true,
-            });
-            toast.success(`เพิ่มสายพันธุ์ "${data.breed2}" เรียบร้อยแล้ว`);
-          } catch (error: any) {
-            console.error("Error creating breed2:", error);
-            // Continue even if breed creation fails
-          }
-        }
-      }
-
-      if (isEditing && pet) {
-        await updatePet(pet.id, {
-          name: data.name,
-          type: data.type,
-          breed: data.breed,
-          breed2: data.isMixedBreed ? data.breed2 : undefined,
-          isMixedBreed: data.isMixedBreed,
-          weight: data.weight,
-          note: data.note,
-        });
-        toast.success("แก้ไขข้อมูลสัตว์เลี้ยงเรียบร้อยแล้ว");
-      } else {
-        await createPet(customerId, {
-          name: data.name,
-          type: data.type,
-          breed: data.breed,
-          breed2: data.isMixedBreed ? data.breed2 : undefined,
-          isMixedBreed: data.isMixedBreed,
-          weight: data.weight,
-          note: data.note,
-        });
-        toast.success("เพิ่มสัตว์เลี้ยงเรียบร้อยแล้ว");
-      }
-
-      onSuccess?.();
-      onOpenChange(false);
-    } catch (error: any) {
-      toast.error(error.message || "เกิดข้อผิดพลาด");
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleSubmit = (data: PetFormData) => {
+    const petData: NewPetData = {
+      name: data.name,
+      type: data.type,
+      breed: data.breed,
+      breed2: data.isMixedBreed ? data.breed2 : undefined,
+      isMixedBreed: data.isMixedBreed,
+      weight: data.weight,
+      note: data.note,
+    };
+    onAddPet(petData);
+    form.reset({
+      name: "",
+      type: "DOG",
+      isMixedBreed: false,
+      breed: "",
+      breed2: "",
+      weight: 0,
+      note: "",
+    });
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "แก้ไขข้อมูลสัตว์เลี้ยง" : "เพิ่มสัตว์เลี้ยง"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "แก้ไขข้อมูลสัตว์เลี้ยงในระบบ"
-              : "เพิ่มข้อมูลสัตว์เลี้ยงใหม่"}
-          </DialogDescription>
+          <DialogTitle>เพิ่มสัตว์เลี้ยง</DialogTitle>
+          <DialogDescription>เพิ่มข้อมูลสัตว์เลี้ยงใหม่</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="name"
@@ -290,6 +170,7 @@ export function PetDialog({
                 </FormItem>
               )}
             />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -326,6 +207,7 @@ export function PetDialog({
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="weight"
@@ -337,7 +219,7 @@ export function PetDialog({
                         type="number"
                         step="0.1"
                         min="0"
-                        placeholder="เช่น 5.5"
+                        placeholder="หากไม่ทราบใส่ 0"
                         {...field}
                         value={field.value ?? ""}
                       />
@@ -347,6 +229,7 @@ export function PetDialog({
                 )}
               />
             </div>
+
             <FormField
               control={form.control}
               name="isMixedBreed"
@@ -370,6 +253,7 @@ export function PetDialog({
                 </FormItem>
               )}
             />
+
             {isMixedBreed ? (
               <div className="grid grid-cols-2 gap-4">
                 <FormField
@@ -397,7 +281,7 @@ export function PetDialog({
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent
-                          className="w-[300px] p-0 max-h-[400px] overflow-auto"
+                          className="w-75 p-0 max-h-100 overflow-auto"
                           align="start"
                         >
                           <Command>
@@ -407,7 +291,7 @@ export function PetDialog({
                               value={breedSearchValue}
                               onValueChange={setBreedSearchValue}
                             />
-                            <CommandList className="max-h-[300px]">
+                            <CommandList className="max-h-75">
                               <CommandEmpty>ไม่พบสายพันธุ์</CommandEmpty>
                               <CommandGroup>
                                 {breedSearchValue &&
@@ -459,6 +343,7 @@ export function PetDialog({
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={form.control}
                   name="breed2"
@@ -484,7 +369,7 @@ export function PetDialog({
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent
-                          className="w-[300px] p-0 max-h-[400px] overflow-auto"
+                          className="w-75 p-0 max-h-100 overflow-auto"
                           align="start"
                         >
                           <Command>
@@ -494,7 +379,7 @@ export function PetDialog({
                               value={breed2SearchValue}
                               onValueChange={setBreed2SearchValue}
                             />
-                            <CommandList className="max-h-[300px]">
+                            <CommandList className="max-h-75">
                               <CommandEmpty>ไม่พบสายพันธุ์</CommandEmpty>
                               <CommandGroup>
                                 {breed2SearchValue &&
@@ -578,7 +463,7 @@ export function PetDialog({
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent
-                        className="w-[300px] p-0 max-h-[400px] overflow-auto"
+                        className="w-75 p-0 max-h-100 overflow-auto"
                         align="start"
                       >
                         <Command>
@@ -588,7 +473,7 @@ export function PetDialog({
                             value={breedSearchValue}
                             onValueChange={setBreedSearchValue}
                           />
-                          <CommandList className="max-h-[300px]">
+                          <CommandList className="max-h-75">
                             <CommandEmpty>ไม่พบสายพันธุ์</CommandEmpty>
                             <CommandGroup>
                               {breedSearchValue &&
@@ -641,6 +526,7 @@ export function PetDialog({
                 )}
               />
             )}
+
             <FormField
               control={form.control}
               name="note"
@@ -657,22 +543,16 @@ export function PetDialog({
                 </FormItem>
               )}
             />
+
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
               >
                 ยกเลิก
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? "กำลังบันทึก..."
-                  : isEditing
-                    ? "บันทึก"
-                    : "เพิ่มสัตว์เลี้ยง"}
-              </Button>
+              <Button type="submit">เพิ่มสัตว์เลี้ยง</Button>
             </DialogFooter>
           </form>
         </Form>

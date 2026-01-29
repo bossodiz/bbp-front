@@ -1,4 +1,4 @@
-import React from "react"
+import React from "react";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Prompt } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";

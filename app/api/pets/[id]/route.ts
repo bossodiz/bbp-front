@@ -4,13 +4,14 @@ import { supabaseAdmin } from "@/lib/supabase";
 // GET /api/pets/[id] - ดึงข้อมูลสัตว์เลี้ยงตาม ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const { data, error } = await supabaseAdmin
       .from("pets")
       .select("*, customers(*)")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error) throw error;
@@ -27,9 +28,10 @@ export async function GET(
 // PATCH /api/pets/[id] - อัพเดทข้อมูลสัตว์เลี้ยง
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, type, breed, breed_2, is_mixed_breed, weight, note } = body;
 
@@ -54,7 +56,7 @@ export async function PATCH(
     const { data, error } = await supabaseAdmin
       .from("pets")
       .update(updateData)
-      .eq("id", params.id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -72,13 +74,11 @@ export async function PATCH(
 // DELETE /api/pets/[id] - ลบสัตว์เลี้ยง
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { error } = await supabaseAdmin
-      .from("pets")
-      .delete()
-      .eq("id", params.id);
+    const { id } = await params;
+    const { error } = await supabaseAdmin.from("pets").delete().eq("id", id);
 
     if (error) throw error;
 

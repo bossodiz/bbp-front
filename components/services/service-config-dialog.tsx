@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useServiceConfig } from "@/lib/hooks/use-service-config";
+import { useServiceConfigContext } from "@/lib/contexts/service-config-context";
 import type { PetSize } from "@/lib/hooks/use-service-config";
 import { toast } from "sonner";
 
@@ -45,7 +45,7 @@ export function ServiceConfigDialog({
     createSize,
     updateSize,
     deleteSize,
-  } = useServiceConfig();
+  } = useServiceConfigContext();
 
   const [newPetType, setNewPetType] = useState({ id: "", name: "" });
   const [newSize, setNewSize] = useState({
@@ -168,7 +168,7 @@ export function ServiceConfigDialog({
 
     // สร้าง ID ในรูปแบบ PETTYPE_SIZENAME (เช่น CAT_XL, DOG_XL)
     const sizeId = `${newSize.petTypeId}_${newSize.name.toUpperCase()}`;
-    
+
     // ตรวจสอบว่า ID ซ้ำหรือไม่
     if (localSizes.some((s) => s.id === sizeId)) {
       toast.error("ขนาดนี้มีอยู่แล้วสำหรับประเภทสัตว์นี้");

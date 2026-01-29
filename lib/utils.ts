@@ -41,18 +41,43 @@ export function getPhoneDigits(phone: string): string {
   return phone.replace(/\D/g, "").slice(0, 10);
 }
 
-// Estimate pet size category from weight for pricing purposes
-export function estimatePetSize(
-  weight: number,
-  petType: "DOG" | "CAT"
-): "SMALL" | "MEDIUM" | "LARGE" {
-  if (petType === "DOG") {
-    if (weight <= 5) return "SMALL";
-    if (weight <= 15) return "MEDIUM";
-    return "LARGE";
-  }
-  // CAT
-  if (weight <= 4) return "SMALL";
-  if (weight <= 6) return "MEDIUM";
-  return "LARGE";
+// Bangkok timezone utilities (UTC+7)
+export function getBangkokDate(): Date {
+  const now = new Date();
+  const bangkokTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
+  );
+  return bangkokTime;
+}
+
+export function getBangkokDateString(): string {
+  const bangkokDate = getBangkokDate();
+  const year = bangkokDate.getFullYear();
+  const month = String(bangkokDate.getMonth() + 1).padStart(2, "0");
+  const day = String(bangkokDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getBangkokDateTime(): string {
+  const bangkokDate = getBangkokDate();
+  return bangkokDate.toISOString();
+}
+
+export function formatDateToBangkok(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const bangkokTime = new Date(
+    d.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
+  );
+  const year = bangkokTime.getFullYear();
+  const month = String(bangkokTime.getMonth() + 1).padStart(2, "0");
+  const day = String(bangkokTime.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// Format date for API submission (YYYY-MM-DD string in Bangkok timezone)
+export function formatDateForAPI(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }

@@ -1,23 +1,14 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Pencil, Trash2, Percent, Banknote, Gift } from "lucide-react";
+import { Pencil, Percent, Banknote, Gift, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { PromotionDialog } from "./promotion-dialog";
-import { usePromotionStore, useServiceStore } from "@/lib/store";
+import { usePromotions } from "@/lib/hooks/use-promotions";
+import { useServices } from "@/lib/hooks/use-services";
 import type { Promotion } from "@/lib/types";
 import { promotionTypeLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -29,27 +20,29 @@ const typeIcons = {
   FREE_SERVICE: Gift,
 };
 
-export function PromotionList() {
-  const { promotions, deletePromotion, togglePromotion } = usePromotionStore();
-  const { services } = useServiceStore();
+interface PromotionListProps {
+  addDialogOpen?: boolean;
+  onAddDialogChange?: (open: boolean) => void;
+}
+
+export function PromotionList({
+  addDialogOpen = false,
+  onAddDialogChange,
+}: PromotionListProps = {}) {
+  const { promotions, loading, togglePromotion, fetchPromotions } =
+    usePromotions();
+  const { services } = useServices();
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(
     null,
   );
-  const [deletingPromotion, setDeletingPromotion] = useState<Promotion | null>(
-    null,
-  );
 
-  const handleDelete = () => {
-    if (deletingPromotion) {
-      deletePromotion(deletingPromotion.id);
-      toast.success("ลบโปรโมชั่นเรียบร้อยแล้ว");
-      setDeletingPromotion(null);
+  const handleToggle = async (id: number, active: boolean) => {
+    try {
+      await togglePromotion(id, !active);
+      toast.success(active ? "ปิดใช้งานโปรโมชั่น" : "เปิดใช้งานโปรโมชั่น");
+    } catch (error: any) {
+      toast.error(error.message || "ไม่สามารถเปลี่ยนสถานะโปรโมชั่นได้");
     }
-  };
-
-  const handleToggle = (id: number, active: boolean) => {
-    togglePromotion(id);
-    toast.success(active ? "ปิดใช้งานโปรโมชั่น" : "เปิดใช้งานโปรโมชั่น");
   };
 
   const formatValue = useCallback(
@@ -71,13 +64,75 @@ export function PromotionList() {
     [services],
   );
 
+  if (loading) {
+    return (
+      <>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-muted-foreground mt-2">กำลังโหลด...</p>
+          </CardContent>
+        </Card>
+
+        {/* Add Promotion Dialog */}
+        <PromotionDialog
+          open={addDialogOpen}
+          onOpenChange={(open) => {
+            console.log("PromotionDialog onOpenChange called with:", open);
+            onAddDialogChange?.(open);
+            if (!open) {
+              fetchPromotions();
+            }
+          }}
+        />
+
+        {/* Edit Promotion Dialog */}
+        <PromotionDialog
+          open={editingPromotion !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingPromotion(null);
+              fetchPromotions();
+            }
+          }}
+          promotion={editingPromotion}
+        />
+      </>
+    );
+  }
+
   if (promotions.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-muted-foreground">ยังไม่มีโปรโมชั่นในระบบ</p>
-        </CardContent>
-      </Card>
+      <>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-muted-foreground">ยังไม่มีโปรโมชั่นในระบบ</p>
+          </CardContent>
+        </Card>
+
+        {/* Add Promotion Dialog */}
+        <PromotionDialog
+          open={addDialogOpen}
+          onOpenChange={(open) => {
+            onAddDialogChange?.(open);
+            if (!open) {
+              fetchPromotions();
+            }
+          }}
+        />
+
+        {/* Edit Promotion Dialog */}
+        <PromotionDialog
+          open={editingPromotion !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingPromotion(null);
+              fetchPromotions();
+            }
+          }}
+          promotion={editingPromotion}
+        />
+      </>
     );
   }
 
@@ -141,13 +196,6 @@ export function PromotionList() {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeletingPromotion(promotion)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -156,37 +204,30 @@ export function PromotionList() {
         })}
       </div>
 
+      {/* Add Promotion Dialog */}
+      <PromotionDialog
+        open={addDialogOpen}
+        onOpenChange={(open) => {
+          onAddDialogChange?.(open);
+          if (!open) {
+            // Refresh data เมื่อปิด dialog
+            fetchPromotions();
+          }
+        }}
+      />
+
       {/* Edit Promotion Dialog */}
       <PromotionDialog
         open={editingPromotion !== null}
-        onOpenChange={(open) => !open && setEditingPromotion(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingPromotion(null);
+            // Refresh data เมื่อปิด dialog
+            fetchPromotions();
+          }
+        }}
         promotion={editingPromotion}
       />
-
-      {/* Delete Confirmation */}
-      <AlertDialog
-        open={deletingPromotion !== null}
-        onOpenChange={(open) => !open && setDeletingPromotion(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>ยืนยันการลบโปรโมชั่น</AlertDialogTitle>
-            <AlertDialogDescription>
-              คุณต้องการลบโปรโมชั่น &quot;{deletingPromotion?.name}&quot;
-              ใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              ลบ
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

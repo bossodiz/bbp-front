@@ -73,15 +73,28 @@ export interface Promotion {
   value: number;
   freeServiceId?: number;
   active: boolean;
+  startDate?: Date;
+  endDate?: Date;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 // Booking Types
+export interface BookingPet {
+  petId: number;
+  name: string;
+  type: "DOG" | "CAT";
+  breed: string;
+  service: string;
+}
+
 export interface Booking {
   id: number;
+  customerId?: number;
   customerName: string;
   phone: string;
-  petType: "DOG" | "CAT";
+  pets?: BookingPet[]; // รายการสัตว์เลี้ยงพร้อมข้อมูล
+  petIds?: number[]; // รองรับเลือกสัตว์เลี้ยงหลายตัว (สำหรับ POST/PUT)
   serviceType: string;
   bookingDate: Date;
   bookingTime: string;
@@ -89,7 +102,20 @@ export interface Booking {
   depositAmount: number;
   depositStatus: "NONE" | "HELD" | "USED" | "FORFEITED";
   depositForfeitedDate?: Date;
+  status: "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED";
   createdAt: Date;
+  updatedAt: Date;
+}
+
+// สำหรับสร้างสัตว์เลี้ยงใหม่พร้อมนัดหมาย
+export interface NewPetData {
+  name: string;
+  type: "DOG" | "CAT";
+  breed: string;
+  breed2?: string;
+  isMixedBreed: boolean;
+  weight: number;
+  note?: string;
 }
 
 // POS Types

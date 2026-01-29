@@ -48,6 +48,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // เช็คเบอร์โทรซ้ำ
+    const { data: existingCustomer } = await supabaseAdmin
+      .from("customers")
+      .select("id, name, phone")
+      .eq("phone", phone)
+      .single();
+
+    if (existingCustomer) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: `เบอร์โทรนี้มีในระบบแล้ว (${existingCustomer.name})`,
+        },
+        { status: 409 }, // 409 Conflict
+      );
+    }
+
     const { data, error } = await supabaseAdmin
       .from("customers")
       .insert({ name, phone })

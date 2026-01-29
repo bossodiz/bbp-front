@@ -53,6 +53,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // เช็คชื่อสัตว์เลี้ยงซ้ำภายในลูกค้าเดียวกัน
+    const { data: existingPet } = await supabaseAdmin
+      .from("pets")
+      .select("id, name")
+      .eq("customer_id", customer_id)
+      .ilike("name", name)
+      .single();
+
+    if (existingPet) {
+      return NextResponse.json(
+        {
+          data: null,
+          error: `ลูกค้านี้มีสัตว์เลี้ยงชื่อ "${existingPet.name}" อยู่แล้ว`,
+        },
+        { status: 409 }, // 409 Conflict
+      );
+    }
+
     // Validate mixed breed
     if (is_mixed_breed && (!breed || !breed_2)) {
       return NextResponse.json(

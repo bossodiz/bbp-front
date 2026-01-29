@@ -54,14 +54,14 @@ const menuItems = [
     icon: Calendar,
   },
   {
-    title: "ประวัติการใช้บริการ",
-    url: "/history",
-    icon: History,
-  },
-  {
     title: "ขายหน้าร้าน (POS)",
     url: "/pos",
     icon: ShoppingCart,
+  },
+  {
+    title: "ประวัติการใช้บริการ",
+    url: "/history",
+    icon: History,
   },
 ];
 

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { formatPhoneDisplay } from "@/lib/utils";
 
 // Mock data - จะเปลี่ยนเป็นข้อมูลจริงจาก database ภายหลัง
 const topCustomers = [
@@ -87,7 +88,9 @@ export function TopCustomers() {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{customer.name}</p>
-                <p className="text-xs text-muted-foreground">{customer.phone}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatPhoneDisplay(customer.phone)}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium">

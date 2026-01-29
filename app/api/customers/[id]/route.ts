@@ -4,13 +4,14 @@ import { supabaseAdmin } from "@/lib/supabase";
 // GET /api/customers/[id] - ดึงข้อมูลลูกค้าตาม ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const { data, error } = await supabaseAdmin
       .from("customers")
       .select("*, pets(*)")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error) throw error;
@@ -27,16 +28,17 @@ export async function GET(
 // PATCH /api/customers/[id] - อัพเดทข้อมูลลูกค้า
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, phone } = body;
 
     const { data, error } = await supabaseAdmin
       .from("customers")
       .update({ name, phone })
-      .eq("id", params.id)
+      .eq("id", id)
       .select()
       .single();
 
@@ -54,13 +56,14 @@ export async function PATCH(
 // DELETE /api/customers/[id] - ลบลูกค้า
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { id } = await params;
     const { error } = await supabaseAdmin
       .from("customers")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (error) throw error;
 

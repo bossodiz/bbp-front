@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,20 +30,51 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { usePromotionStore, useServiceStore } from "@/lib/store";
+import { usePromotions } from "@/lib/hooks/use-promotions";
+import { useServices } from "@/lib/hooks/use-services";
 import type { Promotion, PromotionType } from "@/lib/types";
 import { promotionTypeLabels } from "@/lib/types";
 import { toast } from "sonner";
 
-const promotionSchema = z.object({
-  name: z.string().min(1, "กรุณากรอกชื่อโปรโมชั่น"),
-  type: z.enum(["PERCENT", "AMOUNT", "FREE_SERVICE"], {
-    required_error: "กรุณาเลือกประเภทโปรโมชั่น",
-  }),
-  value: z.coerce.number().min(0, "ค่าต้องมากกว่าหรือเท่ากับ 0"),
-  freeServiceId: z.coerce.number().optional(),
-  active: z.boolean(),
-});
+const promotionSchema = z
+  .object({
+    name: z.string().min(1, "กรุณากรอกชื่อโปรโมชั่น"),
+    type: z.enum(["PERCENT", "AMOUNT", "FREE_SERVICE"], {
+      required_error: "กรุณาเลือกประเภทโปรโมชั่น",
+    }),
+    value: z.coerce.number().min(0, "ค่าต้องมากกว่าหรือเท่ากับ 0").optional(),
+    freeServiceId: z.coerce.number().optional(),
+    active: z.boolean(),
+  })
+  .refine(
+    (data) => {
+      // If type is PERCENT or AMOUNT, value is required
+      if (
+        (data.type === "PERCENT" || data.type === "AMOUNT") &&
+        (data.value === undefined || data.value === null)
+      ) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "กรุณากรอกค่าส่วนลด",
+      path: ["value"],
+    },
+  )
+  .refine(
+    (data) => {
+      // If type is FREE_SERVICE, freeServiceId is required
+      if (data.type === "FREE_SERVICE" && !data.freeServiceId) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "กรุณาเลือกบริการที่แถม",
+      path: ["freeServiceId"],
+    },
+  );
 
 type PromotionFormData = z.infer<typeof promotionSchema>;
 
@@ -58,8 +89,9 @@ export function PromotionDialog({
   onOpenChange,
   promotion,
 }: PromotionDialogProps) {
-  const { addPromotion, updatePromotion } = usePromotionStore();
-  const { services } = useServiceStore();
+  const { addPromotion, updatePromotion } = usePromotions();
+  const { services } = useServices({ autoFetch: true });
+  const [submitting, setSubmitting] = useState(false);
   const isEditing = promotion !== null && promotion !== undefined;
 
   const form = useForm<PromotionFormData>({
@@ -71,6 +103,7 @@ export function PromotionDialog({
       freeServiceId: undefined,
       active: true,
     },
+    mode: "onChange",
   });
 
   const watchType = form.watch("type");
@@ -97,24 +130,33 @@ export function PromotionDialog({
     }
   }, [open, promotion, form]);
 
-  const onSubmit = (data: PromotionFormData) => {
-    const promotionData = {
-      name: data.name,
-      type: data.type as PromotionType,
-      value: data.type === "FREE_SERVICE" ? 0 : data.value,
-      freeServiceId:
-        data.type === "FREE_SERVICE" ? data.freeServiceId : undefined,
-      active: data.active,
-    };
+  const onSubmit = async (data: PromotionFormData) => {
+    try {
+      setSubmitting(true);
+      const promotionData = {
+        name: data.name,
+        type: data.type as PromotionType,
+        value: data.type === "FREE_SERVICE" ? 0 : data.value,
+        freeServiceId:
+          data.type === "FREE_SERVICE" ? data.freeServiceId : undefined,
+        active: data.active,
+      };
 
-    if (isEditing && promotion) {
-      updatePromotion(promotion.id, promotionData);
-      toast.success("แก้ไขโปรโมชั่นเรียบร้อยแล้ว");
-    } else {
-      addPromotion(promotionData);
-      toast.success("เพิ่มโปรโมชั่นใหม่เรียบร้อยแล้ว");
+      if (isEditing && promotion) {
+        await updatePromotion(promotion.id, promotionData);
+        toast.success("แก้ไขโปรโมชั่นเรียบร้อยแล้ว");
+      } else {
+        await addPromotion(promotionData);
+        toast.success("เพิ่มโปรโมชั่นใหม่เรียบร้อยแล้ว");
+      }
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(
+        isEditing ? "ไม่สามารถแก้ไขโปรโมชั่นได้" : "ไม่สามารถเพิ่มโปรโมชั่นได้",
+      );
+    } finally {
+      setSubmitting(false);
     }
-    onOpenChange(false);
   };
 
   return (
@@ -279,11 +321,16 @@ export function PromotionDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                disabled={submitting}
               >
                 ยกเลิก
               </Button>
-              <Button type="submit">
-                {isEditing ? "บันทึก" : "เพิ่มโปรโมชั่น"}
+              <Button type="submit" disabled={submitting}>
+                {submitting
+                  ? "กำลังบันทึก..."
+                  : isEditing
+                    ? "บันทึก"
+                    : "เพิ่มโปรโมชั่น"}
               </Button>
             </DialogFooter>
           </form>

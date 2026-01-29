@@ -4,10 +4,10 @@ import { supabaseAdmin } from "@/lib/supabase";
 // GET /api/breeds/[id] - ดึงข้อมูลสายพันธุ์ตาม ID พร้อมข้อมูล parent breeds
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const { data, error } = await supabaseAdmin
       .from("breeds")
@@ -46,10 +46,10 @@ export async function GET(
 // PATCH /api/breeds/[id] - แก้ไขข้อมูลสายพันธุ์
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
 
     // Validate mixed breed constraints if changing
@@ -110,10 +110,10 @@ export async function PATCH(
 // DELETE /api/breeds/[id] - ลบสายพันธุ์
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     // Check if breed is being used by any pets
     const { count } = await supabaseAdmin
