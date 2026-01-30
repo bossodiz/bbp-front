@@ -5,12 +5,12 @@ import {
   ChevronDown,
   ChevronRight,
   Search,
-  FileText,
   Dog,
   Cat,
   Calendar as CalendarIcon,
-  DollarSign,
   CalendarDays,
+  Loader2,
+  RefreshCcw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -39,113 +40,99 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { useCustomerStore } from "@/lib/store";
+import { useSales } from "@/lib/hooks/use-sales";
 import { formatPhoneDisplay, cn } from "@/lib/utils";
-import { petTypeLabels } from "@/lib/types";
+import { petTypeLabels, paymentMethodLabels } from "@/lib/types";
+import type { Sale } from "@/lib/types";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-
-// Mock service history data
-interface ServiceHistory {
-  id: number;
-  customerId: number;
-  date: Date;
-  totalAmount: number;
-  services: Array<{
-    serviceName: string;
-    petName: string;
-    petType: "DOG" | "CAT";
-    price: number;
-  }>;
-  discount: number;
-  deposit: number;
-  paymentMethod: string;
-}
-
-// Generate mock history data
-const generateMockHistory = (): ServiceHistory[] => {
-  return [
-    {
-      id: 1,
-      customerId: 1,
-      date: new Date("2026-01-25"),
-      totalAmount: 1200,
-      services: [
-        {
-          serviceName: "อาบน้ำตัดขน",
-          petName: "มะลิ",
-          petType: "DOG",
-          price: 600,
-        },
-        { serviceName: "ตัดเล็บ", petName: "มะลิ", petType: "DOG", price: 150 },
-        {
-          serviceName: "อาบน้ำ",
-          petName: "จัสมิน",
-          petType: "CAT",
-          price: 450,
-        },
-      ],
-      discount: 0,
-      deposit: 0,
-      paymentMethod: "เงินสด",
-    },
-    {
-      id: 2,
-      customerId: 1,
-      date: new Date("2026-01-15"),
-      totalAmount: 800,
-      services: [
-        { serviceName: "อาบน้ำ", petName: "มะลิ", petType: "DOG", price: 400 },
-        {
-          serviceName: "อาบน้ำ",
-          petName: "จัสมิน",
-          petType: "CAT",
-          price: 400,
-        },
-      ],
-      discount: 100,
-      deposit: 0,
-      paymentMethod: "QR Code",
-    },
-    {
-      id: 3,
-      customerId: 2,
-      date: new Date("2026-01-20"),
-      totalAmount: 650,
-      services: [
-        {
-          serviceName: "อาบน้ำตัดขน",
-          petName: "กระต่าย",
-          petType: "DOG",
-          price: 550,
-        },
-        {
-          serviceName: "ตัดเล็บ",
-          petName: "กระต่าย",
-          petType: "DOG",
-          price: 100,
-        },
-      ],
-      discount: 0,
-      deposit: 0,
-      paymentMethod: "บัตรเครดิต",
-    },
-  ];
-};
 
 export function ServiceHistoryList() {
   const { customers } = useCustomerStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<
-    "all" | "today" | "week" | "month" | "custom"
-  >("all");
+    "all" | "today" | "yesterday" | "week" | "month" | "custom"
+  >("today");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
-  const [selectedBill, setSelectedBill] = useState<ServiceHistory | null>(null);
+  const [selectedBill, setSelectedBill] = useState<Sale | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const mockHistory = useMemo(() => generateMockHistory(), []);
+  // Calculate date range for API
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    let start: string | undefined;
+    let end: string | undefined;
+
+    switch (dateFilter) {
+      case "today":
+        start = today.toISOString();
+        end = tomorrow.toISOString();
+        break;
+
+      case "yesterday":
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        start = yesterday.toISOString();
+        end = today.toISOString();
+        break;
+
+      case "week":
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        start = sevenDaysAgo.toISOString();
+        end = tomorrow.toISOString();
+        break;
+
+      case "month":
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        start = thirtyDaysAgo.toISOString();
+        end = tomorrow.toISOString();
+        break;
+
+      case "custom":
+        if (startDate) {
+          const customStart = new Date(startDate);
+          customStart.setHours(0, 0, 0, 0);
+          start = customStart.toISOString();
+        }
+        if (endDate) {
+          const customEnd = new Date(endDate);
+          customEnd.setDate(customEnd.getDate() + 1);
+          customEnd.setHours(0, 0, 0, 0);
+          end = customEnd.toISOString();
+        }
+        break;
+
+      // case "all" - don't set start/end
+    }
+
+    return { start, end };
+  }, [dateFilter, startDate, endDate]);
+
+  const { sales, isLoading, error, refetch } = useSales({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
+  });
+
+  // Debug logging
+  console.log("🔍 History Debug:", {
+    dateFilter,
+    dateRange,
+    salesCount: sales.length,
+    isLoading,
+    error,
+    customersCount: customers.length,
+  });
 
   const toggleExpand = (customerId: number) => {
     const newExpanded = new Set(expandedIds);
@@ -170,39 +157,92 @@ export function ServiceHistoryList() {
       year: "numeric",
       month: "short",
       day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(date);
   };
 
-  // Calculate customer stats
+  // Calculate customer stats from sales
   const customerStats = useMemo(() => {
-    return customers.map((customer) => {
-      const customerHistory = mockHistory.filter(
-        (h) => h.customerId === customer.id,
-      );
-      const totalSpent = customerHistory.reduce(
-        (sum, h) => sum + h.totalAmount,
-        0,
-      );
-      const lastVisit =
-        customerHistory.length > 0
-          ? new Date(Math.max(...customerHistory.map((h) => h.date.getTime())))
-          : null;
+    const statsMap = new Map<
+      number | string,
+      {
+        customer: any;
+        sales: Sale[];
+        totalSpent: number;
+        lastVisit: Date | null;
+        dogCount: number;
+        catCount: number;
+      }
+    >();
 
-      const dogCount = customer.pets.filter((p) => p.type === "DOG").length;
-      const catCount = customer.pets.filter((p) => p.type === "CAT").length;
+    // Build stats directly from sales data
+    sales.forEach((sale) => {
+      const customerId = sale.customerId || `unknown-${sale.customerName}`;
 
-      return {
-        customer,
-        history: customerHistory.sort(
-          (a, b) => b.date.getTime() - a.date.getTime(),
-        ),
-        totalSpent,
-        lastVisit,
-        dogCount,
-        catCount,
-      };
+      if (!statsMap.has(customerId)) {
+        // Find customer from store if available
+        const customerFromStore = customers.find(
+          (c) => c.id === sale.customerId,
+        );
+
+        statsMap.set(customerId, {
+          customer: customerFromStore || {
+            id: customerId,
+            name: sale.customerName,
+            phone: sale.customerPhone || "",
+            pets: [],
+          },
+          sales: [],
+          totalSpent: 0,
+          lastVisit: null,
+          dogCount:
+            customerFromStore?.pets.filter((p) => p.type === "DOG").length || 0,
+          catCount:
+            customerFromStore?.pets.filter((p) => p.type === "CAT").length || 0,
+        });
+      }
+
+      const stat = statsMap.get(customerId)!;
+      stat.sales.push(sale);
+      stat.totalSpent += sale.totalAmount;
+      const saleDate = new Date(sale.createdAt);
+      if (!stat.lastVisit || saleDate > stat.lastVisit) {
+        stat.lastVisit = saleDate;
+      }
+
+      // Count unique pets from sale items
+      const uniquePets = new Set<string>();
+      sale.items.forEach((item) => {
+        if (item.petId) {
+          uniquePets.add(`${item.petType}-${item.petId}`);
+          if (item.petType === "DOG" && stat.dogCount === 0) {
+            stat.dogCount++;
+          } else if (item.petType === "CAT" && stat.catCount === 0) {
+            stat.catCount++;
+          }
+        }
+      });
     });
-  }, [customers, mockHistory]);
+
+    // Convert map to array and sort by most recent visit first
+    const result = Array.from(statsMap.values()).sort((a, b) => {
+      // Sort by most recent visit first
+      if (a.lastVisit && b.lastVisit) {
+        return b.lastVisit.getTime() - a.lastVisit.getTime();
+      }
+      if (a.lastVisit) return -1;
+      if (b.lastVisit) return 1;
+      return b.totalSpent - a.totalSpent;
+    });
+
+    console.log("📊 Customer Stats:", {
+      totalStats: result.length,
+      withSales: result.filter((s) => s.sales.length > 0).length,
+    });
+
+    return result;
+  }, [customers, sales]);
 
   // Filter customers
   const filteredStats = useMemo(() => {
@@ -216,45 +256,9 @@ export function ServiceHistoryList() {
         if (!matchesSearch) return false;
       }
 
-      // Date filter
-      if (dateFilter !== "all" && stat.lastVisit) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const lastVisit = new Date(stat.lastVisit);
-        lastVisit.setHours(0, 0, 0, 0);
-
-        switch (dateFilter) {
-          case "today":
-            if (lastVisit.getTime() !== today.getTime()) return false;
-            break;
-          case "week":
-            const weekAgo = new Date(today);
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            if (lastVisit < weekAgo) return false;
-            break;
-          case "month":
-            const monthAgo = new Date(today);
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            if (lastVisit < monthAgo) return false;
-            break;
-          case "custom":
-            if (startDate) {
-              const start = new Date(startDate);
-              start.setHours(0, 0, 0, 0);
-              if (lastVisit < start) return false;
-            }
-            if (endDate) {
-              const end = new Date(endDate);
-              end.setHours(23, 59, 59, 999);
-              if (lastVisit > end) return false;
-            }
-            break;
-        }
-      }
-
       return true;
     });
-  }, [customerStats, searchQuery, dateFilter, startDate, endDate]);
+  }, [customerStats, searchQuery]);
 
   // Pagination
   const totalPages = Math.ceil(filteredStats.length / itemsPerPage);
@@ -264,29 +268,67 @@ export function ServiceHistoryList() {
     startIndex + itemsPerPage,
   );
 
+  // Calculate summary stats
+  const summaryStats = useMemo(() => {
+    const totalCustomers = filteredStats.length;
+    const totalVisits = filteredStats.reduce(
+      (sum, stat) => sum + stat.sales.length,
+      0,
+    );
+    const totalRevenue = filteredStats.reduce(
+      (sum, stat) => sum + stat.totalSpent,
+      0,
+    );
+
+    return {
+      totalCustomers,
+      totalVisits,
+      totalRevenue,
+    };
+  }, [filteredStats]);
+
+  console.log("📄 Pagination:", {
+    filteredCount: filteredStats.length,
+    paginatedCount: paginatedStats.length,
+    currentPage,
+    totalPages,
+  });
+
   return (
     <>
       <Card>
         <CardContent className="p-6">
           {/* Search and Filters */}
           <div className="mb-6 space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="ค้นหาชื่อลูกค้าหรือเบอร์โทร..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-10"
-              />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="ค้นหาชื่อลูกค้าหรือเบอร์โทร..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => refetch()}
+                disabled={isLoading}
+              >
+                <RefreshCcw
+                  className={cn("h-4 w-4", isLoading && "animate-spin")}
+                />
+              </Button>
             </div>
 
             {/* Date Filter */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium">ช่วงเวลา:</span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   variant={dateFilter === "all" ? "default" : "outline"}
                   size="sm"
@@ -306,6 +348,16 @@ export function ServiceHistoryList() {
                   }}
                 >
                   วันนี้
+                </Button>
+                <Button
+                  variant={dateFilter === "yesterday" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setDateFilter("yesterday");
+                    setCurrentPage(1);
+                  }}
+                >
+                  เมื่อวาน
                 </Button>
                 <Button
                   variant={dateFilter === "week" ? "default" : "outline"}
@@ -406,166 +458,220 @@ export function ServiceHistoryList() {
             )}
           </div>
 
-          {/* Table */}
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12"></TableHead>
-                  <TableHead>ชื่อลูกค้า</TableHead>
-                  <TableHead>เบอร์โทร</TableHead>
-                  <TableHead>สัตว์เลี้ยง</TableHead>
-                  <TableHead>เข้าใช้บริการล่าสุด</TableHead>
-                  <TableHead className="text-right">ยอดเงินทั้งหมด</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedStats.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      ไม่พบข้อมูล
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedStats.map((stat) => {
-                    const isExpanded = expandedIds.has(stat.customer.id);
-                    return (
-                      <Fragment key={stat.customer.id}>
-                        <TableRow
-                          className="cursor-pointer hover:bg-muted/30"
-                          onClick={() => toggleExpand(stat.customer.id)}
-                        >
-                          <TableCell>
-                            <div className="flex items-center justify-center">
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4" />
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {stat.customer.name}
-                          </TableCell>
-                          <TableCell>
-                            {formatPhoneDisplay(stat.customer.phone)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {stat.dogCount > 0 && (
-                                <Badge variant="outline" className="gap-1">
-                                  <Dog className="h-3 w-3 text-dog" />
-                                  <span>{stat.dogCount}</span>
-                                </Badge>
-                              )}
-                              {stat.catCount > 0 && (
-                                <Badge variant="outline" className="gap-1">
-                                  <Cat className="h-3 w-3 text-cat" />
-                                  <span>{stat.catCount}</span>
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {stat.lastVisit ? formatDate(stat.lastVisit) : "-"}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {formatCurrency(stat.totalSpent)}
-                          </TableCell>
-                        </TableRow>
-                        {stat.history.length > 0 && isExpanded && (
-                          <TableRow key={`${stat.customer.id}-details`}>
-                            <TableCell colSpan={6} className="bg-muted/20 p-0">
-                              <div className="p-4">
-                                <h4 className="text-sm font-medium mb-3">
-                                  ประวัติการใช้บริการ
-                                </h4>
-                                <div className="space-y-2">
-                                  {stat.history.map((history) => (
-                                    <div
-                                      key={history.id}
-                                      onClick={() => setSelectedBill(history)}
-                                      className="flex items-center justify-between p-3 rounded-lg border bg-card cursor-pointer hover:bg-accent/50 hover:border-primary/50 transition-colors"
-                                    >
-                                      <div className="flex items-center gap-3">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                          <CalendarDays className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                          <p className="text-sm font-medium">
-                                            {formatDate(history.date)}
-                                          </p>
-                                          <p className="text-xs text-muted-foreground">
-                                            {history.services.length} บริการ •{" "}
-                                            {history.paymentMethod}
-                                          </p>
-                                        </div>
-                                      </div>
-                                      <div className="text-right">
-                                        <p className="text-sm font-semibold text-primary">
-                                          {formatCurrency(history.totalAmount)}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </Fragment>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-muted-foreground">
-                แสดง {startIndex + 1}-
-                {Math.min(startIndex + itemsPerPage, filteredStats.length)} จาก{" "}
-                {filteredStats.length} รายการ
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                >
-                  ก่อนหน้า
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        className="w-8"
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </Button>
-                    ),
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                >
-                  ถัดไป
-                </Button>
-              </div>
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
+          {/* Table */}
+          {!isLoading && !error && (
+            <>
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12"></TableHead>
+                      <TableHead>ชื่อลูกค้า</TableHead>
+                      <TableHead>เบอร์โทร</TableHead>
+                      <TableHead>จำนวนการเข้าใช้บริการ</TableHead>
+                      <TableHead>เข้าใช้บริการล่าสุด</TableHead>
+                      <TableHead className="text-right">
+                        ยอดเงินทั้งหมด
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedStats.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={6}
+                          className="text-center py-8 text-muted-foreground"
+                        >
+                          {searchQuery.trim()
+                            ? "ไม่พบลูกค้าที่ค้นหา"
+                            : "ยังไม่มีประวัติการใช้บริการ"}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedStats.map((stat) => {
+                        const isExpanded = expandedIds.has(stat.customer.id);
+                        return (
+                          <Fragment key={stat.customer.id}>
+                            <TableRow
+                              className="cursor-pointer hover:bg-muted/30"
+                              onClick={() => toggleExpand(stat.customer.id)}
+                            >
+                              <TableCell>
+                                <div className="flex items-center justify-center">
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {stat.customer.name}
+                              </TableCell>
+                              <TableCell>
+                                {formatPhoneDisplay(stat.customer.phone)}
+                              </TableCell>
+                              <TableCell>
+                                <span className="font-medium">
+                                  {stat.sales.length} ครั้ง
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                {stat.lastVisit
+                                  ? format(stat.lastVisit, "PPP", {
+                                      locale: th,
+                                    })
+                                  : "-"}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {formatCurrency(stat.totalSpent)}
+                              </TableCell>
+                            </TableRow>
+                            {stat.sales.length > 0 && isExpanded && (
+                              <TableRow key={`${stat.customer.id}-details`}>
+                                <TableCell
+                                  colSpan={6}
+                                  className="bg-muted/20 p-0"
+                                >
+                                  <div className="p-4">
+                                    <h4 className="text-sm font-medium mb-3">
+                                      ประวัติการใช้บริการ
+                                    </h4>
+                                    <div className="space-y-2">
+                                      {stat.sales.map((sale) => (
+                                        <div
+                                          key={sale.id}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedBill(sale);
+                                          }}
+                                          className="flex items-center justify-between p-3 rounded-lg border bg-card cursor-pointer hover:bg-accent/50 hover:border-primary/50 transition-colors"
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                              <CalendarDays className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                              <p className="text-sm font-medium">
+                                                {formatDate(sale.createdAt)}
+                                              </p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {sale.items.length} บริการ •{" "}
+                                                {paymentMethodLabels[
+                                                  sale.paymentMethod
+                                                ] || sale.paymentMethod}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="text-right">
+                                            <p className="text-sm font-semibold text-primary">
+                                              {formatCurrency(sale.totalAmount)}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </Fragment>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableCell colSpan={3} className="font-bold text-base">
+                        สรุปทั้งหมด
+                      </TableCell>
+                      <TableCell className="font-bold text-base">
+                        {summaryStats.totalVisits} ครั้ง
+                      </TableCell>
+                      <TableCell className="font-medium text-muted-foreground">
+                        {summaryStats.totalCustomers} ลูกค้า
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-base text-primary">
+                        {formatCurrency(summaryStats.totalRevenue)}
+                      </TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    แสดง {startIndex + 1}-
+                    {Math.min(startIndex + itemsPerPage, filteredStats.length)}{" "}
+                    จาก {filteredStats.length} รายการ
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((p) => p - 1)}
+                    >
+                      ก่อนหน้า
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from(
+                        { length: Math.min(totalPages, 5) },
+                        (_, i) => {
+                          let page;
+                          if (totalPages <= 5) {
+                            page = i + 1;
+                          } else if (currentPage <= 3) {
+                            page = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            page = totalPages - 4 + i;
+                          } else {
+                            page = currentPage - 2 + i;
+                          }
+                          return (
+                            <Button
+                              key={page}
+                              variant={
+                                currentPage === page ? "default" : "outline"
+                              }
+                              size="sm"
+                              className="w-8"
+                              onClick={() => setCurrentPage(page)}
+                            >
+                              {page}
+                            </Button>
+                          );
+                        },
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage((p) => p + 1)}
+                    >
+                      ถัดไป
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -576,7 +682,7 @@ export function ServiceHistoryList() {
           <DialogHeader>
             <DialogTitle>บิลการใช้บริการ</DialogTitle>
             <DialogDescription>
-              {selectedBill && formatDate(selectedBill.date)}
+              {selectedBill && formatDate(selectedBill.createdAt)}
             </DialogDescription>
           </DialogHeader>
           {selectedBill && (
@@ -584,40 +690,55 @@ export function ServiceHistoryList() {
               {/* Customer Info */}
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-sm text-muted-foreground">ลูกค้า</p>
-                <p className="font-medium">
-                  {
-                    customers.find((c) => c.id === selectedBill.customerId)
-                      ?.name
-                  }
-                </p>
+                <p className="font-medium">{selectedBill.customerName}</p>
+                {selectedBill.customerPhone && (
+                  <p className="text-sm text-muted-foreground">
+                    {formatPhoneDisplay(selectedBill.customerPhone)}
+                  </p>
+                )}
               </div>
 
               {/* Services */}
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">รายการบริการ</h4>
-                {selectedBill.services.map((service, idx) => (
+                {selectedBill.items.map((item) => (
                   <div
-                    key={idx}
+                    key={item.id}
                     className="flex items-center justify-between p-2 rounded bg-muted/30"
                   >
                     <div className="flex items-center gap-2">
-                      {service.petType === "DOG" ? (
-                        <Dog className="h-4 w-4 text-dog" />
-                      ) : (
-                        <Cat className="h-4 w-4 text-cat" />
+                      {item.petType && (
+                        <>
+                          {item.petType === "DOG" ? (
+                            <Dog className="h-4 w-4 text-dog" />
+                          ) : (
+                            <Cat className="h-4 w-4 text-cat" />
+                          )}
+                        </>
                       )}
                       <div>
                         <p className="text-sm font-medium">
-                          {service.serviceName}
+                          {item.serviceName}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {service.petName} ({petTypeLabels[service.petType]})
-                        </p>
+                        {item.petName && (
+                          <p className="text-xs text-muted-foreground">
+                            {item.petName}
+                            {item.petType &&
+                              ` (${petTypeLabels[item.petType]})`}
+                          </p>
+                        )}
                       </div>
                     </div>
-                    <p className="text-sm font-medium">
-                      {formatCurrency(service.price)}
-                    </p>
+                    <div className="text-right">
+                      {item.isPriceModified && (
+                        <p className="text-xs text-muted-foreground line-through">
+                          {formatCurrency(item.originalPrice)}
+                        </p>
+                      )}
+                      <p className="text-sm font-medium">
+                        {formatCurrency(item.finalPrice)}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -628,25 +749,24 @@ export function ServiceHistoryList() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">ยอดรวม</span>
-                  <span>
-                    {formatCurrency(
-                      selectedBill.services.reduce(
-                        (sum, s) => sum + s.price,
-                        0,
-                      ),
-                    )}
-                  </span>
+                  <span>{formatCurrency(selectedBill.subtotal)}</span>
                 </div>
-                {selectedBill.discount > 0 && (
+                {selectedBill.discountAmount > 0 && (
                   <div className="flex justify-between text-success">
-                    <span>ส่วนลด</span>
-                    <span>-{formatCurrency(selectedBill.discount)}</span>
+                    <span>ส่วนลดโปรโมชั่น</span>
+                    <span>-{formatCurrency(selectedBill.discountAmount)}</span>
                   </div>
                 )}
-                {selectedBill.deposit > 0 && (
+                {selectedBill.customDiscount > 0 && (
+                  <div className="flex justify-between text-success">
+                    <span>ส่วนลดเพิ่มเติม</span>
+                    <span>-{formatCurrency(selectedBill.customDiscount)}</span>
+                  </div>
+                )}
+                {selectedBill.depositUsed > 0 && (
                   <div className="flex justify-between text-primary">
                     <span>หักมัดจำ</span>
-                    <span>-{formatCurrency(selectedBill.deposit)}</span>
+                    <span>-{formatCurrency(selectedBill.depositUsed)}</span>
                   </div>
                 )}
                 <Separator />
@@ -658,8 +778,26 @@ export function ServiceHistoryList() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">ชำระโดย</span>
-                  <span>{selectedBill.paymentMethod}</span>
+                  <span>
+                    {paymentMethodLabels[selectedBill.paymentMethod] ||
+                      selectedBill.paymentMethod}
+                  </span>
                 </div>
+                {selectedBill.paymentMethod === "CASH" &&
+                  selectedBill.cashReceived && (
+                    <>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>รับเงินมา</span>
+                        <span>{formatCurrency(selectedBill.cashReceived)}</span>
+                      </div>
+                      {selectedBill.change && selectedBill.change > 0 && (
+                        <div className="flex justify-between text-xs text-success">
+                          <span>เงินทอน</span>
+                          <span>{formatCurrency(selectedBill.change)}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
               </div>
             </div>
           )}

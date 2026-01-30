@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { getBangkokDateTime } from "@/lib/utils";
 
 // GET /api/bookings/:id - ดึงข้อมูลนัดหมายตาม ID
 export async function GET(
@@ -89,7 +88,7 @@ export async function PUT(
 
     // แปลง camelCase เป็น snake_case
     const updateData: any = {
-      updated_at: getBangkokDateTime(),
+      updated_at: new Date().toISOString(),
     };
 
     if (customerId !== undefined) updateData.customer_id = customerId;

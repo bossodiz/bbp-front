@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useBookings } from "@/lib/hooks/use-bookings";
-import { cn, formatPhoneDisplay, getBangkokDate } from "@/lib/utils";
+import { cn, formatPhoneDisplay } from "@/lib/utils";
 
 interface BookingCalendarProps {
   selectedDate: Date;
@@ -21,7 +21,7 @@ export function BookingCalendar({
   onAddBooking,
 }: BookingCalendarProps) {
   const { bookings, loading } = useBookings();
-  const today = getBangkokDate();
+  const today = new Date();
 
   // Get bookings for selected date
   const selectedDateBookings = bookings.filter((booking) =>
