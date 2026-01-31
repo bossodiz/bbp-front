@@ -7,17 +7,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookingList } from "@/components/bookings/booking-list";
 import { BookingCalendar } from "@/components/bookings/booking-calendar";
 import { BookingDialog } from "@/components/bookings/booking-dialog";
-import { getBangkokDate } from "@/lib/utils";
 
 export default function BookingsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(getBangkokDate());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleTabChange = (value: string) => {
     if (value === "calendar") {
       // เมื่อเปลี่ยนไปที่ tab ปฏิทิน ให้ไฮไลท์วันปัจจุบัน
-      setSelectedDate(getBangkokDate());
+      setSelectedDate(new Date());
     }
   };
 

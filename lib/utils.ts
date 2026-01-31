@@ -81,3 +81,28 @@ export function formatDateForAPI(date: Date): string {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+// Convert UTC date to Bangkok timezone (UTC+7)
+export function convertUTCToBangkok(utcDate: Date | string): Date {
+  const date =
+    typeof utcDate === "string" ? new Date(utcDate) : new Date(utcDate);
+  // Convert to Bangkok timezone (UTC+7)
+  const bangkokTime = new Date(
+    date.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
+  );
+  return bangkokTime;
+}
+
+export function toUtcIsoFromBangkokLocal(
+  y: number,
+  m: number,
+  d: number,
+  hh = 0,
+  mm = 0,
+  ss = 0,
+) {
+  // m: 1-12
+  // Bangkok is UTC+7, so UTC time = local - 7 hours
+  const utcMs = Date.UTC(y, m - 1, d, hh - 7, mm, ss, 0);
+  return new Date(utcMs).toISOString();
+}

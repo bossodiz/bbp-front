@@ -118,7 +118,40 @@ export interface NewPetData {
   note?: string;
 }
 
-// POS Types
+// Sale Types
+export interface Sale {
+  id: number;
+  bookingId?: number;
+  customerId?: number;
+  customerName: string;
+  customerPhone?: string;
+  subtotal: number;
+  discountAmount: number;
+  promotionId?: number;
+  customDiscount: number;
+  depositUsed: number;
+  totalAmount: number;
+  paymentMethod: PaymentMethod;
+  cashReceived?: number;
+  change?: number;
+  createdAt: Date;
+  items: SaleItem[];
+}
+
+export interface SaleItem {
+  id: number;
+  saleId: number;
+  serviceId: number;
+  serviceName: string;
+  petId?: number;
+  petName?: string;
+  petType?: "DOG" | "CAT";
+  originalPrice: number;
+  finalPrice: number;
+  isPriceModified: boolean;
+}
+
+// POS Types (kept for backward compatibility)
 export interface POSOrder {
   id: number;
   customerId?: number;

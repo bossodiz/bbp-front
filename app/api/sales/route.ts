@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { getBangkokDateTime } from "@/lib/utils";
 
 // POST /api/sales - บันทึกข้อมูลการขาย
 export async function POST(request: NextRequest) {
@@ -31,7 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const now = getBangkokDateTime();
+    const now = new Date().toISOString();
 
     // บันทึกข้อมูลการขาย
     const { data: sale, error: saleError } = await supabase

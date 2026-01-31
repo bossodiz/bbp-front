@@ -29,10 +29,13 @@ import { cn } from "@/lib/utils";
 
 const menuItems = [
   {
-    title: "Dashboard",
+    title: "ภาพรวม",
     url: "/",
     icon: LayoutDashboard,
   },
+];
+
+const managementItems = [
   {
     title: "ลูกค้าและสัตว์เลี้ยง",
     url: "/customers",
@@ -48,6 +51,9 @@ const menuItems = [
     url: "/promotions",
     icon: Tag,
   },
+];
+
+const operationItems = [
   {
     title: "นัดหมาย",
     url: "/bookings",
@@ -58,6 +64,9 @@ const menuItems = [
     url: "/pos",
     icon: ShoppingCart,
   },
+];
+
+const reportItems = [
   {
     title: "ประวัติการใช้บริการ",
     url: "/history",
@@ -97,8 +106,9 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
       <SidebarContent>
+        {/* ภาพรวม */}
         <SidebarGroup>
-          <SidebarGroupLabel>เมนูหลัก</SidebarGroupLabel>
+          <SidebarGroupLabel>ภาพรวม</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
@@ -111,7 +121,100 @@ export function AppSidebar() {
                       asChild
                       isActive={isActive}
                       className={cn(
-                        "transition-colors",
+                        "h-12 transition-colors",
+                        isActive && "bg-sidebar-accent font-medium",
+                      )}
+                    >
+                      <Link href={item.url} onClick={handleLinkClick}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* การจัดการ */}
+        <SidebarGroup>
+          <SidebarGroupLabel>การจัดการ</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {managementItems.map((item) => {
+                const isActive =
+                  pathname === item.url ||
+                  (item.url !== "/" && pathname.startsWith(item.url));
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className={cn(
+                        "h-12 transition-colors",
+                        isActive && "bg-sidebar-accent font-medium",
+                      )}
+                    >
+                      <Link href={item.url} onClick={handleLinkClick}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* การทำงาน */}
+        <SidebarGroup>
+          <SidebarGroupLabel>การทำงาน</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {operationItems.map((item) => {
+                const isActive =
+                  pathname === item.url ||
+                  (item.url !== "/" && pathname.startsWith(item.url));
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className={cn(
+                        "h-12 transition-colors",
+                        isActive && "bg-sidebar-accent font-medium",
+                      )}
+                    >
+                      <Link href={item.url} onClick={handleLinkClick}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* รายงาน */}
+        <SidebarGroup>
+          <SidebarGroupLabel>รายงาน</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {reportItems.map((item) => {
+                const isActive =
+                  pathname === item.url ||
+                  (item.url !== "/" && pathname.startsWith(item.url));
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className={cn(
+                        "h-12 transition-colors",
                         isActive && "bg-sidebar-accent font-medium",
                       )}
                     >

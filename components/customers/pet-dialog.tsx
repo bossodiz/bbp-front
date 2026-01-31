@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -104,6 +104,10 @@ export function PetDialog({
   const [breed2Open, setBreed2Open] = useState(false);
   const [breedSearchValue, setBreedSearchValue] = useState("");
   const [breed2SearchValue, setBreed2SearchValue] = useState("");
+  const initialTypeData = useRef<string | undefined>(undefined);
+  const initialBreedData = useRef<{ breed: string; breed2: string } | null>(
+    null,
+  );
 
   const form = useForm<PetFormData>({
     resolver: zodResolver(petSchema),
@@ -141,6 +145,12 @@ export function PetDialog({
   useEffect(() => {
     if (open) {
       if (pet) {
+        // เก็บข้อมูลเริ่มต้น
+        initialTypeData.current = pet.type;
+        initialBreedData.current = {
+          breed: pet.breed,
+          breed2: pet.breed2 || "",
+        };
         form.reset({
           name: pet.name,
           type: pet.type,
@@ -151,6 +161,8 @@ export function PetDialog({
           note: pet.note || "",
         });
       } else {
+        initialTypeData.current = undefined;
+        initialBreedData.current = null;
         form.reset({
           name: "",
           type: undefined,
@@ -164,13 +176,38 @@ export function PetDialog({
     }
   }, [open, pet, form]);
 
-  // Reset breed when type changes
+  // Handle type changes - restore original breed if returning to initial type, otherwise clear
   useEffect(() => {
-    if (!isEditing && selectedType) {
-      form.setValue("breed", "");
-      form.setValue("breed2", "");
+    if (selectedType) {
+      // ถ้ายังไม่มี initialTypeData (กรณีเพิ่มใหม่ครั้งแรก หรือ แก้ไขครั้งแรก)
+      if (!initialTypeData.current) {
+        initialTypeData.current = selectedType;
+      }
+      // เช็คว่าเป็น type เดิมหรือไม่
+      else if (selectedType === initialTypeData.current) {
+        // ถ้าเป็น type เดิม ให้รอ breeds โหลดเสร็จแล้ว restore ค่าเดิม (เฉพาะกรณีแก้ไข)
+        if (breeds.length > 0 && !breedsLoading && initialBreedData.current) {
+          const currentBreed = form.getValues("breed");
+          const currentBreed2 = form.getValues("breed2");
+
+          if (!currentBreed && initialBreedData.current.breed) {
+            form.setValue("breed", initialBreedData.current.breed);
+          }
+          if (!currentBreed2 && initialBreedData.current.breed2) {
+            form.setValue("breed2", initialBreedData.current.breed2);
+          }
+        }
+      } else {
+        // ถ้าเป็น type ใหม่ ให้ clear ค่า breed และอัพเดท initialTypeData
+        form.setValue("breed", "");
+        form.setValue("breed2", "");
+        // อัพเดท initialTypeData เป็น type ใหม่
+        initialTypeData.current = selectedType;
+        // clear initialBreedData เพราะสายพันธุ์เก่าไม่เกี่ยวข้องแล้ว
+        initialBreedData.current = null;
+      }
     }
-  }, [selectedType, isEditing, form]);
+  }, [selectedType, breeds, breedsLoading, form]);
 
   // Reset breed2 when isMixedBreed changes
   useEffect(() => {

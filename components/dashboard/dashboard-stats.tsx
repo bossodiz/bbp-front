@@ -1,30 +1,9 @@
 "use client";
 
-import React from "react"
-
-import {
-  Banknote,
-  Dog,
-  Cat,
-  TrendingUp,
-  Calendar,
-} from "lucide-react";
+import { Banknote, Dog, Cat, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-// Mock data - จะเปลี่ยนเป็นข้อมูลจริงจาก database ภายหลัง
-const stats = {
-  todayRevenue: 4850,
-  weekRevenue: 28500,
-  monthRevenue: 125000,
-  todayDogs: 8,
-  todayCats: 3,
-  weekDogs: 45,
-  weekCats: 18,
-  monthDogs: 180,
-  monthCats: 72,
-  todayBookings: 5,
-};
+import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats";
 
 interface StatCardProps {
   title: string;
@@ -37,6 +16,7 @@ interface StatCardProps {
   };
   className?: string;
   iconClassName?: string;
+  loading?: boolean;
 }
 
 function StatCard({
@@ -47,6 +27,7 @@ function StatCard({
   trend,
   className,
   iconClassName,
+  loading,
 }: StatCardProps) {
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -57,21 +38,28 @@ function StatCard({
         <div
           className={cn(
             "flex h-9 w-9 items-center justify-center rounded-lg",
-            iconClassName
+            iconClassName,
           )}
         >
           <Icon className="h-5 w-5" />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        {loading ? (
+          <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+        ) : (
+          <div className="text-2xl font-bold">{value}</div>
+        )}
         {subtitle && (
           <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
         )}
-        {trend && (
+        {trend && !loading && (
           <div className="flex items-center gap-1 mt-2 text-xs">
             <TrendingUp className="h-3 w-3 text-success" />
-            <span className="text-success font-medium">+{trend.value}%</span>
+            <span className="text-success font-medium">
+              {trend.value > 0 ? "+" : ""}
+              {trend.value}%
+            </span>
             <span className="text-muted-foreground">{trend.label}</span>
           </div>
         )}
@@ -81,6 +69,8 @@ function StatCard({
 }
 
 export function DashboardStats() {
+  const { data, loading } = useDashboardStats();
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("th-TH", {
       style: "currency",
@@ -89,22 +79,29 @@ export function DashboardStats() {
     }).format(amount);
   };
 
+  const stats = {
+    revenueToday: data?.revenueToday || 0,
+    revenueMonthly: data?.revenueMonthly || 0,
+    dogsToday: data?.dogsToday || 0,
+    catsToday: data?.catsToday || 0,
+    bookingsToday: data?.bookingsToday || 0,
+  };
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <StatCard
         title="รายได้วันนี้"
-        value={formatCurrency(stats.todayRevenue)}
-        subtitle={`สัปดาห์นี้ ${formatCurrency(stats.weekRevenue)}`}
+        value={formatCurrency(stats.revenueToday)}
         icon={Banknote}
-        trend={{ value: 12, label: "จากสัปดาห์ก่อน" }}
         iconClassName="bg-primary/10 text-primary"
+        loading={loading}
       />
       <StatCard
         title="รายได้เดือนนี้"
-        value={formatCurrency(stats.monthRevenue)}
+        value={formatCurrency(stats.revenueMonthly)}
         icon={Banknote}
-        trend={{ value: 8, label: "จากเดือนก่อน" }}
         iconClassName="bg-success/10 text-success"
+        loading={loading}
       />
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -116,25 +113,34 @@ export function DashboardStats() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.todayDogs + stats.todayCats} ตัว</div>
-          <div className="mt-2 space-y-1">
-            <div className="flex items-center gap-2 text-sm">
-              <Dog className="h-4 w-4 text-dog" />
-              <span>หมา {stats.todayDogs} ตัว</span>
+          {loading ? (
+            <div className="h-8 w-16 bg-muted animate-pulse rounded" />
+          ) : (
+            <div className="text-2xl font-bold">
+              {stats.dogsToday + stats.catsToday} ตัว
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Cat className="h-4 w-4 text-cat" />
-              <span>แมว {stats.todayCats} ตัว</span>
+          )}
+          {!loading && (
+            <div className="mt-2 space-y-1">
+              <div className="flex items-center gap-2 text-sm">
+                <Dog className="h-4 w-4 text-dog" />
+                <span>หมา {stats.dogsToday} ตัว</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Cat className="h-4 w-4 text-cat" />
+                <span>แมว {stats.catsToday} ตัว</span>
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
       <StatCard
         title="นัดหมายวันนี้"
-        value={stats.todayBookings}
-        subtitle="รอรับบริการ"
+        value={stats.bookingsToday}
+        subtitle="ทุกนัดหมาย"
         icon={Calendar}
         iconClassName="bg-info/10 text-info"
+        loading={loading}
       />
     </div>
   );

@@ -164,6 +164,15 @@ export function POSServiceSelector() {
     return petType;
   };
 
+  // Separate services into regular and special
+  const regularServices = services.filter((s) => !s.isSpecial && s.active);
+  const specialServices = services.filter((s) => s.isSpecial && s.active);
+
+  // Don't show service selector if customer and pets are not selected
+  if (!selectedCustomerId || selectedPets.length === 0) {
+    return null;
+  }
+
   return (
     <>
       <Card>
@@ -212,25 +221,88 @@ export function POSServiceSelector() {
                       </div>
                     </div>
 
+                    {/* Regular Services */}
                     {estimatedSizeId && (
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {services
-                          .filter((service) => service.active) // แสดงเฉพาะบริการที่เปิดใช้งาน
-                          .map((service) => {
-                            const priceInfo = service.prices.find(
-                              (p) =>
-                                p.petTypeId === petTypeId &&
-                                p.sizeId === estimatedSizeId,
-                            );
+                        {regularServices.map((service) => {
+                          const priceInfo = service.prices.find(
+                            (p) =>
+                              p.petTypeId === petTypeId &&
+                              p.sizeId === estimatedSizeId,
+                          );
 
-                            if (!priceInfo || priceInfo.price <= 0) return null;
+                          if (!priceInfo || priceInfo.price <= 0) return null;
 
+                          // Check if this service+pet combination is already in cart
+                          const isInCart = cart.some(
+                            (item) =>
+                              item.serviceId === service.id &&
+                              item.petId === pet.id,
+                          );
+
+                          return (
+                            <button
+                              key={service.id}
+                              type="button"
+                              disabled={isInCart}
+                              onClick={() =>
+                                handleAddService(
+                                  service.id,
+                                  service.name,
+                                  priceInfo.price,
+                                  pet.id,
+                                )
+                              }
+                              className={cn(
+                                "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
+                                isInCart
+                                  ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
+                                  : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
+                              )}
+                            >
+                              <div>
+                                <p className="font-medium text-sm">
+                                  {service.name}
+                                </p>
+                                <p
+                                  className={cn(
+                                    "text-lg font-semibold",
+                                    isInCart
+                                      ? "text-muted-foreground"
+                                      : "text-primary",
+                                  )}
+                                >
+                                  {formatCurrency(priceInfo.price)}
+                                </p>
+                              </div>
+                              {isInCart && (
+                                <Badge variant="secondary" className="text-xs">
+                                  เลือกแล้ว
+                                </Badge>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Special Services Section */}
+                    {specialServices.length > 0 && (
+                      <div className="space-y-2 border-t pt-3 mt-3">
+                        <h4 className="text-sm font-semibold text-muted-foreground">
+                          บริการพิเศษ
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {specialServices.map((service) => {
                             // Check if this service+pet combination is already in cart
                             const isInCart = cart.some(
                               (item) =>
                                 item.serviceId === service.id &&
                                 item.petId === pet.id,
                             );
+
+                            const price = service.specialPrice || 0;
+                            if (price <= 0) return null;
 
                             return (
                               <button
@@ -241,43 +313,34 @@ export function POSServiceSelector() {
                                   handleAddService(
                                     service.id,
                                     service.name,
-                                    priceInfo.price,
+                                    price,
                                     pet.id,
                                   )
                                 }
                                 className={cn(
-                                  "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
+                                  "inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm transition-all",
                                   isInCart
                                     ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
                                     : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
                                 )}
                               >
-                                <div>
-                                  <p className="font-medium text-sm">
-                                    {service.name}
-                                  </p>
-                                  <p
-                                    className={cn(
-                                      "text-lg font-semibold",
-                                      isInCart
-                                        ? "text-muted-foreground"
-                                        : "text-primary",
-                                    )}
-                                  >
-                                    {formatCurrency(priceInfo.price)}
-                                  </p>
-                                </div>
-                                {isInCart && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    เลือกแล้ว
-                                  </Badge>
-                                )}
+                                <span className="font-medium">
+                                  {service.name}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "font-semibold",
+                                    isInCart
+                                      ? "text-muted-foreground"
+                                      : "text-primary",
+                                  )}
+                                >
+                                  {formatCurrency(price)}
+                                </span>
                               </button>
                             );
                           })}
+                        </div>
                       </div>
                     )}
                   </div>
