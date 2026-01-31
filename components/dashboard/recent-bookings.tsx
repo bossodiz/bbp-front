@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -20,6 +21,16 @@ import { useTodayBookings } from "@/lib/hooks/use-today-bookings";
 
 export function RecentBookings() {
   const { data: todayBookings, loading } = useTodayBookings();
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // อัพเดทเวลาปัจจุบันทุกวินาที
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("th-TH", {
@@ -29,15 +40,46 @@ export function RecentBookings() {
     }).format(amount);
   };
 
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString("th-TH", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  // ตรวจสอบว่ารายการเลยเวลานัดหรือไม่
+  const isOverdue = (bookingTime: string) => {
+    if (!bookingTime) return false;
+
+    const today = new Date();
+    const [hours, minutes] = bookingTime.split(":").map(Number);
+    const bookingDateTime = new Date(today);
+    bookingDateTime.setHours(hours, minutes, 0, 0);
+
+    return currentTime > bookingDateTime;
+  };
+
   return (
     <TooltipProvider>
       <Card>
         <CardHeader>
-          <CardTitle>นัดหมายวันนี้</CardTitle>
-          <CardDescription>
-            ทุกนัดหมายของวันนี้{" "}
-            {loading ? "..." : `${todayBookings.length} รายการ`}
-          </CardDescription>
+          <div className="flex items-start justify-between">
+            <div className="space-y-1.5">
+              <CardTitle>นัดหมายวันนี้</CardTitle>
+              <CardDescription>
+                ทุกนัดหมายของวันนี้{" "}
+                {loading ? "..." : `${todayBookings.length} รายการ`}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 text-sm text-muted-foreground border border-muted-foreground/20">
+              <Clock className="h-4 w-4" />
+              <span className="font-mono font-medium">
+                {formatTime(currentTime)}
+              </span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -56,11 +98,16 @@ export function RecentBookings() {
                 const petName = pet?.name || "สัตว์เลี้ยง";
                 const petType = pet?.type || "DOG";
                 const serviceName = pet?.service || "บริการ";
+                const overdue = isOverdue(booking.bookingTime);
 
                 return (
                   <div
                     key={booking.id}
-                    className="flex items-start gap-4 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                    className={cn(
+                      "flex items-start gap-4 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors",
+                      overdue &&
+                        "bg-muted/50 border-muted-foreground/20 opacity-75",
+                    )}
                   >
                     <div
                       className={cn(
@@ -68,6 +115,8 @@ export function RecentBookings() {
                         petType === "DOG"
                           ? "bg-dog/10 text-dog"
                           : "bg-cat/10 text-cat",
+                        overdue &&
+                          "bg-muted-foreground/20 text-muted-foreground",
                       )}
                     >
                       {petType === "DOG" ? (
@@ -78,26 +127,54 @@ export function RecentBookings() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate">
+                        <p
+                          className={cn(
+                            "text-sm font-medium truncate",
+                            overdue && "text-muted-foreground",
+                          )}
+                        >
                           {petName}
                         </p>
                         {booking.depositAmount > 0 && (
-                          <Badge variant="default" className="text-xs">
+                          <Badge
+                            variant="default"
+                            className={cn(
+                              "text-xs",
+                              overdue &&
+                                "bg-muted-foreground/20 text-muted-foreground border-muted-foreground/30",
+                            )}
+                          >
                             {formatCurrency(booking.depositAmount)}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">
+                      <p
+                        className={cn(
+                          "text-xs text-muted-foreground",
+                          overdue && "text-muted-foreground/70",
+                        )}
+                      >
                         {customerName} - {serviceName}
                       </p>
                       {booking.note && (
-                        <div className="flex items-start gap-1 mt-1.5 text-xs text-warning bg-warning/10 px-2 py-1 rounded">
+                        <div
+                          className={cn(
+                            "flex items-start gap-1 mt-1.5 text-xs text-warning bg-warning/10 px-2 py-1 rounded",
+                            overdue &&
+                              "bg-muted-foreground/10 text-muted-foreground",
+                          )}
+                        >
                           <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
                           <span className="line-clamp-2">{booking.note}</span>
                         </div>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground shrink-0">
+                    <div
+                      className={cn(
+                        "flex items-center gap-1 text-sm text-muted-foreground shrink-0",
+                        overdue && "text-muted-foreground/70",
+                      )}
+                    >
                       <Clock className="h-4 w-4" />
                       <span>{booking.bookingTime || "-"}</span>
                     </div>

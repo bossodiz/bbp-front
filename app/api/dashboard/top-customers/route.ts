@@ -4,53 +4,29 @@ import { supabase } from "@/lib/supabase";
 // GET /api/dashboard/top-customers - ดึงรายการลูกค้าประจำ
 export async function GET(request: NextRequest) {
   try {
-    // ดึงยอดขายของลูกค้าทั้งหมด (30 วันล่าสุด)
-    const now = new Date();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - 29); // 30 วัน
+    // รับ query parameter 'type' (frequent_visits หรือ high_revenue)
+    const searchParams = request.nextUrl.searchParams;
+    const type = searchParams.get("type") || "frequent_visits";
 
-    const { data: salesData, error: salesError } = await supabase
-      .from("sales")
-      .select("customer_id, customer_name, customer_phone, total_amount")
-      .gte("created_at", startDate.toISOString())
-      .not("customer_id", "is", null);
+    // กำหนด order by clause ตาม type
+    const orderBy = type === "frequent_visits" ? "visit_count" : "total_spent";
 
-    if (salesError) throw salesError;
-
-    // จัดกลุ่มตามลูกค้า
-    const customerMap = new Map<
-      number,
-      {
-        customerId: number;
-        customerName: string;
-        customerPhone: string;
-        totalSpent: number;
-        visitCount: number;
-      }
-    >();
-
-    salesData.forEach((sale) => {
-      const existing = customerMap.get(sale.customer_id);
-      if (existing) {
-        existing.totalSpent += parseFloat(sale.total_amount);
-        existing.visitCount += 1;
-      } else {
-        customerMap.set(sale.customer_id, {
-          customerId: sale.customer_id,
-          customerName: sale.customer_name,
-          customerPhone: sale.customer_phone,
-          totalSpent: parseFloat(sale.total_amount),
-          visitCount: 1,
-        });
-      }
+    // ใช้ Database Function เพื่อ aggregate ที่ database แทนการดึงมาทั้งหมด
+    const { data, error } = await supabase.rpc("get_top_customers", {
+      sort_by: orderBy,
+      result_limit: 5,
     });
 
-    // เรียงตามยอดใช้จ่าย และเอา top 5
-    const topCustomers = Array.from(customerMap.values())
-      .sort((a, b) => b.totalSpent - a.totalSpent)
-      .slice(0, 5);
+    if (error) throw error;
+
+    // แปลง field names ให้ตรงกับ interface ที่ใช้
+    const topCustomers = data.map((customer: any) => ({
+      customerId: customer.customer_id,
+      customerName: customer.customer_name,
+      customerPhone: customer.customer_phone,
+      totalSpent: parseFloat(customer.total_spent),
+      visitCount: customer.visit_count,
+    }));
 
     return NextResponse.json(topCustomers);
   } catch (error) {

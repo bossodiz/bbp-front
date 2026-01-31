@@ -30,6 +30,7 @@ DROP VIEW IF EXISTS dashboard_stats CASCADE;
 DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 DROP FUNCTION IF EXISTS generate_order_number() CASCADE;
 DROP FUNCTION IF EXISTS set_order_number() CASCADE;
+DROP FUNCTION IF EXISTS get_top_customers(VARCHAR, INTEGER) CASCADE;
 
 -- ===================================
 -- 1. CUSTOMERS TABLE
@@ -617,6 +618,56 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ===================================
+-- Function: Get Top Customers
+-- ===================================
+CREATE OR REPLACE FUNCTION get_top_customers(
+  sort_by VARCHAR DEFAULT 'visit_count',
+  result_limit INTEGER DEFAULT 5
+)
+RETURNS TABLE (
+  customer_id INTEGER,
+  customer_name TEXT,
+  customer_phone TEXT,
+  total_spent NUMERIC,
+  visit_count BIGINT
+) 
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF sort_by = 'visit_count' THEN
+    RETURN QUERY
+    SELECT 
+      s.customer_id,
+      s.customer_name,
+      s.customer_phone,
+      SUM(s.total_amount) as total_spent,
+      COUNT(*) as visit_count
+    FROM sales s
+    WHERE s.customer_id IS NOT NULL
+    GROUP BY s.customer_id, s.customer_name, s.customer_phone
+    ORDER BY COUNT(*) DESC
+    LIMIT result_limit;
+  ELSE
+    RETURN QUERY
+    SELECT 
+      s.customer_id,
+      s.customer_name,
+      s.customer_phone,
+      SUM(s.total_amount) as total_spent,
+      COUNT(*) as visit_count
+    FROM sales s
+    WHERE s.customer_id IS NOT NULL
+    GROUP BY s.customer_id, s.customer_name, s.customer_phone
+    ORDER BY SUM(s.total_amount) DESC
+    LIMIT result_limit;
+  END IF;
+END;
+$$;
+
+-- Grant execute permission to anon and authenticated users
+GRANT EXECUTE ON FUNCTION get_top_customers(VARCHAR, INTEGER) TO anon, authenticated;
+
+-- ===================================
 -- COMPLETED
 -- ===================================
 -- Schema created successfully!
@@ -624,4 +675,5 @@ $$ LANGUAGE plpgsql;
 -- 1. Run this SQL in Supabase SQL Editor
 -- 2. Install @supabase/supabase-js in your Next.js project
 -- 3. Create API routes for CRUD operations
+
 

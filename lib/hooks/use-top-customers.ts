@@ -10,7 +10,9 @@ interface TopCustomer {
   visitCount: number;
 }
 
-export function useTopCustomers() {
+export type CustomerViewType = "frequent_visits" | "high_revenue";
+
+export function useTopCustomers(type: CustomerViewType = "frequent_visits") {
   const [data, setData] = useState<TopCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,9 @@ export function useTopCustomers() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("/api/dashboard/top-customers");
+        const response = await fetch(
+          `/api/dashboard/top-customers?type=${type}`,
+        );
         if (!response.ok) {
           throw new Error("Failed to fetch top customers");
         }
@@ -36,7 +40,7 @@ export function useTopCustomers() {
     };
 
     fetchData();
-  }, []);
+  }, [type]);
 
   return { data, loading, error };
 }

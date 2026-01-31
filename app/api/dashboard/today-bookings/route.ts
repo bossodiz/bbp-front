@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { toUtcIsoFromBangkokLocal } from "@/lib/utils";
 
 // GET /api/dashboard/today-bookings - ดึงรายการนัดหมายวันนี้ (ทุก status)
 export async function GET(request: NextRequest) {
   try {
-    const now = new Date();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const todayDateStr = today.toISOString().split("T")[0];
+    const todayDateStr = new Date().toLocaleDateString("sv-SE");
 
     // ดึงข้อมูล bookings วันนี้ (ทุก status)
     const { data: bookingsData, error: bookingsError } = await supabase

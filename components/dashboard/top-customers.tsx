@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,12 +9,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { formatPhoneDisplay } from "@/lib/utils";
-import { useTopCustomers } from "@/lib/hooks/use-top-customers";
+import {
+  useTopCustomers,
+  CustomerViewType,
+} from "@/lib/hooks/use-top-customers";
 
 export function TopCustomers() {
-  const { data: topCustomers, loading } = useTopCustomers();
+  const [viewType, setViewType] = useState<CustomerViewType>("frequent_visits");
+  const { data: topCustomers, loading } = useTopCustomers(viewType);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("th-TH", {
       style: "currency",
@@ -25,11 +38,26 @@ export function TopCustomers() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>ลูกค้าประจำ</CardTitle>
-        <CardDescription>
-          ลูกค้าที่มายอดเงินมากที่สุด{" "}
-          {loading ? "..." : `${topCustomers.length} คน`}
-        </CardDescription>
+        <div className="flex items-start justify-between">
+          <div className="space-y-1.5">
+            <CardTitle>ลูกค้าที่มาใช้บริการบ่อยและสร้างรายได้สูง</CardTitle>
+            <CardDescription>
+              {loading ? "..." : `รายการ 5 อันดับแรก`}
+            </CardDescription>
+          </div>
+          <Select
+            value={viewType}
+            onValueChange={(value) => setViewType(value as CustomerViewType)}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="frequent_visits">มาใช้บริการบ่อย</SelectItem>
+              <SelectItem value="high_revenue">สร้างรายได้สูง</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
