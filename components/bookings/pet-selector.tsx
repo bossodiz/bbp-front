@@ -67,7 +67,7 @@ export function PetSelector({
     type: "DOG",
     breed: "",
     isMixedBreed: false,
-    weight: 0,
+    weight: null,
     note: "",
   });
 
@@ -88,11 +88,7 @@ export function PetSelector({
   );
 
   const handleAddNewPet = () => {
-    if (
-      !newPetForm.name ||
-      newPetForm.weight === undefined ||
-      newPetForm.weight === null
-    ) {
+    if (!newPetForm.name) {
       return;
     }
     onAddNewPet(newPetForm);
@@ -101,7 +97,7 @@ export function PetSelector({
       type: "DOG",
       breed: "",
       isMixedBreed: false,
-      weight: 0,
+      weight: null,
       note: "",
     });
     setAddPetDialogOpen(false);
@@ -137,7 +133,8 @@ export function PetSelector({
           <SelectContent>
             {unselectedPets.map((pet) => (
               <SelectItem key={pet.id} value={pet.id.toString()}>
-                {pet.name} ({petTypeLabels[pet.type]}) - {pet.weight} kg
+                {pet.name} ({petTypeLabels[pet.type]}) -{" "}
+                {pet.weight ? `${pet.weight} kg` : "ไม่ระบุน้ำหนัก"}
               </SelectItem>
             ))}
           </SelectContent>
@@ -280,19 +277,23 @@ export function PetSelector({
               </div>
             </div>
             <div className="space-y-2">
-              <Label>น้ำหนัก (KG)</Label>
+              <Label>น้ำหนัก (กก.) - ไม่บังคับ</Label>
               <Input
                 type="number"
                 min="0"
-                step="0.1"
-                value={newPetForm.weight || ""}
-                onChange={(e) =>
+                max="50"
+                step="0.01"
+                value={newPetForm.weight ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value;
                   setNewPetForm({
                     ...newPetForm,
-                    weight: parseFloat(e.target.value) || 0,
-                  })
-                }
-                placeholder="หากไม่ทราบ เว้นว่างไว้"
+                    weight: value === "" ? null : parseFloat(value),
+                  });
+                }}
+                onFocus={(e) => e.target.select()}
+                onClick={(e) => e.currentTarget.select()}
+                placeholder="0.00 - 50.00 (ไม่บังคับ)"
               />
             </div>
           </div>

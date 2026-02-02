@@ -47,7 +47,10 @@ export function POSServiceSelector() {
 
   // Estimate size based on weight for the selected pet
   const estimateSizeFromWeight = useCallback(
-    (weight: number, petTypeId: string): string | null => {
+    (weight: number | null, petTypeId: string): string | null => {
+      // If weight is null, return null to indicate no filtering by weight
+      if (weight === null || weight === undefined) return null;
+
       const sizesForType = getSizesForPetType(petTypeId).filter(
         (s) => s.active,
       );
@@ -68,7 +71,8 @@ export function POSServiceSelector() {
     [getSizesForPetType],
   );
 
-  const getPetTypeName = (petTypeId: string) => {
+  const getPetTypeName = (petTypeId: string | undefined) => {
+    if (!petTypeId) return "";
     const pt = petTypes.find((p) => p.id === petTypeId);
     return (
       pt?.name ||
@@ -77,7 +81,8 @@ export function POSServiceSelector() {
     );
   };
 
-  const getSizeName = (sizeId: string) => {
+  const getSizeName = (sizeId: string | undefined) => {
+    if (!sizeId) return "";
     // Search in all sizes
     const allPetTypes = petTypes;
     for (const petType of allPetTypes) {
@@ -88,7 +93,8 @@ export function POSServiceSelector() {
     return sizeId;
   };
 
-  const getSizeDescription = (sizeId: string) => {
+  const getSizeDescription = (sizeId: string | undefined) => {
+    if (!sizeId) return "";
     // Search in all sizes
     const allPetTypes = petTypes;
     for (const petType of allPetTypes) {
@@ -210,8 +216,8 @@ export function POSServiceSelector() {
                       <div>
                         <p className="font-medium">{pet.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {petTypeLabels[pet.type]} - {pet.breed} ({pet.weight}{" "}
-                          kg)
+                          {petTypeLabels[pet.type]} - {pet.breed} (
+                          {pet.weight ? `${pet.weight} kg` : "ไม่ระบุน้ำหนัก"})
                           {estimatedSizeId && (
                             <span className="ml-1">
                               • ขนาด: {getSizeName(estimatedSizeId)}
@@ -222,69 +228,67 @@ export function POSServiceSelector() {
                     </div>
 
                     {/* Regular Services */}
-                    {estimatedSizeId && (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {regularServices.map((service) => {
-                          const priceInfo = service.prices.find(
-                            (p) =>
-                              p.petTypeId === petTypeId &&
-                              p.sizeId === estimatedSizeId,
-                          );
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {regularServices.map((service) => {
+                        const priceInfo = service.prices.find(
+                          (p) =>
+                            p.petTypeId === petTypeId &&
+                            (!estimatedSizeId || p.sizeId === estimatedSizeId),
+                        );
 
-                          if (!priceInfo || priceInfo.price <= 0) return null;
+                        if (!priceInfo || priceInfo.price <= 0) return null;
 
-                          // Check if this service+pet combination is already in cart
-                          const isInCart = cart.some(
-                            (item) =>
-                              item.serviceId === service.id &&
-                              item.petId === pet.id,
-                          );
+                        // Check if this service+pet combination is already in cart
+                        const isInCart = cart.some(
+                          (item) =>
+                            item.serviceId === service.id &&
+                            item.petId === pet.id,
+                        );
 
-                          return (
-                            <button
-                              key={service.id}
-                              type="button"
-                              disabled={isInCart}
-                              onClick={() =>
-                                handleAddService(
-                                  service.id,
-                                  service.name,
-                                  priceInfo.price,
-                                  pet.id,
-                                )
-                              }
-                              className={cn(
-                                "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
-                                isInCart
-                                  ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
-                                  : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
-                              )}
-                            >
-                              <div>
-                                <p className="font-medium text-sm">
-                                  {service.name}
-                                </p>
-                                <p
-                                  className={cn(
-                                    "text-lg font-semibold",
-                                    isInCart
-                                      ? "text-muted-foreground"
-                                      : "text-primary",
-                                  )}
-                                >
-                                  {formatCurrency(priceInfo.price)}
-                                </p>
-                              </div>
-                              {isInCart && (
-                                <Badge variant="secondary" className="text-xs">
-                                  เลือกแล้ว
-                                </Badge>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                        return (
+                          <button
+                            key={service.id}
+                            type="button"
+                            disabled={isInCart}
+                            onClick={() =>
+                              handleAddService(
+                                service.id,
+                                service.name,
+                                priceInfo.price,
+                                pet.id,
+                              )
+                            }
+                            className={cn(
+                              "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
+                              isInCart
+                                ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
+                                : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
+                            )}
+                          >
+                            <div>
+                              <p className="font-medium text-sm">
+                                {service.name}
+                              </p>
+                              <p
+                                className={cn(
+                                  "text-lg font-semibold",
+                                  isInCart
+                                    ? "text-muted-foreground"
+                                    : "text-primary",
+                                )}
+                              >
+                                {formatCurrency(priceInfo.price)}
+                              </p>
+                            </div>
+                            {isInCart && (
+                              <Badge variant="secondary" className="text-xs">
+                                เลือกแล้ว
+                              </Badge>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
 
                     {/* Special Services Section */}
                     {specialServices.length > 0 && (
@@ -443,7 +447,8 @@ export function POSServiceSelector() {
                 <div>
                   <p className="font-medium">{pet.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {petTypeLabels[pet.type]} - {pet.breed} ({pet.weight} kg)
+                    {petTypeLabels[pet.type]} - {pet.breed} (
+                    {pet.weight ? `${pet.weight} kg` : "ไม่ระบุน้ำหนัก"})
                   </p>
                 </div>
               </button>

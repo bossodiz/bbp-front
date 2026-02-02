@@ -42,7 +42,7 @@ import {
 } from "@/lib/store";
 import type { PaymentMethod, Booking } from "@/lib/types";
 import { paymentMethodLabels } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, formatPhoneDisplay } from "@/lib/utils";
 import { toast } from "sonner";
 
 export function POSCart() {
@@ -69,6 +69,7 @@ export function POSCart() {
   const [cashReceived, setCashReceived] = useState("");
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const priceInputRef = useRef<HTMLInputElement>(null);
   const cashInputRef = useRef<HTMLInputElement>(null);
 
@@ -556,18 +557,168 @@ export function POSCart() {
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex justify-between">
             <Button
               variant="outline"
-              onClick={() => setShowPaymentDialog(false)}
+              onClick={() => setShowReceiptDialog(true)}
               disabled={isSaving}
             >
-              ยกเลิก
+              พิมพ์ใบเสร็จ
             </Button>
-            <Button onClick={handlePayment} disabled={isSaving}>
-              {isSaving ? "กำลังบันทึก..." : "ยืนยันชำระเงิน"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowPaymentDialog(false)}
+                disabled={isSaving}
+              >
+                ยกเลิก
+              </Button>
+              <Button onClick={handlePayment} disabled={isSaving}>
+                {isSaving ? "กำลังบันทึก..." : "ยืนยันชำระเงิน"}
+              </Button>
+            </div>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt Preview Dialog */}
+      <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>พิมพ์ใบเสร็จ</DialogTitle>
+            <DialogDescription>
+              ตัวอย่างใบเสร็จสำหรับกระดาษความร้อน (57×50 มม.)
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Receipt Preview */}
+            <div className="border rounded-lg p-4 bg-white">
+              <div
+                className="bg-white text-black font-sans text-sm leading-relaxed"
+                style={{
+                  width: "57mm",
+                  minHeight: "50mm",
+                  fontSize: "12px",
+                  lineHeight: "1.4",
+                  padding: "3mm",
+                  margin: "0 auto",
+                  border: "1px solid #000",
+                  boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+                }}
+              >
+                {/* Header */}
+                <div className="text-center mb-3">
+                  <div className="font-bold text-lg mb-1">
+                    Bloom Bloom Paw Grooming
+                  </div>
+                  <div></div>
+                </div>
+
+                {/* Customer Info */}
+                <div className="mb-3">
+                  <div className="flex justify-between">
+                    <span>ลูกค้า:</span>
+                    <span className="font-medium">
+                      {selectedCustomerId
+                        ? customers.find((c) => c.id === selectedCustomerId)
+                            ?.name || "ลูกค้าทั่วไป"
+                        : booking?.customerName || "ลูกค้าทั่วไป"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>เบอร์โทร:</span>
+                    <span className="font-medium">
+                      {formatPhoneDisplay(
+                        selectedCustomerId
+                          ? customers.find((c) => c.id === selectedCustomerId)
+                              ?.phone || "-"
+                          : booking?.phone || "-",
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>วันที่:</span>
+                    <span>{new Date().toLocaleDateString("th-TH")}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>เวลา:</span>
+                    <span>
+                      {new Date().toLocaleTimeString("th-TH", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Items */}
+                <div className="border-t border-b py-2 mb-3">
+                  <div className="font-medium mb-2">รายการบริการ</div>
+                  {cart.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex justify-between text-sm mb-1"
+                    >
+                      <span className="truncate pr-1">{item.serviceName}</span>
+                      <span>{formatCurrency(item.finalPrice)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Summary */}
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span>ยอดรวม:</span>
+                    <span>{formatCurrency(subtotal)}</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between">
+                      <span>ส่วนลด:</span>
+                      <span>-{formatCurrency(discountAmount)}</span>
+                    </div>
+                  )}
+                  {depositUsed > 0 && (
+                    <div className="flex justify-between">
+                      <span>ยอดมัดจำ:</span>
+                      <span>-{formatCurrency(depositUsed)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold border-t pt-1">
+                    <span>ยอดชำระ:</span>
+                    <span>{formatCurrency(totalAmount)}</span>
+                  </div>
+                </div>
+
+                {/* Thank you message */}
+                <div className="text-center mt-4 text-sm">
+                  <div className="font-medium mb-1">ขอบคุณที่ใช้บริการ</div>
+                  <div>ติดต่อเรา: 099-241-4554</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Print Options */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowReceiptDialog(false)}
+                className="flex-1"
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                onClick={() => {
+                  // TODO: Implement actual printing
+                  toast.success("กำลังพิมพ์ใบเสร็จ...");
+                  setShowReceiptDialog(false);
+                }}
+                className="flex-1"
+              >
+                พิมพ์ใบเสร็จ
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </>

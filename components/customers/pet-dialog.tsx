@@ -61,9 +61,14 @@ const petSchema = z
     breed: z.string().min(1, "กรุณากรอกสายพันธุ์"),
     breed2: z.string().optional(),
     weight: z.coerce
-      .number({ invalid_type_error: "กรุณากรอกน้ำหนัก" })
-      .positive("น้ำหนักต้องมากกว่า 0")
-      .max(200, "น้ำหนักไม่ถูกต้อง"),
+      .number({ invalid_type_error: "น้ำหนักต้องเป็นตัวเลข" })
+      .min(0, "น้ำหนักต้องมากกว่าหรือเท่ากับ 0")
+      .max(50, "น้ำหนักต้องไม่เกิน 50 กิโลกรัม")
+      .refine((val) => Number.isInteger(val * 100), {
+        message: "น้ำหนักต้องมีทศนิยมไม่เกิน 2 ตำแหน่ง",
+      })
+      .nullable()
+      .optional(),
     note: z.string().optional(),
   })
   .refine(
@@ -117,7 +122,7 @@ export function PetDialog({
       isMixedBreed: false,
       breed: "",
       breed2: "",
-      weight: undefined,
+      weight: null,
       note: "",
     },
   });
@@ -169,7 +174,7 @@ export function PetDialog({
           isMixedBreed: false,
           breed: "",
           breed2: "",
-          weight: undefined,
+          weight: null,
           note: "",
         });
       }
@@ -273,7 +278,7 @@ export function PetDialog({
           breed: data.breed,
           breed2: data.isMixedBreed ? data.breed2 : undefined,
           isMixedBreed: data.isMixedBreed,
-          weight: data.weight,
+          weight: data.weight ?? null,
           note: data.note,
         });
         toast.success("แก้ไขข้อมูลสัตว์เลี้ยงเรียบร้อยแล้ว");
@@ -284,7 +289,7 @@ export function PetDialog({
           breed: data.breed,
           breed2: data.isMixedBreed ? data.breed2 : undefined,
           isMixedBreed: data.isMixedBreed,
-          weight: data.weight,
+          weight: data.weight ?? null,
           note: data.note,
         });
         toast.success("เพิ่มสัตว์เลี้ยงเรียบร้อยแล้ว");
@@ -372,11 +377,20 @@ export function PetDialog({
                     <FormControl>
                       <Input
                         type="number"
-                        step="0.1"
+                        step="0.01"
                         min="0"
-                        placeholder="เช่น 5.5"
+                        max="50"
+                        placeholder="0.00 - 50.00"
                         {...field}
                         value={field.value ?? ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(
+                            value === "" ? null : parseFloat(value),
+                          );
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        onClick={(e) => e.currentTarget.select()}
                       />
                     </FormControl>
                     <FormMessage />

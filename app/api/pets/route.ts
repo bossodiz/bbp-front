@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
       note,
     } = body;
 
-    if (!customer_id || !name || !type || !weight) {
+    if (!customer_id || !name || !type) {
       return NextResponse.json(
         {
           data: null,
-          error: "Customer ID, name, type, and weight are required",
+          error: "Customer ID, name, type are required",
         },
         { status: 400 },
       );

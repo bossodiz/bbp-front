@@ -106,3 +106,13 @@ export function toUtcIsoFromBangkokLocal(
   const utcMs = Date.UTC(y, m - 1, d, hh - 7, mm, ss, 0);
   return new Date(utcMs).toISOString();
 }
+
+// Currency formatting
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("th-TH", {
+    style: "currency",
+    currency: "THB",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
