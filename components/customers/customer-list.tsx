@@ -243,7 +243,9 @@ export function CustomerList({
                                   {petTypeLabels[pet.type]}
                                 </Badge>
                                 <Badge variant="outline" className="text-xs">
-                                  {pet.weight} kg
+                                  {pet.weight
+                                    ? `${pet.weight} kg`
+                                    : "ไม่ระบุน้ำหนัก"}
                                 </Badge>
                               </div>
                               <p className="text-xs text-muted-foreground">

@@ -20,7 +20,7 @@ interface UseCustomersReturn {
       breed: string;
       breed2?: string;
       isMixedBreed: boolean;
-      weight: number;
+      weight: number | null;
       note?: string;
     },
   ) => Promise<Pet>;
@@ -32,7 +32,7 @@ interface UseCustomersReturn {
       breed: string;
       breed2?: string;
       isMixedBreed: boolean;
-      weight: number;
+      weight: number | null;
       note?: string;
     },
   ) => Promise<Pet>;
@@ -174,7 +174,7 @@ export function useCustomers(): UseCustomersReturn {
         breed: string;
         breed2?: string;
         isMixedBreed: boolean;
-        weight: number;
+        weight: number | null;
         note?: string;
       },
     ) => {
@@ -207,7 +207,8 @@ export function useCustomers(): UseCustomersReturn {
         breed: result.data.breed || "",
         breed2: result.data.breed_2 || undefined,
         isMixedBreed: result.data.is_mixed_breed || false,
-        weight: parseFloat(result.data.weight),
+        weight:
+          result.data.weight !== null ? parseFloat(result.data.weight) : null,
         note: result.data.note || "",
         createdAt: new Date(result.data.created_at),
         updatedAt: new Date(result.data.updated_at),
@@ -233,7 +234,7 @@ export function useCustomers(): UseCustomersReturn {
         breed: string;
         breed2?: string;
         isMixedBreed: boolean;
-        weight: number;
+        weight: number | null;
         note?: string;
       },
     ) => {
@@ -265,7 +266,8 @@ export function useCustomers(): UseCustomersReturn {
         breed: result.data.breed || "",
         breed2: result.data.breed_2 || undefined,
         isMixedBreed: result.data.is_mixed_breed || false,
-        weight: parseFloat(result.data.weight),
+        weight:
+          result.data.weight !== null ? parseFloat(result.data.weight) : null,
         note: result.data.note || "",
         createdAt: new Date(result.data.created_at),
         updatedAt: new Date(result.data.updated_at),

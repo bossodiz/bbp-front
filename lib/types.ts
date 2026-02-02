@@ -16,7 +16,7 @@ export interface Pet {
   breed: string;
   breed2?: string;
   isMixedBreed: boolean;
-  weight: number; // น้ำหนักเป็น KG
+  weight: number | null; // น้ำหนักเป็น KG (nullable - ไม่บังคับ)
   note?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -114,7 +114,7 @@ export interface NewPetData {
   breed: string;
   breed2?: string;
   isMixedBreed: boolean;
-  weight: number;
+  weight: number | null; // nullable - ไม่บังคับ
   note?: string;
 }
 

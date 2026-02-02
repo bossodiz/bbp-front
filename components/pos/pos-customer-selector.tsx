@@ -136,7 +136,8 @@ export function POSCustomerSelector() {
                         <div className="flex-1">
                           <p className="font-medium">{pet.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {pet.breed} - {pet.weight} kg
+                            {pet.breed} -{" "}
+                            {pet.weight ? `${pet.weight} kg` : "ไม่ระบุน้ำหนัก"}
                           </p>
                         </div>
                         {isSelected && (
