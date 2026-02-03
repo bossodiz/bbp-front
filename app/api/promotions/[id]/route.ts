@@ -35,7 +35,6 @@ export async function GET(
 
     return NextResponse.json(promotion);
   } catch (error) {
-    console.error("Error fetching promotion:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลโปรโมชั่นได้" },
       { status: 500 },
@@ -103,7 +102,6 @@ export async function PUT(
 
     return NextResponse.json(promotion);
   } catch (error) {
-    console.error("Error updating promotion:", error);
     return NextResponse.json(
       { error: "ไม่สามารถอัพเดทโปรโมชั่นได้" },
       { status: 500 },
@@ -124,7 +122,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: "ลบโปรโมชั่นเรียบร้อยแล้ว" });
   } catch (error) {
-    console.error("Error deleting promotion:", error);
     return NextResponse.json(
       { error: "ไม่สามารถลบโปรโมชั่นได้" },
       { status: 500 },

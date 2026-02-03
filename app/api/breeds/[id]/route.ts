@@ -22,7 +22,6 @@ export async function GET(
       .single();
 
     if (error) {
-      console.error("Error fetching breed:", error);
       return NextResponse.json(
         { error: "Failed to fetch breed" },
         { status: 500 },
@@ -35,7 +34,6 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error in GET /api/breeds/[id]:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -86,7 +84,6 @@ export async function PATCH(
       .single();
 
     if (error) {
-      console.error("Error updating breed:", error);
       return NextResponse.json(
         { error: "Failed to update breed", details: error.message },
         { status: 500 },
@@ -99,7 +96,6 @@ export async function PATCH(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error in PATCH /api/breeds/[id]:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -155,7 +151,6 @@ export async function DELETE(
     const { error } = await supabaseAdmin.from("breeds").delete().eq("id", id);
 
     if (error) {
-      console.error("Error deleting breed:", error);
       return NextResponse.json(
         { error: "Failed to delete breed", details: error.message },
         { status: 500 },
@@ -164,7 +159,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Breed deleted successfully" });
   } catch (error) {
-    console.error("Error in DELETE /api/breeds/[id]:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

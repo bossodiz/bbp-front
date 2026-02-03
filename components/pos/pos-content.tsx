@@ -110,15 +110,12 @@ export function POSContent() {
         if (!booking) {
           const response = await fetch(`/api/bookings/${bookingId}`);
           if (!response.ok) {
-            console.error("Failed to fetch booking");
             return;
           }
           booking = await response.json();
         }
 
         if (!booking) return;
-
-        console.log("Loading booking:", booking);
 
         setSelectedBooking(booking.id);
 
@@ -132,10 +129,8 @@ export function POSContent() {
             phone: booking.phone,
           });
           customerId = newCustomer.id;
-          console.log("Created new customer:", newCustomer);
         } else {
           customerId = existingCustomer.id;
-          console.log("Found existing customer:", existingCustomer);
         }
 
         setSelectedCustomer(customerId);
@@ -144,15 +139,12 @@ export function POSContent() {
         if (booking.pets && booking.pets.length > 0) {
           // Process each pet sequentially
           booking.pets.forEach((bookingPet) => {
-            console.log("Processing pet:", bookingPet);
-
             // Get fresh customer data (after addCustomer was called)
             const currentCustomers = useCustomerStore.getState().customers;
             const currentCustomer = currentCustomers.find(
               (c) => c.id === customerId,
             );
             if (!currentCustomer) {
-              console.log("Customer not found after creation");
               return;
             }
 
@@ -171,22 +163,16 @@ export function POSContent() {
                 weight: 5, // Default weight, should be adjusted
                 note: `สร้างจากการนัดหมาย - บริการ: ${bookingPet.service}`,
               });
-              console.log("Created new pet:", pet);
-            } else {
-              console.log("Found existing pet:", pet);
             }
 
             // Select the pet
             togglePetSelection(pet.id);
 
             // Note: Auto-add service is disabled - user will manually select services
-            console.log(
-              `Pet ${pet.name} selected for booking service: ${bookingPet.service}`,
-            );
           });
         }
       } catch (error) {
-        console.error("Error loading booking:", error);
+        // Error loading booking
       } finally {
         setLoadingBooking(false);
       }

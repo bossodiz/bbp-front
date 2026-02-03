@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { BookingList } from "@/components/bookings/booking-list";
 import { BookingCalendar } from "@/components/bookings/booking-calendar";
 import { BookingDialog } from "@/components/bookings/booking-dialog";
 
 export default function BookingsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   const handleTabChange = (value: string) => {
     if (value === "calendar") {
@@ -34,10 +37,23 @@ export default function BookingsPage() {
           </h1>
           <p className="text-muted-foreground">จัดการการนัดหมายและมัดจำ</p>
         </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          เพิ่มนัดหมาย
-        </Button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Switch
+              id="show-completed"
+              checked={showCompleted}
+              onCheckedChange={setShowCompleted}
+            />
+            <Label htmlFor="show-completed" className="text-sm">
+              แสดงนัดที่เสร็จแล้ว/ยกเลิก
+            </Label>
+          </div>
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            เพิ่มนัดหมาย
+          </Button>
+        </div>
       </div>
 
       <Tabs
@@ -50,7 +66,10 @@ export default function BookingsPage() {
           <TabsTrigger value="calendar">ปฏิทิน</TabsTrigger>
         </TabsList>
         <TabsContent value="list" className="space-y-4">
-          <BookingList key={`list-${refreshKey}`} />
+          <BookingList
+            key={`list-${refreshKey}`}
+            showCompleted={showCompleted}
+          />
         </TabsContent>
         <TabsContent value="calendar" className="space-y-4">
           <BookingCalendar

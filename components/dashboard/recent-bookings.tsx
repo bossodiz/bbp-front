@@ -21,10 +21,15 @@ import { useTodayBookings } from "@/lib/hooks/use-today-bookings";
 
 export function RecentBookings() {
   const { data: todayBookings, loading } = useTodayBookings();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // อัพเดทเวลาปัจจุบันทุกวินาที
+  // อัพเดทเวลาปัจจุบันทุกวินาที - เริ่มต้นหลัง mount เท่านั้น
   useEffect(() => {
+    setIsMounted(true);
+    // Set initial time on client
+    setCurrentTime(new Date());
+
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -41,17 +46,16 @@ export function RecentBookings() {
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("th-TH", {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    // Use manual formatting to avoid locale mismatch
+    const hours = date.getHours().toString().padStart(2, "0");
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const seconds = date.getSeconds().toString().padStart(2, "0");
+    return `${hours}:${minutes}:${seconds}`;
   };
 
   // ตรวจสอบว่ารายการเลยเวลานัดหรือไม่
   const isOverdue = (bookingTime: string) => {
-    if (!bookingTime) return false;
+    if (!bookingTime || !currentTime) return false;
 
     const today = new Date();
     const [hours, minutes] = bookingTime.split(":").map(Number);
@@ -73,12 +77,14 @@ export function RecentBookings() {
                 {loading ? "..." : `${todayBookings.length} รายการ`}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 text-sm text-muted-foreground border border-muted-foreground/20">
-              <Clock className="h-4 w-4" />
-              <span className="font-mono font-medium">
-                {formatTime(currentTime)}
-              </span>
-            </div>
+            {isMounted && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 text-sm text-muted-foreground border border-muted-foreground/20">
+                <Clock className="h-4 w-4" />
+                <span className="font-mono font-medium">
+                  {currentTime ? formatTime(currentTime) : "--:--:--"}
+                </span>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>

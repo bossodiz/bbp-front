@@ -67,7 +67,6 @@ export function useServices(
       setServices(transformedServices);
     } catch (err: any) {
       setError(err.message);
-      console.error("Error fetching services:", err);
     } finally {
       setLoading(false);
     }

@@ -56,7 +56,6 @@ export async function GET(
 
     return NextResponse.json(booking);
   } catch (error) {
-    console.error("Error fetching booking:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลนัดหมายได้" },
       { status: 500 },
@@ -238,7 +237,6 @@ export async function PUT(
 
     return NextResponse.json(booking);
   } catch (error) {
-    console.error("Error updating booking:", error);
     return NextResponse.json(
       { error: "ไม่สามารถอัพเดทนัดหมายได้" },
       { status: 500 },
@@ -259,7 +257,6 @@ export async function DELETE(
 
     return NextResponse.json({ message: "ลบนัดหมายเรียบร้อยแล้ว" });
   } catch (error) {
-    console.error("Error deleting booking:", error);
     return NextResponse.json(
       { error: "ไม่สามารถลบนัดหมายได้" },
       { status: 500 },

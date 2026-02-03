@@ -78,7 +78,6 @@ export function PromotionList({
         <PromotionDialog
           open={addDialogOpen}
           onOpenChange={(open) => {
-            console.log("PromotionDialog onOpenChange called with:", open);
             onAddDialogChange?.(open);
             if (!open) {
               fetchPromotions();

@@ -98,6 +98,17 @@ export function useBookings(options: UseBookingsOptions = {}) {
     }
   };
 
+  // ยกเลิกนัดหมาย
+  const cancelBooking = async (id: number) => {
+    try {
+      await updateBooking(id, {
+        status: "CANCELLED",
+      });
+    } catch (err) {
+      throw err;
+    }
+  };
+
   // ยึดมัดจำ
   const forfeitDeposit = async (id: number) => {
     try {
@@ -146,6 +157,7 @@ export function useBookings(options: UseBookingsOptions = {}) {
     addBooking,
     updateBooking,
     deleteBooking,
+    cancelBooking,
     forfeitDeposit,
     refundDeposit,
     useDeposit,

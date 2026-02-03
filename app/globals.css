@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -38,7 +38,7 @@
   --sidebar-accent-foreground: oklch(0.35 0.05 145);
   --sidebar-border: oklch(0.88 0.03 145);
   --sidebar-ring: oklch(0.55 0.15 145);
-  
+
   /* Custom colors for pet types */
   --dog: oklch(0.7 0.12 60);
   --cat: oklch(0.65 0.12 280);
@@ -48,8 +48,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Prompt', 'Geist', 'Geist Fallback', sans-serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: "Prompt", "Geist", "Geist Fallback", sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

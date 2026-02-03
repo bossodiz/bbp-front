@@ -100,7 +100,6 @@ export async function GET(request: NextRequest) {
       bookingsToday,
     });
   } catch (error) {
-    console.error("Error fetching dashboard stats:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลสถิติได้" },
       { status: 500 },

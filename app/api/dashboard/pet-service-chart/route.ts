@@ -73,7 +73,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching pet service chart data:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลกราฟสัตว์เข้ารับบริการได้" },
       { status: 500 },

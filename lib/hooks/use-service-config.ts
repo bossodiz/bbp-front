@@ -64,7 +64,6 @@ export function useServiceConfig(): UseServiceConfigReturn {
       setPetTypes(formattedData);
     } catch (err: any) {
       setError(err.message);
-      console.error("Error fetching pet types:", err);
     } finally {
       setLoading(false);
     }
@@ -100,7 +99,6 @@ export function useServiceConfig(): UseServiceConfigReturn {
       setPetSizes(formattedData);
     } catch (err: any) {
       setError(err.message);
-      console.error("Error fetching pet sizes:", err);
     } finally {
       setLoading(false);
     }

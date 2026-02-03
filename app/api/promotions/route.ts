@@ -27,7 +27,6 @@ export async function GET() {
 
     return NextResponse.json(promotions);
   } catch (error) {
-    console.error("Error fetching promotions:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลโปรโมชั่นได้" },
       { status: 500 },
@@ -90,7 +89,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(promotion, { status: 201 });
   } catch (error) {
-    console.error("Error creating promotion:", error);
     return NextResponse.json(
       { error: "ไม่สามารถสร้างโปรโมชั่นได้" },
       { status: 500 },

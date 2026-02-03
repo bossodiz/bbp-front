@@ -85,7 +85,6 @@ export function useCustomers(): UseCustomersReturn {
       setCustomers(transformedCustomers);
     } catch (err: any) {
       setError(err.message);
-      console.error("Error fetching customers:", err);
     } finally {
       setLoading(false);
     }
