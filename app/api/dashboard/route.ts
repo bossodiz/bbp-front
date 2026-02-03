@@ -252,7 +252,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching dashboard data:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูล dashboard ได้" },
       { status: 500 },

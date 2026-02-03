@@ -55,7 +55,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(bookings);
   } catch (error) {
-    console.error("Error fetching today bookings:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลนัดหมายวันนี้ได้" },
       { status: 500 },

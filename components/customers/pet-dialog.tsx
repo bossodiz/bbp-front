@@ -242,7 +242,6 @@ export function PetDialog({
           });
           toast.success(`เพิ่มสายพันธุ์ "${data.breed}" เรียบร้อยแล้ว`);
         } catch (error: any) {
-          console.error("Error creating breed:", error);
           // Continue even if breed creation fails
         }
       }
@@ -265,7 +264,6 @@ export function PetDialog({
             });
             toast.success(`เพิ่มสายพันธุ์ "${data.breed2}" เรียบร้อยแล้ว`);
           } catch (error: any) {
-            console.error("Error creating breed2:", error);
             // Continue even if breed creation fails
           }
         }

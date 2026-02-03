@@ -58,6 +58,7 @@ export function ServiceHistoryList() {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [selectedBill, setSelectedBill] = useState<Sale | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [componentError, setComponentError] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Calculate date range for API
@@ -124,124 +125,139 @@ export function ServiceHistoryList() {
     endDate: dateRange.end,
   });
 
-  // Debug logging
-  console.log("🔍 History Debug:", {
-    dateFilter,
-    dateRange,
-    salesCount: sales.length,
-    isLoading,
-    error,
-    customersCount: customers.length,
-  });
-
   const toggleExpand = (customerId: number) => {
-    const newExpanded = new Set(expandedIds);
-    if (newExpanded.has(customerId)) {
-      newExpanded.delete(customerId);
-    } else {
-      newExpanded.add(customerId);
+    try {
+      const newExpanded = new Set(expandedIds);
+      if (newExpanded.has(customerId)) {
+        newExpanded.delete(customerId);
+      } else {
+        newExpanded.add(customerId);
+      }
+      setExpandedIds(newExpanded);
+    } catch (err) {
+      setComponentError("เกิดข้อผิดพลาดในการขยายรายการ");
     }
-    setExpandedIds(newExpanded);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("th-TH", {
-      style: "currency",
-      currency: "THB",
-      minimumFractionDigits: 0,
-    }).format(amount);
+  const formatCurrency = (amount: number | null | undefined) => {
+    try {
+      const value = amount || 0;
+      return new Intl.NumberFormat("th-TH", {
+        style: "currency",
+        currency: "THB",
+        minimumFractionDigits: 0,
+      }).format(value);
+    } catch (err) {
+      return `฿${amount || 0}`;
+    }
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) {
+      return "ไม่ระบุวันที่";
+    }
     return new Intl.DateTimeFormat("th-TH", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    }).format(date);
+    }).format(dateObj);
   };
 
   // Calculate customer stats from sales
   const customerStats = useMemo(() => {
-    const statsMap = new Map<
-      number | string,
-      {
-        customer: any;
-        sales: Sale[];
-        totalSpent: number;
-        lastVisit: Date | null;
-        dogCount: number;
-        catCount: number;
-      }
-    >();
+    try {
+      const statsMap = new Map<
+        number | string,
+        {
+          customer: any;
+          sales: Sale[];
+          totalSpent: number;
+          lastVisit: Date | null;
+          dogCount: number;
+          catCount: number;
+        }
+      >();
 
-    // Build stats directly from sales data
-    sales.forEach((sale) => {
-      const customerId = sale.customerId || `unknown-${sale.customerName}`;
+      // Build stats directly from sales data
+      sales.forEach((sale) => {
+        try {
+          const customerId = sale.customerId || `unknown-${sale.customerName}`;
 
-      if (!statsMap.has(customerId)) {
-        // Find customer from store if available
-        const customerFromStore = customers.find(
-          (c) => c.id === sale.customerId,
-        );
+          if (!statsMap.has(customerId)) {
+            // Find customer from store if available
+            const customerFromStore = customers.find(
+              (c) => c.id === sale.customerId,
+            );
 
-        statsMap.set(customerId, {
-          customer: customerFromStore || {
-            id: customerId,
-            name: sale.customerName,
-            phone: sale.customerPhone || "",
-            pets: [],
-          },
-          sales: [],
-          totalSpent: 0,
-          lastVisit: null,
-          dogCount:
-            customerFromStore?.pets.filter((p) => p.type === "DOG").length || 0,
-          catCount:
-            customerFromStore?.pets.filter((p) => p.type === "CAT").length || 0,
-        });
-      }
-
-      const stat = statsMap.get(customerId)!;
-      stat.sales.push(sale);
-      stat.totalSpent += sale.totalAmount;
-      const saleDate = new Date(sale.createdAt);
-      if (!stat.lastVisit || saleDate > stat.lastVisit) {
-        stat.lastVisit = saleDate;
-      }
-
-      // Count unique pets from sale items
-      const uniquePets = new Set<string>();
-      sale.items.forEach((item) => {
-        if (item.petId) {
-          uniquePets.add(`${item.petType}-${item.petId}`);
-          if (item.petType === "DOG" && stat.dogCount === 0) {
-            stat.dogCount++;
-          } else if (item.petType === "CAT" && stat.catCount === 0) {
-            stat.catCount++;
+            statsMap.set(customerId, {
+              customer: customerFromStore || {
+                id: customerId,
+                name: sale.customerName || "ไม่ระบุ",
+                phone: sale.customerPhone || "",
+                pets: [],
+              },
+              sales: [],
+              totalSpent: 0,
+              lastVisit: null,
+              dogCount:
+                customerFromStore?.pets.filter((p) => p.type === "DOG")
+                  .length || 0,
+              catCount:
+                customerFromStore?.pets.filter((p) => p.type === "CAT")
+                  .length || 0,
+            });
           }
+
+          const stat = statsMap.get(customerId)!;
+          stat.sales.push(sale);
+          stat.totalSpent += sale.totalAmount || 0;
+          const saleDate =
+            typeof sale.createdAt === "string"
+              ? new Date(sale.createdAt)
+              : sale.createdAt;
+          if (
+            !isNaN(saleDate.getTime()) &&
+            (!stat.lastVisit || saleDate > stat.lastVisit)
+          ) {
+            stat.lastVisit = saleDate;
+          }
+
+          // Count unique pets from sale items
+          const uniquePets = new Set<string>();
+          (sale.items || []).forEach((item) => {
+            if (item.petId) {
+              uniquePets.add(`${item.petType}-${item.petId}`);
+              if (item.petType === "DOG" && stat.dogCount === 0) {
+                stat.dogCount++;
+              } else if (item.petType === "CAT" && stat.catCount === 0) {
+                stat.catCount++;
+              }
+            }
+          });
+        } catch (saleErr) {
+          // Error processing sale, skip it
         }
       });
-    });
 
-    // Convert map to array and sort by most recent visit first
-    const result = Array.from(statsMap.values()).sort((a, b) => {
-      // Sort by most recent visit first
-      if (a.lastVisit && b.lastVisit) {
-        return b.lastVisit.getTime() - a.lastVisit.getTime();
-      }
-      if (a.lastVisit) return -1;
-      if (b.lastVisit) return 1;
-      return b.totalSpent - a.totalSpent;
-    });
+      // Convert map to array and sort by most recent visit first
+      const result = Array.from(statsMap.values()).sort((a, b) => {
+        // Sort by most recent visit first
+        if (a.lastVisit && b.lastVisit) {
+          return b.lastVisit.getTime() - a.lastVisit.getTime();
+        }
+        if (a.lastVisit) return -1;
+        if (b.lastVisit) return 1;
+        return b.totalSpent - a.totalSpent;
+      });
 
-    console.log("📊 Customer Stats:", {
-      totalStats: result.length,
-      withSales: result.filter((s) => s.sales.length > 0).length,
-    });
-
-    return result;
+      return result;
+    } catch (err) {
+      setComponentError("เกิดข้อผิดพลาดในการคำนวณสถิติลูกค้า");
+      return [];
+    }
   }, [customers, sales]);
 
   // Filter customers
@@ -286,13 +302,6 @@ export function ServiceHistoryList() {
       totalRevenue,
     };
   }, [filteredStats]);
-
-  console.log("📄 Pagination:", {
-    filteredCount: filteredStats.length,
-    paginatedCount: paginatedStats.length,
-    currentPage,
-    totalPages,
-  });
 
   return (
     <>
@@ -466,14 +475,29 @@ export function ServiceHistoryList() {
           )}
 
           {/* Error State */}
-          {error && (
+          {(error || componentError) && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-sm text-destructive">
+                {error || componentError}
+              </p>
+              {componentError && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    setComponentError(null);
+                    window.location.reload();
+                  }}
+                >
+                  รีเฟรชหน้า
+                </Button>
+              )}
             </div>
           )}
 
           {/* Table */}
-          {!isLoading && !error && (
+          {!isLoading && !(error || componentError) && (
             <>
               <div className="rounded-lg border">
                 <Table>
@@ -532,9 +556,15 @@ export function ServiceHistoryList() {
                               </TableCell>
                               <TableCell>
                                 {stat.lastVisit
-                                  ? format(stat.lastVisit, "PPP", {
-                                      locale: th,
-                                    })
+                                  ? (() => {
+                                      try {
+                                        return format(stat.lastVisit, "PPP", {
+                                          locale: th,
+                                        });
+                                      } catch {
+                                        return "ไม่ระบุวันที่";
+                                      }
+                                    })()
                                   : "-"}
                               </TableCell>
                               <TableCell className="text-right font-semibold">
@@ -570,7 +600,8 @@ export function ServiceHistoryList() {
                                                 {formatDate(sale.createdAt)}
                                               </p>
                                               <p className="text-xs text-muted-foreground">
-                                                {sale.items.length} บริการ •{" "}
+                                                {(sale.items || []).length}{" "}
+                                                บริการ •{" "}
                                                 {paymentMethodLabels[
                                                   sale.paymentMethod
                                                 ] || sale.paymentMethod}
@@ -579,7 +610,9 @@ export function ServiceHistoryList() {
                                           </div>
                                           <div className="text-right">
                                             <p className="text-sm font-semibold text-primary">
-                                              {formatCurrency(sale.totalAmount)}
+                                              {formatCurrency(
+                                                sale.totalAmount || 0,
+                                              )}
                                             </p>
                                           </div>
                                         </div>
@@ -682,7 +715,14 @@ export function ServiceHistoryList() {
           <DialogHeader>
             <DialogTitle>บิลการใช้บริการ</DialogTitle>
             <DialogDescription>
-              {selectedBill && formatDate(selectedBill.createdAt)}
+              {selectedBill &&
+                (() => {
+                  try {
+                    return formatDate(selectedBill.createdAt);
+                  } catch {
+                    return "ไม่ระบุวันที่";
+                  }
+                })()}
             </DialogDescription>
           </DialogHeader>
           {selectedBill && (
@@ -701,7 +741,7 @@ export function ServiceHistoryList() {
               {/* Services */}
               <div className="space-y-2">
                 <h4 className="text-sm font-medium">รายการบริการ</h4>
-                {selectedBill.items.map((item) => (
+                {(selectedBill.items || []).map((item) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between p-2 rounded bg-muted/30"

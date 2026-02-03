@@ -50,20 +50,40 @@ const depositStatusColors: Record<DepositStatus, string> = {
   FORFEITED: "bg-destructive/10 text-destructive",
 };
 
-export function BookingList() {
+export function BookingList({
+  showCompleted = false,
+}: {
+  showCompleted?: boolean;
+}) {
   const router = useRouter();
   const today = getBangkokDateString();
-  const { bookings, loading, deleteBooking, forfeitDeposit, fetchBookings } =
-    useBookings({ fromDate: today });
+  const {
+    bookings,
+    loading,
+    updateBooking,
+    cancelBooking,
+    forfeitDeposit,
+    fetchBookings,
+  } = useBookings({ fromDate: today });
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
-  const [deletingBooking, setDeletingBooking] = useState<Booking | null>(null);
+  const [cancelingBooking, setCancelingBooking] = useState<Booking | null>(
+    null,
+  );
   const [forfeitingBooking, setForfeitingBooking] = useState<Booking | null>(
     null,
   );
 
-  // Helper to get pets for a booking
+  // Helper to get pets for a booking and filter by completion status
   const groupedBookings = useMemo(() => {
-    return bookings.reduce(
+    // Filter bookings based on showCompleted prop
+    const filteredBookings = showCompleted
+      ? bookings
+      : bookings.filter(
+          (booking) =>
+            booking.status !== "COMPLETED" && booking.status !== "CANCELLED",
+        );
+
+    return filteredBookings.reduce(
       (acc, booking) => {
         const dateKey = format(new Date(booking.bookingDate), "yyyy-MM-dd");
         if (!acc[dateKey]) {
@@ -74,7 +94,7 @@ export function BookingList() {
       },
       {} as Record<string, Booking[]>,
     );
-  }, [bookings]);
+  }, [bookings, showCompleted]);
 
   // Sort by date
   const sortedDates = useMemo(() => {
@@ -83,14 +103,14 @@ export function BookingList() {
     );
   }, [groupedBookings]);
 
-  const handleDelete = async () => {
-    if (deletingBooking) {
+  const handleCancel = async () => {
+    if (cancelingBooking) {
       try {
-        await deleteBooking(deletingBooking.id);
-        toast.success("ลบนัดหมายเรียบร้อยแล้ว");
-        setDeletingBooking(null);
+        await cancelBooking(cancelingBooking.id);
+        toast.success("ยกเลิกนัดหมายเรียบร้อยแล้ว");
+        setCancelingBooking(null);
       } catch (error: any) {
-        toast.error(error.message || "ไม่สามารถลบนัดหมายได้");
+        toast.error(error.message || "ไม่สามารถยกเลิกนัดหมายได้");
       }
     }
   };
@@ -128,12 +148,16 @@ export function BookingList() {
       </Card>
     );
   }
-  if (bookings.length === 0) {
+  if (Object.keys(groupedBookings).length === 0) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
           <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">ยังไม่มีนัดหมายในระบบ</p>
+          <p className="text-muted-foreground">
+            {showCompleted
+              ? "ยังไม่มีนัดหมายในระบบ"
+              : "ยังไม่มีนัดหมายที่รอดำเนินการ"}
+          </p>
         </CardContent>
       </Card>
     );
@@ -162,6 +186,31 @@ export function BookingList() {
                 <Badge variant="secondary" className="text-xs">
                   {dateBookings.length} นัดหมาย
                 </Badge>
+                {/* แสดงสถิติสถานะ */}
+                {showCompleted && (
+                  <>
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-success/10 text-success"
+                    >
+                      เสร็จแล้ว{" "}
+                      {
+                        dateBookings.filter((b) => b.status === "COMPLETED")
+                          .length
+                      }
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-destructive/10 text-destructive"
+                    >
+                      ยกเลิก{" "}
+                      {
+                        dateBookings.filter((b) => b.status === "CANCELLED")
+                          .length
+                      }
+                    </Badge>
+                  </>
+                )}
               </div>
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {dateBookings
@@ -169,10 +218,17 @@ export function BookingList() {
                   .map((booking) => {
                     const pets = booking.pets || [];
 
+                    const isDisabled =
+                      booking.status === "COMPLETED" ||
+                      booking.status === "CANCELLED";
+
                     return (
                       <Card
                         key={booking.id}
-                        className="overflow-hidden flex flex-col"
+                        className={cn(
+                          "overflow-hidden flex flex-col",
+                          isDisabled && "opacity-50 bg-muted/50",
+                        )}
                       >
                         <CardContent className="py-0 px-4 flex-1 flex flex-col">
                           <div className="flex-1">
@@ -233,66 +289,79 @@ export function BookingList() {
                             )}
                           </div>
 
-                          {/* Footer: Deposit status and actions */}
+                          {/* Footer: Status, Deposit status and actions */}
                           <div className="flex items-center justify-between pt-3 border-t">
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-xs",
-                                depositStatusColors[booking.depositStatus],
-                              )}
-                            >
-                              {booking.depositStatus === "NONE"
-                                ? "ไม่มีมัดจำ"
-                                : `${formatCurrency(booking.depositAmount)} (${depositStatusLabels[booking.depositStatus]})`}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              {/* Deposit Badge */}
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-xs",
+                                  depositStatusColors[booking.depositStatus],
+                                )}
+                              >
+                                {booking.depositStatus === "NONE"
+                                  ? "ไม่มีมัดจำ"
+                                  : `${formatCurrency(booking.depositAmount)} (${depositStatusLabels[booking.depositStatus]})`}
+                              </Badge>
+                            </div>
 
                             <div className="flex items-center gap-2">
-                              {(booking.depositStatus === "NONE" ||
-                                booking.depositStatus === "HELD") && (
-                                <Button
-                                  variant="success"
-                                  size="sm"
-                                  onClick={() => handleOpenPOS(booking)}
-                                >
-                                  <ShoppingCart className="mr-1 h-3 w-3" />
-                                  เปิด POS
-                                </Button>
-                              )}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="outline" size="sm">
-                                    จัดการ
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => setEditingBooking(booking)}
+                              {!isDisabled &&
+                                (booking.depositStatus === "NONE" ||
+                                  booking.depositStatus === "HELD") && (
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    onClick={() => handleOpenPOS(booking)}
                                   >
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    แก้ไข
-                                  </DropdownMenuItem>
-                                  {booking.depositStatus === "HELD" && (
+                                    <ShoppingCart className="mr-1 h-3 w-3" />
+                                    เปิด POS
+                                  </Button>
+                                )}
+
+                              {!isDisabled ? (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                      จัดการ
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onClick={() => setEditingBooking(booking)}
+                                    >
+                                      <Pencil className="mr-2 h-4 w-4" />
+                                      แก้ไข
+                                    </DropdownMenuItem>
+                                    {booking.depositStatus === "HELD" && (
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          setForfeitingBooking(booking)
+                                        }
+                                        className="text-destructive"
+                                      >
+                                        <Ban className="mr-2 h-4 w-4" />
+                                        ยึดมัดจำ
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() =>
-                                        setForfeitingBooking(booking)
+                                        setCancelingBooking(booking)
                                       }
                                       className="text-destructive"
                                     >
-                                      <Ban className="mr-2 h-4 w-4" />
-                                      ยึดมัดจำ
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      ยกเลิกนัดหมาย
                                     </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => setDeletingBooking(booking)}
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    ลบนัดหมาย
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              ) : (
+                                <Button variant="outline" size="sm" disabled>
+                                  ไม่สามารถจัดการได้
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </CardContent>
@@ -317,26 +386,26 @@ export function BookingList() {
         onSuccess={fetchBookings}
       />
 
-      {/* Delete Confirmation */}
+      {/* Cancel Confirmation */}
       <AlertDialog
-        open={deletingBooking !== null}
-        onOpenChange={(open) => !open && setDeletingBooking(null)}
+        open={cancelingBooking !== null}
+        onOpenChange={(open) => !open && setCancelingBooking(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>ยืนยันการลบนัดหมาย</AlertDialogTitle>
+            <AlertDialogTitle>ยืนยันการยกเลิกนัดหมาย</AlertDialogTitle>
             <AlertDialogDescription>
-              คุณต้องการลบนัดหมายของ &quot;{deletingBooking?.customerName}&quot;
-              ใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้
+              คุณต้องการยกเลิกนัดหมายของ &quot;{cancelingBooking?.customerName}
+              &quot; ใช่หรือไม่? นัดหมายจะถูกเปลี่ยนสถานะเป็น "ยกเลิกแล้ว"
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={handleCancel}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              ลบ
+              ยกเลิกนัดหมาย
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

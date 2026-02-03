@@ -63,7 +63,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching revenue chart data:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลกราฟรายได้ได้" },
       { status: 500 },

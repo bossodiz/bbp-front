@@ -57,7 +57,6 @@ export function useBreeds(options: UseBreedsOptions = {}) {
       const data = await response.json();
       setBreeds(data);
     } catch (err) {
-      console.error("Error fetching breeds:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch breeds");
     } finally {
       setLoading(false);
@@ -77,7 +76,6 @@ export function useBreeds(options: UseBreedsOptions = {}) {
 
       return await response.json();
     } catch (err) {
-      console.error("Error fetching breed:", err);
       throw err;
     }
   };
@@ -109,7 +107,6 @@ export function useBreeds(options: UseBreedsOptions = {}) {
       await fetchBreeds(); // Refresh list
       return newBreed;
     } catch (err) {
-      console.error("Error creating breed:", err);
       throw err;
     }
   };
@@ -136,7 +133,6 @@ export function useBreeds(options: UseBreedsOptions = {}) {
       await fetchBreeds(); // Refresh list
       return updatedBreed;
     } catch (err) {
-      console.error("Error updating breed:", err);
       throw err;
     }
   };
@@ -154,7 +150,6 @@ export function useBreeds(options: UseBreedsOptions = {}) {
 
       await fetchBreeds(); // Refresh list
     } catch (err) {
-      console.error("Error deleting breed:", err);
       throw err;
     }
   };

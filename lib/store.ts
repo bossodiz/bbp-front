@@ -532,6 +532,7 @@ interface POSStore {
   selectedPetIds: number[];
   selectedBookingId: number | null;
   appliedPromotionId: number | null;
+  _cartCounter: number;
   addToCart: (item: Omit<CartItem, "id">) => void;
   removeFromCart: (id: string) => void;
   updateCartItemPrice: (id: string, price: number) => void;
@@ -549,10 +550,15 @@ export const usePOSStore = create<POSStore>((set) => ({
   selectedPetIds: [],
   selectedBookingId: null,
   appliedPromotionId: null,
+  _cartCounter: 0,
 
   addToCart: (item) => {
     set((state) => ({
-      cart: [...state.cart, { ...item, id: `${Date.now()}-${Math.random()}` }],
+      cart: [
+        ...state.cart,
+        { ...item, id: `cart-${state._cartCounter}-${item.serviceId}` },
+      ],
+      _cartCounter: state._cartCounter + 1,
     }));
   },
 

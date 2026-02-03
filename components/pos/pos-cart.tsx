@@ -44,6 +44,8 @@ import type { PaymentMethod, Booking } from "@/lib/types";
 import { paymentMethodLabels } from "@/lib/types";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
 
 export function POSCart() {
   const {
@@ -70,8 +72,14 @@ export function POSCart() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const priceInputRef = useRef<HTMLInputElement>(null);
   const cashInputRef = useRef<HTMLInputElement>(null);
+
+  // Prevent hydration issues
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Fetch booking from API if selectedBookingId exists
   useEffect(() => {
@@ -95,7 +103,6 @@ export function POSCart() {
 
         setBooking(bookingData || null);
       } catch (error) {
-        console.error("Error fetching booking:", error);
         setBooking(null);
       }
     };
@@ -265,7 +272,6 @@ export function POSCart() {
       setCashReceived("");
       setPaymentMethod("CASH");
     } catch (error: any) {
-      console.error("Error saving sale:", error);
       toast.error(error.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
     } finally {
       setIsSaving(false);
@@ -639,15 +645,18 @@ export function POSCart() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>วันที่:</span>
-                    <span>{new Date().toLocaleDateString("th-TH")}</span>
+                    <span>
+                      {isMounted
+                        ? format(new Date(), "dd/MM/yyyy", { locale: th })
+                        : "--/--/----"}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>เวลา:</span>
                     <span>
-                      {new Date().toLocaleTimeString("th-TH", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {isMounted
+                        ? format(new Date(), "HH:mm", { locale: th })
+                        : "--:--"}
                     </span>
                   </div>
                 </div>

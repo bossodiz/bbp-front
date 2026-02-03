@@ -102,7 +102,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(bookings);
   } catch (error) {
-    console.error("Error fetching bookings:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลนัดหมายได้" },
       { status: 500 },
@@ -286,7 +285,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error("Error creating booking:", error);
     return NextResponse.json(
       { error: "ไม่สามารถสร้างนัดหมายได้" },
       { status: 500 },

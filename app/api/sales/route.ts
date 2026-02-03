@@ -86,7 +86,6 @@ export async function POST(request: NextRequest) {
         .eq("id", bookingId);
 
       if (updateError) {
-        console.error("Error updating booking status:", updateError);
         // ไม่ throw error เพราะการขายสำเร็จแล้ว
       }
     }
@@ -97,7 +96,6 @@ export async function POST(request: NextRequest) {
       message: "บันทึกข้อมูลการขายสำเร็จ",
     });
   } catch (error) {
-    console.error("Error creating sale:", error);
     return NextResponse.json(
       { error: "ไม่สามารถบันทึกข้อมูลการขายได้" },
       { status: 500 },
@@ -142,34 +140,33 @@ export async function GET(request: NextRequest) {
       id: sale.id,
       bookingId: sale.booking_id,
       customerId: sale.customer_id,
-      customerName: sale.customer_name,
+      customerName: sale.customer_name || "ไม่ระบุ",
       customerPhone: sale.customer_phone,
-      subtotal: parseFloat(sale.subtotal),
-      discountAmount: parseFloat(sale.discount_amount),
+      subtotal: parseFloat(sale.subtotal || 0),
+      discountAmount: parseFloat(sale.discount_amount || 0),
       promotionId: sale.promotion_id,
-      customDiscount: parseFloat(sale.custom_discount),
-      depositUsed: parseFloat(sale.deposit_used),
-      totalAmount: parseFloat(sale.total_amount),
-      paymentMethod: sale.payment_method,
+      customDiscount: parseFloat(sale.custom_discount || 0),
+      depositUsed: parseFloat(sale.deposit_used || 0),
+      totalAmount: parseFloat(sale.total_amount || 0),
+      paymentMethod: sale.payment_method || "CASH",
       cashReceived: sale.cash_received ? parseFloat(sale.cash_received) : null,
       change: sale.change ? parseFloat(sale.change) : null,
       createdAt: sale.created_at,
       items: (sale.sale_items || []).map((item: any) => ({
         id: item.id,
         serviceId: item.service_id,
-        serviceName: item.service_name,
+        serviceName: item.service_name || "ไม่ระบุบริการ",
         petId: item.pet_id,
         petName: item.pet_name,
         petType: item.pet_type,
-        originalPrice: parseFloat(item.original_price),
-        finalPrice: parseFloat(item.final_price),
-        isPriceModified: item.is_price_modified,
+        originalPrice: parseFloat(item.original_price || 0),
+        finalPrice: parseFloat(item.final_price || 0),
+        isPriceModified: item.is_price_modified || false,
       })),
     }));
 
     return NextResponse.json({ data: sales });
   } catch (error) {
-    console.error("Error fetching sales:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลการขายได้" },
       { status: 500 },
