@@ -67,9 +67,15 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#4a9f6e" />
         <meta name="msapplication-tap-highlight" content="no" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
       </head>
-      <body className={`${geist.variable} ${geistMono.variable} ${prompt.variable} font-sans antialiased`}>
+      <body
+        className={`${geist.variable} ${geistMono.variable} ${prompt.variable} font-sans antialiased`}
+      >
         <PWARegister />
         {children}
         <Toaster position="top-right" richColors />
