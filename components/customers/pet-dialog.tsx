@@ -64,9 +64,6 @@ const petSchema = z
       .number({ invalid_type_error: "น้ำหนักต้องเป็นตัวเลข" })
       .min(0, "น้ำหนักต้องมากกว่าหรือเท่ากับ 0")
       .max(50, "น้ำหนักต้องไม่เกิน 50 กิโลกรัม")
-      .refine((val) => Number.isInteger(val * 100), {
-        message: "น้ำหนักต้องมีทศนิยมไม่เกิน 2 ตำแหน่ง",
-      })
       .nullable()
       .optional(),
     note: z.string().optional(),

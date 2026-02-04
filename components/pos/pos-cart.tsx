@@ -702,7 +702,7 @@ export function POSCart() {
                 {/* Thank you message */}
                 <div className="text-center mt-4 text-sm">
                   <div className="font-medium mb-1">ขอบคุณที่ใช้บริการ</div>
-                  <div>ติดต่อเรา: 099-241-4554</div>
+                  <div>ติดต่อเรา: 099-191-5454</div>
                 </div>
               </div>
             </div>
