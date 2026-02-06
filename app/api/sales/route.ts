@@ -32,6 +32,11 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
+    // คำนวณยอดเงินรวมทั้งหมด (รวมมัดจำที่ใช้ไป)
+    // totalAmount ที่รับมาคือยอดที่ลูกค้าต้องชำระ (หลังหักมัดจำแล้ว)
+    // ต้องบวก depositUsed กลับเข้าไปเพื่อเก็บยอดเงินรวมที่ลูกค้าจ่ายจริง
+    const actualTotalAmount = totalAmount + (depositUsed || 0);
+
     // บันทึกข้อมูลการขาย
     const { data: sale, error: saleError } = await supabase
       .from("sales")
@@ -45,7 +50,7 @@ export async function POST(request: NextRequest) {
         promotion_id: promotionId || null,
         custom_discount: customDiscount || 0,
         deposit_used: depositUsed || 0,
-        total_amount: totalAmount,
+        total_amount: actualTotalAmount,
         payment_method: paymentMethod,
         cash_received: paymentMethod === "CASH" ? cashReceived : null,
         change: paymentMethod === "CASH" ? change : null,

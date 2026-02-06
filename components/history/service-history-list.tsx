@@ -213,6 +213,7 @@ export function ServiceHistoryList() {
 
           const stat = statsMap.get(customerId)!;
           stat.sales.push(sale);
+          // total_amount in database now includes deposit, so no need to add separately
           stat.totalSpent += sale.totalAmount || 0;
           const saleDate =
             typeof sale.createdAt === "string"
@@ -811,9 +812,12 @@ export function ServiceHistoryList() {
                 )}
                 <Separator />
                 <div className="flex justify-between text-lg font-semibold">
-                  <span>ยอดชำระ</span>
+                  <span>ยอดชำระเพิ่ม</span>
                   <span className="text-primary">
-                    {formatCurrency(selectedBill.totalAmount)}
+                    {formatCurrency(
+                      selectedBill.totalAmount -
+                        (selectedBill.depositUsed || 0),
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
