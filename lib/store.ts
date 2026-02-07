@@ -9,118 +9,6 @@ import type {
   SizeConfig,
 } from "./types";
 
-// Default Pet Types for service pricing
-const defaultPetTypes: PetTypeConfig[] = [
-  { id: "DOG", name: "หมา", icon: "dog", order: 1, active: true },
-  { id: "CAT", name: "แมว", icon: "cat", order: 2, active: true },
-];
-
-// Default Sizes for service pricing - แยกตามประเภทสัตว์
-const defaultSizes: SizeConfig[] = [
-  // หมา
-  {
-    id: "DOG_XS",
-    petTypeId: "DOG",
-    name: "XS",
-    minWeight: 0,
-    maxWeight: 2,
-    description: "ไม่เกิน 2kg",
-    order: 1,
-    active: true,
-  },
-  {
-    id: "DOG_S",
-    petTypeId: "DOG",
-    name: "S",
-    minWeight: 2,
-    maxWeight: 5,
-    description: "2-5kg",
-    order: 2,
-    active: true,
-  },
-  {
-    id: "DOG_M",
-    petTypeId: "DOG",
-    name: "M",
-    minWeight: 5,
-    maxWeight: 10,
-    description: "5-10kg",
-    order: 3,
-    active: true,
-  },
-  {
-    id: "DOG_L",
-    petTypeId: "DOG",
-    name: "L",
-    minWeight: 10,
-    maxWeight: 20,
-    description: "10-20kg",
-    order: 4,
-    active: true,
-  },
-  {
-    id: "DOG_XL",
-    petTypeId: "DOG",
-    name: "XL",
-    minWeight: 20,
-    maxWeight: undefined,
-    description: "20kg ขึ้นไป",
-    order: 5,
-    active: true,
-  },
-  // แมว
-  {
-    id: "CAT_XS",
-    petTypeId: "CAT",
-    name: "XS",
-    minWeight: 0,
-    maxWeight: 1.5,
-    description: "ไม่เกิน 1.5kg",
-    order: 1,
-    active: true,
-  },
-  {
-    id: "CAT_S",
-    petTypeId: "CAT",
-    name: "S",
-    minWeight: 1.5,
-    maxWeight: 3,
-    description: "1.5-3kg",
-    order: 2,
-    active: true,
-  },
-  {
-    id: "CAT_M",
-    petTypeId: "CAT",
-    name: "M",
-    minWeight: 3,
-    maxWeight: 5,
-    description: "3-5kg",
-    order: 3,
-    active: true,
-  },
-  {
-    id: "CAT_L",
-    petTypeId: "CAT",
-    name: "L",
-    minWeight: 5,
-    maxWeight: 8,
-    description: "5-8kg",
-    order: 4,
-    active: true,
-  },
-  {
-    id: "CAT_XL",
-    petTypeId: "CAT",
-    name: "XL",
-    minWeight: 8,
-    maxWeight: undefined,
-    description: "8kg ขึ้นไป",
-    order: 5,
-    active: true,
-  },
-];
-
 // Customer Store
 interface CustomerStore {
   customers: Customer[];
@@ -236,6 +124,10 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 interface ServiceConfigStore {
   petTypes: PetTypeConfig[];
   sizes: SizeConfig[];
+  loading: boolean;
+  error: string | null;
+  fetchPetTypes: () => Promise<void>;
+  fetchSizes: (petTypeId?: string) => Promise<void>;
   addPetType: (petType: Omit<PetTypeConfig, "order" | "active">) => void;
   updatePetType: (id: string, data: Partial<PetTypeConfig>) => void;
   deletePetType: (id: string) => void;
@@ -250,8 +142,71 @@ interface ServiceConfigStore {
 }
 
 export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
-  petTypes: defaultPetTypes,
-  sizes: defaultSizes,
+  petTypes: [],
+  sizes: [],
+  loading: false,
+  error: null,
+
+  fetchPetTypes: async () => {
+    try {
+      set({ loading: true, error: null });
+
+      const response = await fetch("/api/config/pet-types");
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch pet types");
+      }
+
+      const data = await response.json();
+      const formattedData = (data.data || []).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
+        active: item.active,
+        order: item.order_index,
+      }));
+
+      set({ petTypes: formattedData, loading: false });
+    } catch (err: any) {
+      set({ error: err.message, loading: false });
+      // Fallback to default values on error
+    }
+  },
+
+  fetchSizes: async (petTypeId?: string) => {
+    try {
+      set({ loading: true, error: null });
+
+      const url = petTypeId
+        ? `/api/config/pet-sizes?petTypeId=${petTypeId}`
+        : "/api/config/pet-sizes";
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch pet sizes");
+      }
+
+      const data = await response.json();
+      const formattedData = (data.data || []).map((item: any) => ({
+        id: item.id,
+        petTypeId: item.pet_type_id,
+        name: item.name,
+        minWeight: item.min_weight,
+        maxWeight: item.max_weight,
+        description: item.description,
+        active: item.active,
+        order: item.order_index,
+      }));
+
+      set({ sizes: formattedData, loading: false });
+    } catch (err: any) {
+      set({ error: err.message, loading: false });
+      // Fallback to default values on error
+    }
+  },
 
   addPetType: (petTypeData) => {
     const maxOrder = Math.max(...get().petTypes.map((p) => p.order), 0);

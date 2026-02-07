@@ -54,7 +54,7 @@ export function POSServiceSelector() {
       const sizesForType = getSizesForPetType(petTypeId).filter(
         (s) => s.active,
       );
-
+      console.log("Sizes for type:", sizesForType);
       // Try to match based on minWeight and maxWeight
       for (const size of sizesForType) {
         const min = size.minWeight ?? 0;
