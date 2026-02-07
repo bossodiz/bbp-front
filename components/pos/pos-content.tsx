@@ -11,6 +11,7 @@ import {
   useCustomerStore,
   useServiceStore,
   usePromotionStore,
+  useServiceConfigStore,
 } from "@/lib/store";
 import { useCustomers } from "@/lib/hooks/use-customers";
 import { useServices } from "@/lib/hooks/use-services";
@@ -38,6 +39,8 @@ export function POSContent() {
   const setCustomers = useCustomerStore((state) => state.customers);
   const { services } = useServiceStore();
   const setServices = useServiceStore((state) => state.services);
+  const { petTypes, sizes, fetchPetTypes, fetchSizes } =
+    useServiceConfigStore();
 
   // Fetch customers and services from API
   const { customers: apiCustomers, fetchCustomers } = useCustomers();
@@ -46,13 +49,15 @@ export function POSContent() {
   });
   const { promotions: apiPromotions, fetchPromotions } = usePromotions();
 
-  // Load customers and services on mount (only once)
+  // Load customers, services, petTypes and sizes on mount (only once)
   useEffect(() => {
     if (!hasLoadedData.current) {
       hasLoadedData.current = true;
       fetchCustomers();
       fetchPromotions();
       fetchServices();
+      fetchPetTypes();
+      fetchSizes();
     }
   }, []);
 
@@ -91,8 +96,12 @@ export function POSContent() {
       return;
     }
 
-    // Wait for services to load before processing booking
-    if (apiServices.length === 0) {
+    // Wait for services, petTypes and sizes to load before processing booking
+    if (
+      apiServices.length === 0 ||
+      petTypes.length === 0 ||
+      sizes.length === 0
+    ) {
       return;
     }
 
@@ -168,7 +177,70 @@ export function POSContent() {
             // Select the pet
             togglePetSelection(pet.id);
 
-            // Note: Auto-add service is disabled - user will manually select services
+            // Auto-add service from booking
+            if (bookingPet.service && apiServices.length > 0) {
+              // Find matching service by name (case-insensitive)
+              const matchingService = apiServices.find(
+                (s) =>
+                  s.name.toLowerCase().trim() ===
+                  bookingPet.service.toLowerCase().trim(),
+              );
+
+              if (matchingService) {
+                // Map pet type to service pet type ID
+                const petTypeId = pet.type; // "DOG" or "CAT"
+
+                // Get sizes for this pet type
+                const { getSizesForPetType } = useServiceConfigStore.getState();
+                const sizesForType = getSizesForPetType(petTypeId).filter(
+                  (s) => s.active,
+                );
+
+                // Estimate size based on weight
+                let estimatedSizeId: string | null = null;
+                if (pet.weight && sizesForType.length > 0) {
+                  for (const size of sizesForType) {
+                    const min = size.minWeight ?? 0;
+                    const max = size.maxWeight ?? Infinity;
+                    if (pet.weight >= min && pet.weight <= max) {
+                      estimatedSizeId = size.id;
+                      break;
+                    }
+                  }
+                  // Fallback to first size if no match
+                  if (!estimatedSizeId) {
+                    estimatedSizeId = sizesForType[0]?.id || null;
+                  }
+                }
+
+                // Find price for this pet type and size
+                let servicePrice = 0;
+                if (matchingService.isSpecial) {
+                  servicePrice = matchingService.specialPrice || 0;
+                } else {
+                  const priceInfo = matchingService.prices.find(
+                    (p) =>
+                      p.petTypeId === petTypeId &&
+                      (!estimatedSizeId || p.sizeId === estimatedSizeId),
+                  );
+                  servicePrice = priceInfo?.price || 0;
+                }
+
+                // Add to cart if price is valid
+                if (servicePrice > 0) {
+                  addToCart({
+                    serviceId: matchingService.id,
+                    serviceName: matchingService.name,
+                    originalPrice: servicePrice,
+                    finalPrice: servicePrice,
+                    isPriceModified: false,
+                    petId: pet.id,
+                    petName: pet.name,
+                    petType: pet.type,
+                  });
+                }
+              }
+            }
           });
         }
       } catch (error) {
@@ -180,7 +252,7 @@ export function POSContent() {
 
     loadAndProcessBooking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingId, apiServices.length]);
+  }, [bookingId, apiServices.length, petTypes.length, sizes.length]);
 
   return (
     <div className="space-y-6">

@@ -201,19 +201,19 @@ export function POSCart() {
   };
 
   const handlePayment = async () => {
-    if (cart.length === 0) {
-      toast.error("กรุณาเลือกบริการก่อน");
-      return;
-    }
-
-    if (paymentMethod === "CASH" && cashReceivedNum < totalAmount) {
-      toast.error("จำนวนเงินที่รับไม่เพียงพอ");
-      return;
-    }
-
-    setIsSaving(true);
-
     try {
+      if (cart.length === 0) {
+        toast.error("กรุณาเลือกบริการก่อน");
+        return;
+      }
+
+      if (paymentMethod === "CASH" && cashReceivedNum < totalAmount) {
+        toast.error("จำนวนเงินที่รับไม่เพียงพอ");
+        return;
+      }
+
+      setIsSaving(true);
+
       // Get customer info
       const customer = selectedCustomerId
         ? customers.find((c) => c.id === selectedCustomerId)
@@ -272,6 +272,7 @@ export function POSCart() {
       setCashReceived("");
       setPaymentMethod("CASH");
     } catch (error: any) {
+      console.error("Payment error:", error);
       toast.error(error.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
     } finally {
       setIsSaving(false);
@@ -545,10 +546,15 @@ export function POSCart() {
                 <label className="text-sm font-medium">รับเงินมา (บาท)</label>
                 <Input
                   ref={cashInputRef}
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]*"
                   placeholder="0"
                   value={cashReceived}
-                  onChange={(e) => setCashReceived(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9.]/g, "");
+                    setCashReceived(value);
+                  }}
                   className="text-lg font-semibold"
                 />
                 {cashReceivedNum >= totalAmount && (
@@ -563,23 +569,32 @@ export function POSCart() {
             )}
           </div>
 
-          <DialogFooter className="flex justify-between">
+          <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between gap-2">
             <Button
+              type="button"
               variant="outline"
               onClick={() => setShowReceiptDialog(true)}
               disabled={isSaving}
+              className="w-full sm:w-auto"
             >
               พิมพ์ใบเสร็จ
             </Button>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setShowPaymentDialog(false)}
                 disabled={isSaving}
+                className="flex-1 sm:flex-none"
               >
                 ยกเลิก
               </Button>
-              <Button onClick={handlePayment} disabled={isSaving}>
+              <Button
+                type="button"
+                onClick={handlePayment}
+                disabled={isSaving}
+                className="flex-1 sm:flex-none"
+              >
                 {isSaving ? "กำลังบันทึก..." : "ยืนยันชำระเงิน"}
               </Button>
             </div>
