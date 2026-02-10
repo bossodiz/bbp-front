@@ -214,7 +214,7 @@ export function ServiceHistoryList() {
           const stat = statsMap.get(customerId)!;
           stat.sales.push(sale);
           // total_amount in database now includes deposit, so no need to add separately
-          stat.totalSpent += sale.totalAmount || 0;
+          stat.totalSpent += sale.subtotal || 0;
           const saleDate =
             typeof sale.createdAt === "string"
               ? new Date(sale.createdAt)
@@ -612,7 +612,7 @@ export function ServiceHistoryList() {
                                           <div className="text-right">
                                             <p className="text-sm font-semibold text-primary">
                                               {formatCurrency(
-                                                sale.totalAmount || 0,
+                                                sale.subtotal || 0,
                                               )}
                                             </p>
                                           </div>
@@ -815,8 +815,7 @@ export function ServiceHistoryList() {
                   <span>ยอดชำระเพิ่ม</span>
                   <span className="text-primary">
                     {formatCurrency(
-                      selectedBill.totalAmount -
-                        (selectedBill.depositUsed || 0),
+                      selectedBill.subtotal - (selectedBill.depositUsed || 0),
                     )}
                   </span>
                 </div>

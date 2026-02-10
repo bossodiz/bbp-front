@@ -273,7 +273,11 @@ export function AddPetDialog({
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>สายพันธุ์ที่ 1</FormLabel>
-                      <Popover open={breedOpen} onOpenChange={setBreedOpen}>
+                      <Popover
+                        open={breedOpen}
+                        onOpenChange={setBreedOpen}
+                        modal={true}
+                      >
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
@@ -291,10 +295,7 @@ export function AddPetDialog({
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent
-                          className="w-75 p-0 max-h-100 overflow-auto"
-                          align="start"
-                        >
+                        <PopoverContent className="w-75 p-0" align="start">
                           <Command>
                             <CommandInput
                               placeholder="พิมพ์ค้นหาสายพันธุ์..."
@@ -361,7 +362,11 @@ export function AddPetDialog({
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>สายพันธุ์ที่ 2</FormLabel>
-                      <Popover open={breed2Open} onOpenChange={setBreed2Open}>
+                      <Popover
+                        open={breed2Open}
+                        onOpenChange={setBreed2Open}
+                        modal={true}
+                      >
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
@@ -379,10 +384,7 @@ export function AddPetDialog({
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent
-                          className="w-75 p-0 max-h-100 overflow-auto"
-                          align="start"
-                        >
+                        <PopoverContent className="w-75 p-0" align="start">
                           <Command>
                             <CommandInput
                               placeholder="พิมพ์ค้นหาสายพันธุ์..."
@@ -452,7 +454,11 @@ export function AddPetDialog({
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>สายพันธุ์</FormLabel>
-                    <Popover open={breedOpen} onOpenChange={setBreedOpen}>
+                    <Popover
+                      open={breedOpen}
+                      onOpenChange={setBreedOpen}
+                      modal={true}
+                    >
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
@@ -473,10 +479,7 @@ export function AddPetDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent
-                        className="w-75 p-0 max-h-100 overflow-auto"
-                        align="start"
-                      >
+                      <PopoverContent className="w-75 p-0" align="start">
                         <Command>
                           <CommandInput
                             placeholder="พิมพ์ค้นหาสายพันธุ์..."
