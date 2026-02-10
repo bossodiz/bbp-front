@@ -424,7 +424,11 @@ export function PetDialog({
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>สายพันธุ์ที่ 1</FormLabel>
-                      <Popover open={breedOpen} onOpenChange={setBreedOpen}>
+                      <Popover
+                        open={breedOpen}
+                        onOpenChange={setBreedOpen}
+                        modal={true}
+                      >
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
@@ -442,10 +446,7 @@ export function PetDialog({
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent
-                          className="w-[300px] p-0 max-h-[400px] overflow-auto"
-                          align="start"
-                        >
+                        <PopoverContent className="w-[300px] p-0" align="start">
                           <Command>
                             <CommandInput
                               placeholder="พิมพ์ค้นหาสายพันธุ์..."
@@ -453,7 +454,7 @@ export function PetDialog({
                               value={breedSearchValue}
                               onValueChange={setBreedSearchValue}
                             />
-                            <CommandList className="max-h-[300px]">
+                            <CommandList className="max-h-[300px]  overflow-y-auto">
                               <CommandEmpty>ไม่พบสายพันธุ์</CommandEmpty>
                               <CommandGroup>
                                 {breedSearchValue &&
@@ -529,10 +530,7 @@ export function PetDialog({
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent
-                          className="w-[300px] p-0 max-h-[400px] overflow-auto"
-                          align="start"
-                        >
+                        <PopoverContent className="w-[300px] p-0" align="start">
                           <Command>
                             <CommandInput
                               placeholder="พิมพ์ค้นหาสายพันธุ์..."
@@ -540,7 +538,7 @@ export function PetDialog({
                               value={breed2SearchValue}
                               onValueChange={setBreed2SearchValue}
                             />
-                            <CommandList className="max-h-[300px]">
+                            <CommandList className="max-h-[300px]  overflow-y-auto">
                               <CommandEmpty>ไม่พบสายพันธุ์</CommandEmpty>
                               <CommandGroup>
                                 {breed2SearchValue &&
@@ -602,7 +600,11 @@ export function PetDialog({
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>สายพันธุ์</FormLabel>
-                    <Popover open={breedOpen} onOpenChange={setBreedOpen}>
+                    <Popover
+                      open={breedOpen}
+                      onOpenChange={setBreedOpen}
+                      modal={true}
+                    >
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
@@ -623,10 +625,7 @@ export function PetDialog({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent
-                        className="w-[300px] p-0 max-h-[400px] overflow-auto"
-                        align="start"
-                      >
+                      <PopoverContent className="w-[300px] p-0" align="start">
                         <Command>
                           <CommandInput
                             placeholder="พิมพ์ค้นหาสายพันธุ์..."
@@ -634,7 +633,7 @@ export function PetDialog({
                             value={breedSearchValue}
                             onValueChange={setBreedSearchValue}
                           />
-                          <CommandList className="max-h-[300px]">
+                          <CommandList className="max-h-[300px] overflow-y-auto">
                             <CommandEmpty>ไม่พบสายพันธุ์</CommandEmpty>
                             <CommandGroup>
                               {breedSearchValue &&

@@ -403,6 +403,7 @@ export function BookingDialog({
                   <Popover
                     open={customerSearchOpen}
                     onOpenChange={setCustomerSearchOpen}
+                    modal={true}
                   >
                     <PopoverTrigger asChild>
                       <Button

@@ -217,7 +217,11 @@ export function PetSelector({
               </div>
               <div className="space-y-2">
                 <Label>สายพันธุ์</Label>
-                <Popover open={breedOpen} onOpenChange={setBreedOpen}>
+                <Popover
+                  open={breedOpen}
+                  onOpenChange={setBreedOpen}
+                  modal={true}
+                >
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
