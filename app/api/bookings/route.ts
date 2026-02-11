@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // GET /api/bookings - ดึงรายการนัดหมายทั้งหมด
 export async function GET(request: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get("date");
     const fromDate = searchParams.get("fromDate");
 
-    let query = supabase
+    let query = supabaseAdmin
       .from("bookings")
       .select("*")
       .order("booking_date", { ascending: true })
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     // ดึงข้อมูล pets ที่เชื่อมโยงกับแต่ละ booking พร้อมข้อมูลสัตว์เลี้ยง
     const bookingIds = data.map((b) => b.id);
-    const { data: bookingPetsData } = await supabase
+    const { data: bookingPetsData } = await supabaseAdmin
       .from("booking_pets")
       .select(
         "booking_id, pet_id, service_type, pets(id, name, type, breed, breed_2, is_mixed_breed)",
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
     // ถ้าไม่มี customerId = ลูกค้าใหม่
     if (!finalCustomerId) {
       // เช็คเบอร์โทรซ้ำ
-      const { data: existingCustomer } = await supabase
+      const { data: existingCustomer } = await supabaseAdmin
         .from("customers")
         .select("id, name")
         .eq("phone", phone)
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
       }
 
       // สร้างลูกค้าใหม่
-      const { data: newCustomer, error: customerError } = await supabase
+      const { data: newCustomer, error: customerError } = await supabaseAdmin
         .from("customers")
         .insert({ name: customerName, phone })
         .select()
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
         if (pair.newPet) {
           const pet = pair.newPet;
           // เช็คชื่อสัตว์เลี้ยงซ้ำ
-          const { data: existingPet } = await supabase
+          const { data: existingPet } = await supabaseAdmin
             .from("pets")
             .select("id, name")
             .eq("customer_id", finalCustomerId)
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
           }
 
           // สร้างสัตว์เลี้ยงใหม่
-          const { data: newPet, error: petError } = await supabase
+          const { data: newPet, error: petError } = await supabaseAdmin
             .from("pets")
             .insert({
               customer_id: finalCustomerId,
@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
     }
 
     // สร้างนัดหมาย
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking, error: bookingError } = await supabaseAdmin
       .from("bookings")
       .insert({
         customer_id: finalCustomerId,
@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
         service_type: item.serviceType,
       }));
 
-      const { error: linkError } = await supabase
+      const { error: linkError } = await supabaseAdmin
         .from("booking_pets")
         .insert(bookingPets);
 
