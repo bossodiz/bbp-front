@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // GET /api/bookings/:id - ดึงข้อมูลนัดหมายตาม ID
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("bookings")
       .select(
         `
@@ -102,7 +102,7 @@ export async function PUT(
       updateData.deposit_forfeited_date = depositForfeitedDate;
     if (status !== undefined) updateData.status = status;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("bookings")
       .update(updateData)
       .eq("id", id)
@@ -117,7 +117,7 @@ export async function PUT(
     // อัพเดท booking_pets ถ้ามีการส่งมา
     if (petServicePairs && Array.isArray(petServicePairs)) {
       // ลบ booking_pets เก่าทั้งหมด
-      await supabase.from("booking_pets").delete().eq("booking_id", id);
+      await supabaseAdmin.from("booking_pets").delete().eq("booking_id", id);
 
       // เตรียมข้อมูล pets สำหรับ insert
       const petServiceData: Array<{
@@ -136,7 +136,7 @@ export async function PUT(
         } else if (pair.newPet) {
           // Pet ใหม่ - ตรวจสอบชื่อซ้ำก่อน
           const pet = pair.newPet;
-          const { data: existingPet } = await supabase
+          const { data: existingPet } = await supabaseAdmin
             .from("pets")
             .select("id, name")
             .eq("customer_id", customerId)
@@ -153,7 +153,7 @@ export async function PUT(
           }
 
           // สร้างสัตว์เลี้ยงใหม่
-          const { data: newPet, error: petError } = await supabase
+          const { data: newPet, error: petError } = await supabaseAdmin
             .from("pets")
             .insert({
               customer_id: customerId,
@@ -185,7 +185,7 @@ export async function PUT(
           service_type: pet.serviceType,
         }));
 
-        const { error: bookingPetsError } = await supabase
+        const { error: bookingPetsError } = await supabaseAdmin
           .from("booking_pets")
           .insert(bookingPetsInserts);
 
@@ -194,7 +194,7 @@ export async function PUT(
     }
 
     // ดึงข้อมูลนัดหมายพร้อม pets
-    const { data: bookingWithPets } = await supabase
+    const { data: bookingWithPets } = await supabaseAdmin
       .from("bookings")
       .select(
         `
@@ -251,7 +251,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { error } = await supabase.from("bookings").delete().eq("id", id);
+    const { error } = await supabaseAdmin
+      .from("bookings")
+      .delete()
+      .eq("id", id);
 
     if (error) throw error;
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // POST /api/sales - บันทึกข้อมูลการขาย
 export async function POST(request: NextRequest) {
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
 
     // บันทึกข้อมูลการขาย
-    const { data: sale, error: saleError } = await supabase
+    const { data: sale, error: saleError } = await supabaseAdmin
       .from("sales")
       .insert({
         booking_id: bookingId || null,
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       is_price_modified: item.isPriceModified || false,
     }));
 
-    const { error: itemsError } = await supabase
+    const { error: itemsError } = await supabaseAdmin
       .from("sale_items")
       .insert(saleItemsData);
 
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     // ถ้ามี bookingId ให้อัพเดท status เป็น COMPLETED
     if (bookingId) {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseAdmin
         .from("bookings")
         .update({
           status: "COMPLETED",
@@ -96,8 +96,12 @@ export async function POST(request: NextRequest) {
       message: "บันทึกข้อมูลการขายสำเร็จ",
     });
   } catch (error) {
+    console.error("Error creating sale:", error);
     return NextResponse.json(
-      { error: "ไม่สามารถบันทึกข้อมูลการขายได้" },
+      {
+        error: "ไม่สามารถบันทึกข้อมูลการขายได้",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 },
     );
   }
@@ -111,7 +115,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
     const customerId = searchParams.get("customerId");
 
-    let query = supabase
+    let query = supabaseAdmin
       .from("sales")
       .select(
         `
@@ -167,8 +171,12 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: sales });
   } catch (error) {
+    console.error("Error fetching sales:", error);
     return NextResponse.json(
-      { error: "ไม่สามารถดึงข้อมูลการขายได้" },
+      {
+        error: "ไม่สามารถดึงข้อมูลการขายได้",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 },
     );
   }
