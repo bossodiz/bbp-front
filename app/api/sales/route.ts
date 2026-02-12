@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
-// POST /api/sales - บันทึกข้อมูลการขาย
+// POST /api/sales - บันทึกข้อมูลการขาย (atomic via RPC)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -22,7 +22,6 @@ export async function POST(request: NextRequest) {
       change,
     } = body;
 
-    // Validate required fields
     if (!items || items.length === 0) {
       return NextResponse.json(
         { error: "กรุณาระบุรายการบริการ" },
@@ -30,76 +29,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const now = new Date().toISOString();
+    const { data: saleId, error } = await supabaseAdmin.rpc(
+      "create_sale_with_items",
+      {
+        p_booking_id: bookingId ?? null,
+        p_customer_id: customerId ?? null,
+        p_customer_name: customerName ?? "ลูกค้าทั่วไป",
+        p_customer_phone: customerPhone ?? null,
+        p_subtotal: subtotal ?? 0,
+        p_discount_amount: discountAmount ?? 0,
+        p_promotion_id: promotionId ?? null,
+        p_custom_discount: customDiscount ?? 0,
+        p_deposit_used: depositUsed ?? 0,
+        p_total_amount: totalAmount ?? 0,
+        p_payment_method: paymentMethod,
+        p_cash_received: paymentMethod === "CASH" ? cashReceived : null,
+        p_change: paymentMethod === "CASH" ? change : null,
+        p_items: items,
+      },
+    );
 
-    // บันทึกข้อมูลการขาย
-    const { data: sale, error: saleError } = await supabaseAdmin
-      .from("sales")
-      .insert({
-        booking_id: bookingId || null,
-        customer_id: customerId || null,
-        customer_name: customerName,
-        customer_phone: customerPhone || null,
-        subtotal,
-        discount_amount: discountAmount || 0,
-        promotion_id: promotionId || null,
-        custom_discount: customDiscount || 0,
-        deposit_used: depositUsed || 0,
-        total_amount: totalAmount,
-        payment_method: paymentMethod,
-        cash_received: paymentMethod === "CASH" ? cashReceived : null,
-        change: paymentMethod === "CASH" ? change : null,
-        created_at: now,
-      })
-      .select()
-      .single();
-
-    if (saleError) throw saleError;
-
-    // บันทึกรายการบริการในการขาย
-    const saleItemsData = items.map((item: any) => ({
-      sale_id: sale.id,
-      service_id: item.serviceId,
-      service_name: item.serviceName,
-      pet_id: item.petId || null,
-      pet_name: item.petName || null,
-      pet_type: item.petType || null,
-      original_price: item.originalPrice,
-      final_price: item.finalPrice,
-      is_price_modified: item.isPriceModified || false,
-    }));
-
-    const { error: itemsError } = await supabaseAdmin
-      .from("sale_items")
-      .insert(saleItemsData);
-
-    if (itemsError) throw itemsError;
-
-    // ถ้ามี bookingId ให้อัพเดท status เป็น COMPLETED
-    if (bookingId) {
-      const { error: updateError } = await supabaseAdmin
-        .from("bookings")
-        .update({
-          status: "COMPLETED",
-          updated_at: now,
-        })
-        .eq("id", bookingId);
-
-      if (updateError) {
-        // ไม่ throw error เพราะการขายสำเร็จแล้ว
-      }
-    }
+    if (error) throw error;
 
     return NextResponse.json({
       success: true,
-      saleId: sale.id,
+      saleId,
       message: "บันทึกข้อมูลการขายสำเร็จ",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating sale:", error);
     return NextResponse.json(
       {
-        error: "ไม่สามารถบันทึกข้อมูลการขายได้",
+        error: error?.message || "ไม่สามารถบันทึกข้อมูลการขายได้",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
@@ -139,7 +100,6 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    // แปลง snake_case เป็น camelCase
     const sales = (data || []).map((sale: any) => ({
       id: sale.id,
       bookingId: sale.booking_id,

@@ -116,25 +116,30 @@ export async function PUT(
 
     // อัพเดท booking_pets ถ้ามีการส่งมา
     if (petServicePairs && Array.isArray(petServicePairs)) {
-      // ลบ booking_pets เก่าทั้งหมด
-      await supabaseAdmin.from("booking_pets").delete().eq("booking_id", id);
+      const bookingIdNum = parseInt(id, 10);
+      const createdPetIds: number[] = [];
 
-      // เตรียมข้อมูล pets สำหรับ insert
+      // Backup old rows to restore if replace fails.
+      const { data: existingBookingPets, error: existingBookingPetsError } =
+        await supabaseAdmin
+          .from("booking_pets")
+          .select("pet_id, service_type")
+          .eq("booking_id", bookingIdNum);
+
+      if (existingBookingPetsError) throw existingBookingPetsError;
+
       const petServiceData: Array<{
         petId: number;
         serviceType: string;
       }> = [];
 
-      // ประมวลผล petServicePairs
       for (const pair of petServicePairs) {
         if (pair.petId) {
-          // Pet ที่มีอยู่แล้ว
           petServiceData.push({
             petId: pair.petId,
             serviceType: pair.serviceType,
           });
         } else if (pair.newPet) {
-          // Pet ใหม่ - ตรวจสอบชื่อซ้ำก่อน
           const pet = pair.newPet;
           const { data: existingPet } = await supabaseAdmin
             .from("pets")
@@ -152,7 +157,6 @@ export async function PUT(
             );
           }
 
-          // สร้างสัตว์เลี้ยงใหม่
           const { data: newPet, error: petError } = await supabaseAdmin
             .from("pets")
             .insert({
@@ -169,6 +173,7 @@ export async function PUT(
             .single();
 
           if (petError) throw petError;
+          createdPetIds.push(newPet.id);
 
           petServiceData.push({
             petId: newPet.id,
@@ -177,22 +182,45 @@ export async function PUT(
         }
       }
 
-      // Insert ข้อมูล booking_pets
-      if (petServiceData.length > 0) {
-        const bookingPetsInserts = petServiceData.map((pet) => ({
-          booking_id: parseInt(id),
-          pet_id: pet.petId,
-          service_type: pet.serviceType,
-        }));
+      const { error: deleteBookingPetsError } = await supabaseAdmin
+        .from("booking_pets")
+        .delete()
+        .eq("booking_id", bookingIdNum);
 
-        const { error: bookingPetsError } = await supabaseAdmin
-          .from("booking_pets")
-          .insert(bookingPetsInserts);
+      if (deleteBookingPetsError) throw deleteBookingPetsError;
 
-        if (bookingPetsError) throw bookingPetsError;
+      try {
+        if (petServiceData.length > 0) {
+          const bookingPetsInserts = petServiceData.map((pet) => ({
+            booking_id: bookingIdNum,
+            pet_id: pet.petId,
+            service_type: pet.serviceType,
+          }));
+
+          const { error: bookingPetsError } = await supabaseAdmin
+            .from("booking_pets")
+            .insert(bookingPetsInserts);
+
+          if (bookingPetsError) throw bookingPetsError;
+        }
+      } catch (replaceError) {
+        if (existingBookingPets && existingBookingPets.length > 0) {
+          await supabaseAdmin.from("booking_pets").insert(
+            existingBookingPets.map((item) => ({
+              booking_id: bookingIdNum,
+              pet_id: item.pet_id,
+              service_type: item.service_type,
+            })),
+          );
+        }
+
+        if (createdPetIds.length > 0) {
+          await supabaseAdmin.from("pets").delete().in("id", createdPetIds);
+        }
+
+        throw replaceError;
       }
     }
-
     // ดึงข้อมูลนัดหมายพร้อม pets
     const { data: bookingWithPets } = await supabaseAdmin
       .from("bookings")
