@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // GET /api/promotions/:id - ดึงข้อมูลโปรโมชั่นตาม ID
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("promotions")
       .select("*")
       .eq("id", id)
@@ -74,7 +74,7 @@ export async function PUT(
     if (startDate !== undefined) updateData.start_date = startDate;
     if (endDate !== undefined) updateData.end_date = endDate;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("promotions")
       .update(updateData)
       .eq("id", id)
@@ -116,7 +116,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { error } = await supabase.from("promotions").delete().eq("id", id);
+    const { error } = await supabaseAdmin
+      .from("promotions")
+      .delete()
+      .eq("id", id);
 
     if (error) throw error;
 

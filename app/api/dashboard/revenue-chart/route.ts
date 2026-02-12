@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // GET /api/dashboard/revenue-chart - ดึงข้อมูลกราฟรายได้
 export async function GET(request: NextRequest) {
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ดึงข้อมูล sales
-    const { data: salesData, error: salesError } = await supabase
+    const { data: salesData, error: salesError } = await supabaseAdmin
       .from("sales")
       .select("id, total_amount, created_at")
       .gte("created_at", startDate.toISOString())

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // GET /api/dashboard/pet-service-chart - ดึงข้อมูลกราฟสัตว์เข้ารับบริการ
 export async function GET(request: NextRequest) {
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ดึงข้อมูล sales พร้อม sale_items
-    const { data: salesData, error: salesError } = await supabase
+    const { data: salesData, error: salesError } = await supabaseAdmin
       .from("sales")
       .select(
         `
