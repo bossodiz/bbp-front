@@ -15,35 +15,36 @@ export async function GET(request: NextRequest) {
       .order("booking_date", { ascending: true })
       .order("booking_time", { ascending: true });
 
-    // Filter by status
     if (status) {
       query = query.eq("status", status);
     }
 
-    // Filter by exact date
     if (date) {
       query = query.eq("booking_date", date);
     }
 
-    // Filter by date from (>=)
     if (fromDate) {
       query = query.gte("booking_date", fromDate);
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
 
-    // ดึงข้อมูล pets ที่เชื่อมโยงกับแต่ละ booking พร้อมข้อมูลสัตว์เลี้ยง
     const bookingIds = data.map((b) => b.id);
-    const { data: bookingPetsData } = await supabaseAdmin
-      .from("booking_pets")
-      .select(
-        "booking_id, pet_id, service_type, pets(id, name, type, breed, breed_2, is_mixed_breed)",
-      )
-      .in("booking_id", bookingIds);
+    let bookingPetsData: any[] | null = [];
 
-    // สร้าง map ของ pets แยกตาม booking_id
+    if (bookingIds.length > 0) {
+      const { data: linkedPets, error: bookingPetsError } = await supabaseAdmin
+        .from("booking_pets")
+        .select(
+          "booking_id, pet_id, service_type, pets(id, name, type, breed, breed_2, is_mixed_breed)",
+        )
+        .in("booking_id", bookingIds);
+
+      if (bookingPetsError) throw bookingPetsError;
+      bookingPetsData = linkedPets;
+    }
+
     const petsByBookingId: Record<
       number,
       Array<{
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
         if (!petsByBookingId[bp.booking_id]) {
           petsByBookingId[bp.booking_id] = [];
         }
+
         if (bp.pets) {
           petsByBookingId[bp.booking_id].push({
             petId: bp.pets.id,
@@ -69,13 +71,12 @@ export async function GET(request: NextRequest) {
               bp.pets.is_mixed_breed && bp.pets.breed_2
                 ? `${bp.pets.breed} × ${bp.pets.breed_2}`
                 : bp.pets.breed || "ไม่ระบุสายพันธุ์",
-            service: bp.service_type, // ใช้ service_type จาก booking_pets table
+            service: bp.service_type,
           });
         }
       });
     }
 
-    // แปลง snake_case เป็น camelCase
     const bookings = data.map((booking) => {
       const pets = petsByBookingId[booking.id] || [];
 
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
         customerId: booking.customer_id,
         customerName: booking.customer_name,
         phone: booking.phone,
-        pets: pets,
+        pets,
         serviceType: booking.service_type,
         bookingDate: new Date(booking.booking_date),
         bookingTime: booking.booking_time,
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(bookings);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลนัดหมายได้" },
       { status: 500 },
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/bookings - สร้างนัดหมายใหม่
+// POST /api/bookings - สร้างนัดหมายใหม่ (atomic via RPC)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -117,8 +118,8 @@ export async function POST(request: NextRequest) {
       customerId,
       customerName,
       phone,
-      petServicePairs, // [{ petId?, newPet?, serviceType }]
-      serviceType, // เก็บไว้สำหรับ backward compatibility
+      petServicePairs,
+      serviceType,
       bookingDate,
       bookingTime,
       note,
@@ -127,7 +128,6 @@ export async function POST(request: NextRequest) {
       status,
     } = body;
 
-    // Validation
     if (
       !customerName ||
       !phone ||
@@ -141,135 +141,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let finalCustomerId = customerId;
+    const { data: booking, error } = await supabaseAdmin.rpc(
+      "create_booking_with_pets",
+      {
+        p_customer_id: customerId ?? null,
+        p_customer_name: customerName,
+        p_phone: phone,
+        p_service_type: serviceType,
+        p_booking_date: bookingDate,
+        p_booking_time: bookingTime,
+        p_note: note ?? null,
+        p_deposit_amount: depositAmount ?? 0,
+        p_deposit_status: depositStatus ?? "NONE",
+        p_status: status ?? "PENDING",
+        p_pet_service_pairs: petServicePairs ?? [],
+      },
+    );
 
-    // ถ้าไม่มี customerId = ลูกค้าใหม่
-    if (!finalCustomerId) {
-      // เช็คเบอร์โทรซ้ำ
-      const { data: existingCustomer } = await supabaseAdmin
-        .from("customers")
-        .select("id, name")
-        .eq("phone", phone)
-        .single();
+    if (error) throw error;
 
-      if (existingCustomer) {
-        return NextResponse.json(
-          {
-            error: `เบอร์โทรนี้มีในระบบแล้ว (${existingCustomer.name}) กรุณาเลือกจากรายการลูกค้า`,
-          },
-          { status: 409 },
-        );
-      }
+    const { data: bookingPets } = await supabaseAdmin
+      .from("booking_pets")
+      .select("pet_id")
+      .eq("booking_id", booking.id);
 
-      // สร้างลูกค้าใหม่
-      const { data: newCustomer, error: customerError } = await supabaseAdmin
-        .from("customers")
-        .insert({ name: customerName, phone })
-        .select()
-        .single();
-
-      if (customerError) throw customerError;
-      finalCustomerId = newCustomer.id;
-    }
-
-    // จัดการสัตว์เลี้ยงและบริการจาก petServicePairs
-    const finalPetServiceData: Array<{ petId: number; serviceType: string }> =
-      [];
-
-    if (petServicePairs && petServicePairs.length > 0) {
-      for (const pair of petServicePairs) {
-        let petId = pair.petId;
-
-        // ถ้าเป็นสัตว์เลี้ยงใหม่ ให้สร้างก่อน
-        if (pair.newPet) {
-          const pet = pair.newPet;
-          // เช็คชื่อสัตว์เลี้ยงซ้ำ
-          const { data: existingPet } = await supabaseAdmin
-            .from("pets")
-            .select("id, name")
-            .eq("customer_id", finalCustomerId)
-            .ilike("name", pet.name)
-            .single();
-
-          if (existingPet) {
-            return NextResponse.json(
-              {
-                error: `ลูกค้านี้มีสัตว์เลี้ยงชื่อ "${existingPet.name}" อยู่แล้ว`,
-              },
-              { status: 409 },
-            );
-          }
-
-          // สร้างสัตว์เลี้ยงใหม่
-          const { data: newPet, error: petError } = await supabaseAdmin
-            .from("pets")
-            .insert({
-              customer_id: finalCustomerId,
-              name: pet.name,
-              type: pet.type,
-              breed: pet.breed || null,
-              breed_2: pet.isMixedBreed ? pet.breed2 : null,
-              is_mixed_breed: pet.isMixedBreed || false,
-              weight: pet.weight,
-              note: pet.note || null,
-            })
-            .select()
-            .single();
-
-          if (petError) throw petError;
-          petId = newPet.id;
-        }
-
-        if (petId && pair.serviceType) {
-          finalPetServiceData.push({
-            petId: petId,
-            serviceType: pair.serviceType,
-          });
-        }
-      }
-    }
-
-    // สร้างนัดหมาย
-    const { data: booking, error: bookingError } = await supabaseAdmin
-      .from("bookings")
-      .insert({
-        customer_id: finalCustomerId,
-        customer_name: customerName,
-        phone,
-        booking_date: bookingDate,
-        booking_time: bookingTime,
-        note: note || null,
-        deposit_amount: depositAmount || 0,
-        deposit_status: depositStatus || "NONE",
-        status: status || "PENDING",
-      })
-      .select()
-      .single();
-
-    if (bookingError) throw bookingError;
-
-    // เชื่อมโยง booking กับ pets พร้อมบันทึก service_type แต่ละตัว
-    if (finalPetServiceData.length > 0) {
-      const bookingPets = finalPetServiceData.map((item) => ({
-        booking_id: booking.id,
-        pet_id: item.petId,
-        service_type: item.serviceType,
-      }));
-
-      const { error: linkError } = await supabaseAdmin
-        .from("booking_pets")
-        .insert(bookingPets);
-
-      if (linkError) throw linkError;
-    }
-
-    // แปลงกลับเป็น camelCase
     const result = {
       id: booking.id,
       customerId: booking.customer_id,
       customerName: booking.customer_name,
       phone: booking.phone,
-      petIds: finalPetServiceData.map((item) => item.petId),
+      petIds: (bookingPets || []).map((item) => item.pet_id),
       bookingDate: new Date(booking.booking_date),
       bookingTime: booking.booking_time,
       note: booking.note,
@@ -284,10 +185,16 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    const message = error?.message || "ไม่สามารถสร้างนัดหมายได้";
+    const isConflict =
+      message.includes("มีในระบบแล้ว") ||
+      message.includes("มีสัตว์เลี้ยงชื่อ") ||
+      message.includes("duplicate");
+
     return NextResponse.json(
-      { error: "ไม่สามารถสร้างนัดหมายได้" },
-      { status: 500 },
+      { error: message },
+      { status: isConflict ? 409 : 500 },
     );
   }
 }

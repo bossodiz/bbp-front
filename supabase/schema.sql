@@ -31,6 +31,8 @@ DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 DROP FUNCTION IF EXISTS generate_order_number() CASCADE;
 DROP FUNCTION IF EXISTS set_order_number() CASCADE;
 DROP FUNCTION IF EXISTS get_top_customers(VARCHAR, INTEGER) CASCADE;
+DROP FUNCTION IF EXISTS create_booking_with_pets(INTEGER, TEXT, TEXT, TEXT, DATE, TIME, TEXT, NUMERIC, TEXT, TEXT, JSONB) CASCADE;
+DROP FUNCTION IF EXISTS create_sale_with_items(INTEGER, INTEGER, TEXT, TEXT, NUMERIC, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, TEXT, NUMERIC, NUMERIC, JSONB) CASCADE;
 
 -- ===================================
 -- 1. CUSTOMERS TABLE
@@ -668,6 +670,267 @@ $$;
 GRANT EXECUTE ON FUNCTION get_top_customers(VARCHAR, INTEGER) TO anon, authenticated;
 
 -- ===================================
+-- Function: Create Booking (Atomic)
+-- ===================================
+CREATE OR REPLACE FUNCTION create_booking_with_pets(
+  p_customer_id INTEGER,
+  p_customer_name TEXT,
+  p_phone TEXT,
+  p_service_type TEXT,
+  p_booking_date DATE,
+  p_booking_time TIME,
+  p_note TEXT,
+  p_deposit_amount NUMERIC,
+  p_deposit_status TEXT,
+  p_status TEXT,
+  p_pet_service_pairs JSONB
+)
+RETURNS bookings
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_customer_id INTEGER := p_customer_id;
+  v_existing_customer customers%ROWTYPE;
+  v_pair JSONB;
+  v_new_pet JSONB;
+  v_pet_id INTEGER;
+  v_existing_pet pets%ROWTYPE;
+  v_booking bookings%ROWTYPE;
+  v_first_service_type TEXT;
+BEGIN
+  IF p_customer_name IS NULL OR TRIM(p_customer_name) = '' THEN
+    RAISE EXCEPTION 'กรุณากรอกชื่อลูกค้า';
+  END IF;
+
+  IF p_phone IS NULL OR TRIM(p_phone) = '' THEN
+    RAISE EXCEPTION 'กรุณากรอกเบอร์โทรศัพท์';
+  END IF;
+
+  IF p_booking_date IS NULL OR p_booking_time IS NULL THEN
+    RAISE EXCEPTION 'กรุณาเลือกวันและเวลา';
+  END IF;
+
+  IF v_customer_id IS NULL THEN
+    SELECT *
+    INTO v_existing_customer
+    FROM customers
+    WHERE phone = p_phone
+    LIMIT 1;
+
+    IF v_existing_customer.id IS NOT NULL THEN
+      RAISE EXCEPTION 'เบอร์โทรนี้มีในระบบแล้ว (%) กรุณาเลือกจากรายการลูกค้า', v_existing_customer.name;
+    END IF;
+
+    INSERT INTO customers(name, phone)
+    VALUES (p_customer_name, p_phone)
+    RETURNING id INTO v_customer_id;
+  END IF;
+
+  SELECT NULLIF(TRIM(elem->>'serviceType'), '')
+  INTO v_first_service_type
+  FROM jsonb_array_elements(COALESCE(p_pet_service_pairs, '[]'::jsonb)) AS elem
+  WHERE NULLIF(TRIM(elem->>'serviceType'), '') IS NOT NULL
+  LIMIT 1;
+
+  v_first_service_type := COALESCE(v_first_service_type, NULLIF(TRIM(p_service_type), ''), '');
+
+  INSERT INTO bookings(
+    customer_id,
+    customer_name,
+    phone,
+    service_type,
+    booking_date,
+    booking_time,
+    note,
+    deposit_amount,
+    deposit_status,
+    status
+  )
+  VALUES (
+    v_customer_id,
+    p_customer_name,
+    p_phone,
+    v_first_service_type,
+    p_booking_date,
+    p_booking_time,
+    NULLIF(TRIM(p_note), ''),
+    COALESCE(p_deposit_amount, 0),
+    COALESCE(NULLIF(TRIM(p_deposit_status), ''), 'NONE'),
+    COALESCE(NULLIF(TRIM(p_status), ''), 'PENDING')
+  )
+  RETURNING * INTO v_booking;
+
+  FOR v_pair IN
+    SELECT *
+    FROM jsonb_array_elements(COALESCE(p_pet_service_pairs, '[]'::jsonb))
+  LOOP
+    v_pet_id := NULL;
+
+    IF NULLIF(TRIM(v_pair->>'petId'), '') IS NOT NULL THEN
+      v_pet_id := (v_pair->>'petId')::INTEGER;
+    ELSIF v_pair ? 'newPet' THEN
+      v_new_pet := v_pair->'newPet';
+
+      IF v_new_pet IS NULL OR NULLIF(TRIM(v_new_pet->>'name'), '') IS NULL THEN
+        RAISE EXCEPTION 'ข้อมูลสัตว์เลี้ยงไม่ถูกต้อง';
+      END IF;
+
+      SELECT *
+      INTO v_existing_pet
+      FROM pets
+      WHERE customer_id = v_customer_id
+        AND LOWER(name) = LOWER(v_new_pet->>'name')
+      LIMIT 1;
+
+      IF v_existing_pet.id IS NOT NULL THEN
+        RAISE EXCEPTION 'ลูกค้านี้มีสัตว์เลี้ยงชื่อ "%" อยู่แล้ว', v_existing_pet.name;
+      END IF;
+
+      INSERT INTO pets(
+        customer_id,
+        name,
+        type,
+        breed,
+        breed_2,
+        is_mixed_breed,
+        weight,
+        note
+      )
+      VALUES (
+        v_customer_id,
+        v_new_pet->>'name',
+        v_new_pet->>'type',
+        NULLIF(TRIM(v_new_pet->>'breed'), ''),
+        CASE WHEN COALESCE((v_new_pet->>'isMixedBreed')::BOOLEAN, FALSE)
+          THEN NULLIF(TRIM(v_new_pet->>'breed2'), '')
+          ELSE NULL
+        END,
+        COALESCE((v_new_pet->>'isMixedBreed')::BOOLEAN, FALSE),
+        COALESCE((v_new_pet->>'weight')::NUMERIC, 0),
+        NULLIF(TRIM(v_new_pet->>'note'), '')
+      )
+      RETURNING id INTO v_pet_id;
+    END IF;
+
+    IF v_pet_id IS NOT NULL AND NULLIF(TRIM(v_pair->>'serviceType'), '') IS NOT NULL THEN
+      INSERT INTO booking_pets(booking_id, pet_id, service_type)
+      VALUES (v_booking.id, v_pet_id, v_pair->>'serviceType');
+    END IF;
+  END LOOP;
+
+  RETURN v_booking;
+END;
+$$;
+
+-- ===================================
+-- Function: Create Sale (Atomic)
+-- ===================================
+CREATE OR REPLACE FUNCTION create_sale_with_items(
+  p_booking_id INTEGER,
+  p_customer_id INTEGER,
+  p_customer_name TEXT,
+  p_customer_phone TEXT,
+  p_subtotal NUMERIC,
+  p_discount_amount NUMERIC,
+  p_promotion_id INTEGER,
+  p_custom_discount NUMERIC,
+  p_deposit_used NUMERIC,
+  p_total_amount NUMERIC,
+  p_payment_method TEXT,
+  p_cash_received NUMERIC,
+  p_change NUMERIC,
+  p_items JSONB
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_sale_id INTEGER;
+  v_item JSONB;
+BEGIN
+  IF jsonb_typeof(COALESCE(p_items, '[]'::jsonb)) <> 'array'
+     OR jsonb_array_length(COALESCE(p_items, '[]'::jsonb)) = 0 THEN
+    RAISE EXCEPTION 'กรุณาระบุรายการบริการ';
+  END IF;
+
+  INSERT INTO sales(
+    booking_id,
+    customer_id,
+    customer_name,
+    customer_phone,
+    subtotal,
+    discount_amount,
+    promotion_id,
+    custom_discount,
+    deposit_used,
+    total_amount,
+    payment_method,
+    cash_received,
+    change,
+    created_at
+  )
+  VALUES (
+    p_booking_id,
+    p_customer_id,
+    COALESCE(NULLIF(TRIM(p_customer_name), ''), 'ลูกค้าทั่วไป'),
+    NULLIF(TRIM(p_customer_phone), ''),
+    COALESCE(p_subtotal, 0),
+    COALESCE(p_discount_amount, 0),
+    p_promotion_id,
+    COALESCE(p_custom_discount, 0),
+    COALESCE(p_deposit_used, 0),
+    COALESCE(p_total_amount, 0),
+    p_payment_method,
+    p_cash_received,
+    p_change,
+    NOW()
+  )
+  RETURNING id INTO v_sale_id;
+
+  FOR v_item IN
+    SELECT *
+    FROM jsonb_array_elements(COALESCE(p_items, '[]'::jsonb))
+  LOOP
+    INSERT INTO sale_items(
+      sale_id,
+      service_id,
+      service_name,
+      pet_id,
+      pet_name,
+      pet_type,
+      original_price,
+      final_price,
+      is_price_modified
+    )
+    VALUES (
+      v_sale_id,
+      NULLIF(v_item->>'serviceId', '')::INTEGER,
+      COALESCE(NULLIF(TRIM(v_item->>'serviceName'), ''), 'ไม่ระบุบริการ'),
+      NULLIF(v_item->>'petId', '')::INTEGER,
+      NULLIF(TRIM(v_item->>'petName'), ''),
+      NULLIF(TRIM(v_item->>'petType'), ''),
+      COALESCE((v_item->>'originalPrice')::NUMERIC, 0),
+      COALESCE((v_item->>'finalPrice')::NUMERIC, 0),
+      COALESCE((v_item->>'isPriceModified')::BOOLEAN, FALSE)
+    );
+  END LOOP;
+
+  IF p_booking_id IS NOT NULL THEN
+    UPDATE bookings
+    SET
+      status = 'COMPLETED',
+      updated_at = NOW()
+    WHERE id = p_booking_id;
+  END IF;
+
+  RETURN v_sale_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION create_booking_with_pets(INTEGER, TEXT, TEXT, TEXT, DATE, TIME, TEXT, NUMERIC, TEXT, TEXT, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION create_sale_with_items(INTEGER, INTEGER, TEXT, TEXT, NUMERIC, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, TEXT, NUMERIC, NUMERIC, JSONB) TO anon, authenticated;
+
+-- ===================================
 -- COMPLETED
 -- ===================================
 -- Schema created successfully!
@@ -675,5 +938,3 @@ GRANT EXECUTE ON FUNCTION get_top_customers(VARCHAR, INTEGER) TO anon, authentic
 -- 1. Run this SQL in Supabase SQL Editor
 -- 2. Install @supabase/supabase-js in your Next.js project
 -- 3. Create API routes for CRUD operations
-
-

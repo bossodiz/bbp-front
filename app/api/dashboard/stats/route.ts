@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { toUtcIsoFromBangkokLocal } from "@/lib/utils";
 
 // GET /api/dashboard/stats - ดึงสถิติ dashboard
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     );
 
     // 1. รายได้วันนี้
-    const { data: salesToday, error: salesTodayError } = await supabase
+    const { data: salesToday, error: salesTodayError } = await supabaseAdmin
       .from("sales")
       .select("total_amount")
       .gte("created_at", startTodayUtc)
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     );
 
     // 2. รายได้เดือนนี้
-    const { data: salesMonthly, error: salesMonthlyError } = await supabase
+    const { data: salesMonthly, error: salesMonthlyError } = await supabaseAdmin
       .from("sales")
       .select("total_amount")
       .gte("created_at", firstDayOfMonth.toISOString())
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     // 3. สัตว์เข้ารับบริการวันนี้ (แยกหมา/แมว)
     const { data: salesTodayItems, error: salesTodayItemsError } =
-      await supabase
+      await supabaseAdmin
         .from("sales")
         .select(
           `
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     // 4. นัดหมายวันนี้ (ทุก status)
     const todayDateStr = new Date().toLocaleDateString("sv-SE");
     const { data: bookingsTodayData, error: bookingsTodayError } =
-      await supabase
+      await supabaseAdmin
         .from("bookings")
         .select("id")
         .eq("booking_date", todayDateStr);
