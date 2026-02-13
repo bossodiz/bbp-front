@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // GET /api/dashboard/top-customers - ดึงรายการลูกค้าประจำ
 export async function GET(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const orderBy = type === "frequent_visits" ? "visit_count" : "total_spent";
 
     // ใช้ Database Function เพื่อ aggregate ที่ database แทนการดึงมาทั้งหมด
-    const { data, error } = await supabase.rpc("get_top_customers", {
+    const { data, error } = await supabaseAdmin.rpc("get_top_customers", {
       sort_by: orderBy,
       result_limit: 5,
     });

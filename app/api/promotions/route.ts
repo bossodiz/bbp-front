@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // GET /api/promotions - ดึงรายการโปรโมชั่นทั้งหมด
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("promotions")
       .select("*")
       .order("created_at", { ascending: false });
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     // แปลง camelCase เป็น snake_case สำหรับ database
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("promotions")
       .insert({
         name,

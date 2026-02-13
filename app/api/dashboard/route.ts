@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 // GET /api/dashboard - ดึงข้อมูล dashboard ครบถ้วน
 export async function GET(request: NextRequest) {
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. ดึงข้อมูล sales
-    const { data: salesData, error: salesError } = await supabase
+    const { data: salesData, error: salesError } = await supabaseAdmin
       .from("sales")
       .select(
         `
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     if (salesError) throw salesError;
 
     // 2. ดึงข้อมูล bookings (เฉพาะ PENDING)
-    const { data: bookingsData, error: bookingsError } = await supabase
+    const { data: bookingsData, error: bookingsError } = await supabaseAdmin
       .from("bookings")
       .select(
         `
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
     const todayEnd = new Date(today);
     todayEnd.setDate(todayEnd.getDate() + 1);
 
-    const { data: todaySalesData } = await supabase
+    const { data: todaySalesData } = await supabaseAdmin
       .from("sales")
       .select(
         `
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
       .gte("created_at", todayStart.toISOString())
       .lt("created_at", todayEnd.toISOString());
 
-    const { data: todayBookingsData } = await supabase
+    const { data: todayBookingsData } = await supabaseAdmin
       .from("bookings")
       .select("*")
       .eq("status", "PENDING")

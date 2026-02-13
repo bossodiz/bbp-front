@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { toUtcIsoFromBangkokLocal } from "@/lib/utils";
 
 // GET /api/dashboard/today-bookings - ดึงรายการนัดหมายวันนี้ (ทุก status)
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const todayDateStr = new Date().toLocaleDateString("sv-SE");
 
     // ดึงข้อมูล bookings วันนี้ (ทุก status)
-    const { data: bookingsData, error: bookingsError } = await supabase
+    const { data: bookingsData, error: bookingsError } = await supabaseAdmin
       .from("bookings")
       .select(
         `
