@@ -84,7 +84,8 @@ export async function GET(request: NextRequest) {
         sale_items(*)
       `,
       )
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("id", { foreignTable: "sale_items", ascending: true });
 
     if (startDate) {
       query = query.gte("created_at", startDate);

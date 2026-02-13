@@ -54,7 +54,6 @@ export function POSServiceSelector() {
       const sizesForType = getSizesForPetType(petTypeId).filter(
         (s) => s.active,
       );
-      console.log("Sizes for type:", sizesForType);
       // Try to match based on minWeight and maxWeight
       for (const size of sizesForType) {
         const min = size.minWeight ?? 0;
@@ -132,9 +131,14 @@ export function POSServiceSelector() {
     // Get pet info if petId is provided
     const pet = petId ? selectedPets.find((p) => p.id === petId) : undefined;
 
+    const petTypeId = getPetTypeIdForPet(pet?.type);
+    const petWeight = pet?.weight;
+    const estSizeId = estimateSizeFromWeight(petWeight, petTypeId);
+    const sizeName = service.isSpecial ? "" : getSizeName(estSizeId);
+
     addToCart({
       serviceId: service.id,
-      serviceName: service.name,
+      serviceName: (service.name + " " + sizeName).trim(),
       originalPrice: price,
       finalPrice: price,
       isPriceModified: false,
@@ -267,7 +271,7 @@ export function POSServiceSelector() {
                           >
                             <div>
                               <p className="font-medium text-sm">
-                                {service.name}
+                                {service.name} {getSizeName(estimatedSizeId)}
                               </p>
                               <p
                                 className={cn(

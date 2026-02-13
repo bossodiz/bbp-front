@@ -39,6 +39,7 @@ import {
   usePromotionStore,
   useBookingStore,
   useCustomerStore,
+  useServiceConfigStore,
 } from "@/lib/store";
 import type { PaymentMethod, Booking } from "@/lib/types";
 import { paymentMethodLabels } from "@/lib/types";
@@ -75,6 +76,8 @@ export function POSCart() {
   const [isMounted, setIsMounted] = useState(false);
   const priceInputRef = useRef<HTMLInputElement>(null);
   const cashInputRef = useRef<HTMLInputElement>(null);
+
+  const { petTypes, getSizesForPetType } = useServiceConfigStore();
 
   // Prevent hydration issues
   useEffect(() => {
