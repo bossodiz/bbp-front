@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
+        customers(id, name, phone),
         booking_pets (
           pet_id,
           service_type,
@@ -42,8 +43,8 @@ export async function GET(request: NextRequest) {
       return {
         id: booking.id,
         customerId: booking.customer_id,
-        customerName: booking.customer_name,
-        phone: booking.phone,
+        customerName: booking.customers?.name || "ไม่ระบุลูกค้า",
+        phone: booking.customers?.phone || null,
         pets: pets,
         bookingDate: booking.booking_date,
         bookingTime: booking.booking_time,

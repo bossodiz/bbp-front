@@ -11,7 +11,12 @@ export async function GET(request: NextRequest) {
 
     let query = supabaseAdmin
       .from("bookings")
-      .select("*")
+      .select(
+        `
+        *,
+        customers(id, name, phone)
+      `,
+      )
       .order("booking_date", { ascending: true })
       .order("booking_time", { ascending: true });
 
@@ -83,8 +88,8 @@ export async function GET(request: NextRequest) {
       return {
         id: booking.id,
         customerId: booking.customer_id,
-        customerName: booking.customer_name,
-        phone: booking.phone,
+        customerName: booking.customers?.name || "ไม่พบข้อมูลลูกค้า",
+        phone: booking.customers?.phone || "",
         pets,
         serviceType: booking.service_type,
         bookingDate: new Date(booking.booking_date),
@@ -116,8 +121,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       customerId,
-      customerName,
-      phone,
       petServicePairs,
       serviceType,
       bookingDate,
@@ -128,13 +131,7 @@ export async function POST(request: NextRequest) {
       status,
     } = body;
 
-    if (
-      !customerName ||
-      !phone ||
-      !serviceType ||
-      !bookingDate ||
-      !bookingTime
-    ) {
+    if (!customerId || !serviceType || !bookingDate || !bookingTime) {
       return NextResponse.json(
         { error: "กรุณากรอกข้อมูลให้ครบถ้วน" },
         { status: 400 },
@@ -144,9 +141,7 @@ export async function POST(request: NextRequest) {
     const { data: booking, error } = await supabaseAdmin.rpc(
       "create_booking_with_pets",
       {
-        p_customer_id: customerId ?? null,
-        p_customer_name: customerName,
-        p_phone: phone,
+        p_customer_id: customerId,
         p_service_type: serviceType,
         p_booking_date: bookingDate,
         p_booking_time: bookingTime,
@@ -165,11 +160,18 @@ export async function POST(request: NextRequest) {
       .select("pet_id")
       .eq("booking_id", booking.id);
 
+    // Fetch customer data
+    const { data: customer } = await supabaseAdmin
+      .from("customers")
+      .select("name, phone")
+      .eq("id", booking.customer_id)
+      .single();
+
     const result = {
       id: booking.id,
       customerId: booking.customer_id,
-      customerName: booking.customer_name,
-      phone: booking.phone,
+      customerName: customer?.name || "ไม่พบข้อมูลลูกค้า",
+      phone: customer?.phone || "",
       petIds: (bookingPets || []).map((item) => item.pet_id),
       bookingDate: new Date(booking.booking_date),
       bookingTime: booking.booking_time,

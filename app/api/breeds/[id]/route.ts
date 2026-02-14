@@ -13,9 +13,7 @@ export async function GET(
       .from("breeds")
       .select(
         `
-        *,
-        parent_breed_1:parent_breed_1_id(id, name),
-        parent_breed_2:parent_breed_2_id(id, name)
+        *
       `,
       )
       .eq("id", id)
@@ -49,33 +47,6 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-
-    // Validate mixed breed constraints if changing
-    if (body.is_mixed !== undefined) {
-      if (
-        body.is_mixed &&
-        (!body.parent_breed_1_id || !body.parent_breed_2_id)
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Mixed breed requires both parent_breed_1_id and parent_breed_2_id",
-          },
-          { status: 400 },
-        );
-      }
-
-      if (
-        !body.is_mixed &&
-        (body.parent_breed_1_id || body.parent_breed_2_id)
-      ) {
-        return NextResponse.json(
-          { error: "Pure breed cannot have parent breeds" },
-          { status: 400 },
-        );
-      }
-    }
-
     const { data, error } = await supabaseAdmin
       .from("breeds")
       .update(body)
@@ -121,28 +92,6 @@ export async function DELETE(
       return NextResponse.json(
         {
           error: `Cannot delete breed. It is currently used by ${count} pet(s)`,
-        },
-        { status: 400 },
-      );
-    }
-
-    // Check if breed is parent of any mixed breed
-    const { count: mixedCount1 } = await supabaseAdmin
-      .from("breeds")
-      .select("id", { count: "exact", head: true })
-      .eq("parent_breed_1_id", id);
-
-    const { count: mixedCount2 } = await supabaseAdmin
-      .from("breeds")
-      .select("id", { count: "exact", head: true })
-      .eq("parent_breed_2_id", id);
-
-    const totalMixedCount = (mixedCount1 || 0) + (mixedCount2 || 0);
-
-    if (totalMixedCount > 0) {
-      return NextResponse.json(
-        {
-          error: `Cannot delete breed. It is parent of ${totalMixedCount} mixed breed(s)`,
         },
         { status: 400 },
       );

@@ -31,8 +31,8 @@ DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 DROP FUNCTION IF EXISTS generate_order_number() CASCADE;
 DROP FUNCTION IF EXISTS set_order_number() CASCADE;
 DROP FUNCTION IF EXISTS get_top_customers(VARCHAR, INTEGER) CASCADE;
-DROP FUNCTION IF EXISTS create_booking_with_pets(INTEGER, TEXT, TEXT, TEXT, DATE, TIME, TEXT, NUMERIC, TEXT, TEXT, JSONB) CASCADE;
-DROP FUNCTION IF EXISTS create_sale_with_items(INTEGER, INTEGER, TEXT, TEXT, NUMERIC, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, TEXT, NUMERIC, NUMERIC, JSONB) CASCADE;
+DROP FUNCTION IF EXISTS create_booking_with_pets(INTEGER, TEXT, DATE, TIME, TEXT, NUMERIC, TEXT, TEXT, JSONB) CASCADE;
+DROP FUNCTION IF EXISTS create_sale_with_items(INTEGER, INTEGER, NUMERIC, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, TEXT, NUMERIC, NUMERIC, JSONB) CASCADE;
 
 -- ===================================
 -- 1. CUSTOMERS TABLE
@@ -174,19 +174,12 @@ CREATE TABLE breeds (
   id SERIAL PRIMARY KEY,
   pet_type_id VARCHAR(50) NOT NULL REFERENCES pet_type_configs(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
-  is_mixed BOOLEAN NOT NULL DEFAULT false,
-  parent_breed_1_id INTEGER REFERENCES breeds(id) ON DELETE SET NULL,
-  parent_breed_2_id INTEGER REFERENCES breeds(id) ON DELETE SET NULL,
   order_index INTEGER NOT NULL,
   active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   
-  CONSTRAINT unique_breed_name_per_type UNIQUE(pet_type_id, name),
-  CONSTRAINT check_mixed_breeds CHECK (
-    (is_mixed = false AND parent_breed_1_id IS NULL AND parent_breed_2_id IS NULL) OR
-    (is_mixed = true AND parent_breed_1_id IS NOT NULL AND parent_breed_2_id IS NOT NULL)
-  )
+  CONSTRAINT unique_breed_name_per_type UNIQUE(pet_type_id, name)
 );
 
 CREATE INDEX idx_breeds_pet_type_id ON breeds(pet_type_id);
@@ -223,9 +216,7 @@ CREATE INDEX idx_promotions_dates ON promotions(start_date, end_date);
 -- ===================================
 CREATE TABLE bookings (
   id SERIAL PRIMARY KEY,
-  customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
-  customer_name VARCHAR(255) NOT NULL,
-  phone VARCHAR(20) NOT NULL,
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
   booking_date DATE NOT NULL,
   booking_time TIME NOT NULL,
   note TEXT,
@@ -268,8 +259,6 @@ CREATE TABLE sales (
   id SERIAL PRIMARY KEY,
   booking_id INTEGER REFERENCES bookings(id) ON DELETE SET NULL,
   customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
-  customer_name TEXT NOT NULL,
-  customer_phone TEXT,
   subtotal DECIMAL(10, 2) NOT NULL,
   discount_amount DECIMAL(10, 2) DEFAULT 0,
   promotion_id INTEGER REFERENCES promotions(id) ON DELETE SET NULL,
@@ -308,8 +297,6 @@ CREATE TABLE sale_items (
   service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
   service_name TEXT NOT NULL,
   pet_id INTEGER REFERENCES pets(id) ON DELETE SET NULL,
-  pet_name TEXT,
-  pet_type TEXT CHECK (pet_type IN ('DOG', 'CAT') OR pet_type IS NULL),
   original_price DECIMAL(10, 2) NOT NULL,
   final_price DECIMAL(10, 2) NOT NULL,
   is_price_modified BOOLEAN DEFAULT FALSE,
@@ -392,42 +379,42 @@ INSERT INTO size_configs (id, pet_type_id, name, min_weight, max_weight, descrip
 ('DOG_XXL', 'DOG', 'XXL', 20.00, 25.00, '20 - 25 KG', 6, true, '2026-01-28 17:37:19.716583+00', '2026-01-28 17:37:19.716583+00');
 
 -- Breeds
-INSERT INTO breeds (id, pet_type_id, name, is_mixed, parent_breed_1_id, parent_breed_2_id, order_index, active, created_at, updated_at) VALUES 
-(1, 'DOG', 'ชิวาวา', false, null, null, 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(2, 'DOG', 'ปอมเมอเรเนียน', false, null, null, 2, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(3, 'DOG', 'ปั๊ก', false, null, null, 3, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(4, 'DOG', 'ยอร์คเชียร์ เทอร์เรีย', false, null, null, 4, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(5, 'DOG', 'ชิสุ', false, null, null, 5, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(6, 'DOG', 'มอลทีส', false, null, null, 6, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(7, 'DOG', 'บีเกิ้ล', false, null, null, 7, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(8, 'DOG', 'โคเกอร์ สแปเนียล', false, null, null, 8, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(9, 'DOG', 'โกลเด้น รีทรีฟเวอร์', false, null, null, 9, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(10, 'DOG', 'ลาบราดอร์ รีทรีฟเวอร์', false, null, null, 10, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(11, 'DOG', 'ฮัสกี้ไซบีเรียน', false, null, null, 11, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(12, 'DOG', 'ไทยหลังอาน', false, null, null, 12, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(13, 'DOG', 'ไทยบางแก้ว', false, null, null, 13, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(14, 'DOG', 'จิ้งจอกญี่ปุ่น (ชิบะ อินุ)', false, null, null, 14, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(15, 'DOG', 'คอร์กี้', false, null, null, 15, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(16, 'DOG', 'ฝรั่งเศส บูลด็อก', false, null, null, 16, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(17, 'DOG', 'พุดเดิ้ล', false, null, null, 17, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(18, 'DOG', 'เยอรมัน เชพเพิร์ด', false, null, null, 18, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(19, 'DOG', 'ดัลเมเชี่ยน', false, null, null, 19, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(20, 'DOG', 'ดอเบอร์แมน', false, null, null, 20, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(21, 'CAT', 'เปอร์เซีย', false, null, null, 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(22, 'CAT', 'แมวไทย', false, null, null, 2, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(23, 'CAT', 'สก็อตติช โฟลด์', false, null, null, 3, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(24, 'CAT', 'อเมริกัน ช็อตแฮร์', false, null, null, 4, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(25, 'CAT', 'บริติช ช็อตแฮร์', false, null, null, 5, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(26, 'CAT', 'เมนคูน', false, null, null, 6, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(27, 'CAT', 'แร็กดอลล์', false, null, null, 7, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(28, 'CAT', 'สฟิงซ์', false, null, null, 8, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(29, 'CAT', 'วิเชียรมาศ', false, null, null, 9, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(30, 'CAT', 'บังกอล', false, null, null, 10, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(31, 'CAT', 'อบิสซิเนียน', false, null, null, 11, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(32, 'CAT', 'รัสเซียน บลู', false, null, null, 12, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(33, 'CAT', 'เทอร์กิช แองโกรา', false, null, null, 13, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(34, 'CAT', 'มันชกิ้น', false, null, null, 14, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-(35, 'CAT', 'แมวมงคล', false, null, null, 15, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00');
+INSERT INTO breeds (id, pet_type_id, name, order_index, active, created_at, updated_at) VALUES 
+(1, 'DOG', 'ชิวาวา', 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(2, 'DOG', 'ปอมเมอเรเนียน', 2, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(3, 'DOG', 'ปั๊ก', 3, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(4, 'DOG', 'ยอร์คเชียร์ เทอร์เรีย', 4, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(5, 'DOG', 'ชิสุ', 5, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(6, 'DOG', 'มอลทีส', 6, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(7, 'DOG', 'บีเกิ้ล', 7, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(8, 'DOG', 'โคเกอร์ สแปเนียล', 8, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(9, 'DOG', 'โกลเด้น รีทรีฟเวอร์', 9, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(10, 'DOG', 'ลาบราดอร์ รีทรีฟเวอร์', 10, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(11, 'DOG', 'ฮัสกี้ไซบีเรียน', 11, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(12, 'DOG', 'ไทยหลังอาน', 12, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(13, 'DOG', 'ไทยบางแก้ว', 13, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(14, 'DOG', 'จิ้งจอกญี่ปุ่น (ชิบะ อินุ)', 14, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(15, 'DOG', 'คอร์กี้', 15, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(16, 'DOG', 'ฝรั่งเศส บูลด็อก', 16, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(17, 'DOG', 'พุดเดิ้ล', 17, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(18, 'DOG', 'เยอรมัน เชพเพิร์ด', 18, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(19, 'DOG', 'ดัลเมเชี่ยน', 19, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(20, 'DOG', 'ดอเบอร์แมน', 20, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(21, 'CAT', 'เปอร์เซีย', 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(22, 'CAT', 'แมวไทย', 2, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(23, 'CAT', 'สก็อตติช โฟลด์', 3, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(24, 'CAT', 'อเมริกัน ช็อตแฮร์', 4, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(25, 'CAT', 'บริติช ช็อตแฮร์', 5, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(26, 'CAT', 'เมนคูน', 6, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(27, 'CAT', 'แร็กดอลล์', 7, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(28, 'CAT', 'สฟิงซ์', 8, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(29, 'CAT', 'วิเชียรมาศ', 9, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(30, 'CAT', 'บังกอล', 10, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(31, 'CAT', 'อบิสซิเนียน', 11, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(32, 'CAT', 'รัสเซียน บลู', 12, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(33, 'CAT', 'เทอร์กิช แองโกรา', 13, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(34, 'CAT', 'มันชกิ้น', 14, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
+(35, 'CAT', 'แมวมงคล', 15, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00');
 
 -- Reset breeds sequence to continue from 35
 SELECT setval('breeds_id_seq', 35, true);
@@ -640,26 +627,28 @@ BEGIN
     RETURN QUERY
     SELECT 
       s.customer_id,
-      s.customer_name,
-      s.customer_phone,
+      c.name as customer_name,
+      c.phone as customer_phone,
       SUM(s.total_amount) as total_spent,
       COUNT(*) as visit_count
     FROM sales s
+    INNER JOIN customers c ON s.customer_id = c.id
     WHERE s.customer_id IS NOT NULL
-    GROUP BY s.customer_id, s.customer_name, s.customer_phone
+    GROUP BY s.customer_id, c.name, c.phone
     ORDER BY COUNT(*) DESC
     LIMIT result_limit;
   ELSE
     RETURN QUERY
     SELECT 
       s.customer_id,
-      s.customer_name,
-      s.customer_phone,
+      c.name as customer_name,
+      c.phone as customer_phone,
       SUM(s.total_amount) as total_spent,
       COUNT(*) as visit_count
     FROM sales s
+    INNER JOIN customers c ON s.customer_id = c.id
     WHERE s.customer_id IS NOT NULL
-    GROUP BY s.customer_id, s.customer_name, s.customer_phone
+    GROUP BY s.customer_id, c.name, c.phone
     ORDER BY SUM(s.total_amount) DESC
     LIMIT result_limit;
   END IF;
@@ -674,8 +663,6 @@ GRANT EXECUTE ON FUNCTION get_top_customers(VARCHAR, INTEGER) TO anon, authentic
 -- ===================================
 CREATE OR REPLACE FUNCTION create_booking_with_pets(
   p_customer_id INTEGER,
-  p_customer_name TEXT,
-  p_phone TEXT,
   p_service_type TEXT,
   p_booking_date DATE,
   p_booking_time TIME,
@@ -690,7 +677,6 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   v_customer_id INTEGER := p_customer_id;
-  v_existing_customer customers%ROWTYPE;
   v_pair JSONB;
   v_new_pet JSONB;
   v_pet_id INTEGER;
@@ -698,32 +684,12 @@ DECLARE
   v_booking bookings%ROWTYPE;
   v_first_service_type TEXT;
 BEGIN
-  IF p_customer_name IS NULL OR TRIM(p_customer_name) = '' THEN
-    RAISE EXCEPTION 'กรุณากรอกชื่อลูกค้า';
-  END IF;
-
-  IF p_phone IS NULL OR TRIM(p_phone) = '' THEN
-    RAISE EXCEPTION 'กรุณากรอกเบอร์โทรศัพท์';
+  IF v_customer_id IS NULL THEN
+    RAISE EXCEPTION 'กรุณาเลือกลูกค้า';
   END IF;
 
   IF p_booking_date IS NULL OR p_booking_time IS NULL THEN
     RAISE EXCEPTION 'กรุณาเลือกวันและเวลา';
-  END IF;
-
-  IF v_customer_id IS NULL THEN
-    SELECT *
-    INTO v_existing_customer
-    FROM customers
-    WHERE phone = p_phone
-    LIMIT 1;
-
-    IF v_existing_customer.id IS NOT NULL THEN
-      RAISE EXCEPTION 'เบอร์โทรนี้มีในระบบแล้ว (%) กรุณาเลือกจากรายการลูกค้า', v_existing_customer.name;
-    END IF;
-
-    INSERT INTO customers(name, phone)
-    VALUES (p_customer_name, p_phone)
-    RETURNING id INTO v_customer_id;
   END IF;
 
   SELECT NULLIF(TRIM(elem->>'serviceType'), '')
@@ -736,9 +702,6 @@ BEGIN
 
   INSERT INTO bookings(
     customer_id,
-    customer_name,
-    phone,
-    service_type,
     booking_date,
     booking_time,
     note,
@@ -748,9 +711,6 @@ BEGIN
   )
   VALUES (
     v_customer_id,
-    p_customer_name,
-    p_phone,
-    v_first_service_type,
     p_booking_date,
     p_booking_time,
     NULLIF(TRIM(p_note), ''),
@@ -828,8 +788,6 @@ $$;
 CREATE OR REPLACE FUNCTION create_sale_with_items(
   p_booking_id INTEGER,
   p_customer_id INTEGER,
-  p_customer_name TEXT,
-  p_customer_phone TEXT,
   p_subtotal NUMERIC,
   p_discount_amount NUMERIC,
   p_promotion_id INTEGER,
@@ -856,8 +814,6 @@ BEGIN
   INSERT INTO sales(
     booking_id,
     customer_id,
-    customer_name,
-    customer_phone,
     subtotal,
     discount_amount,
     promotion_id,
@@ -872,8 +828,6 @@ BEGIN
   VALUES (
     p_booking_id,
     p_customer_id,
-    COALESCE(NULLIF(TRIM(p_customer_name), ''), 'ลูกค้าทั่วไป'),
-    NULLIF(TRIM(p_customer_phone), ''),
     COALESCE(p_subtotal, 0),
     COALESCE(p_discount_amount, 0),
     p_promotion_id,
@@ -896,8 +850,6 @@ BEGIN
       service_id,
       service_name,
       pet_id,
-      pet_name,
-      pet_type,
       original_price,
       final_price,
       is_price_modified
@@ -907,8 +859,6 @@ BEGIN
       NULLIF(v_item->>'serviceId', '')::INTEGER,
       COALESCE(NULLIF(TRIM(v_item->>'serviceName'), ''), 'ไม่ระบุบริการ'),
       NULLIF(v_item->>'petId', '')::INTEGER,
-      NULLIF(TRIM(v_item->>'petName'), ''),
-      NULLIF(TRIM(v_item->>'petType'), ''),
       COALESCE((v_item->>'originalPrice')::NUMERIC, 0),
       COALESCE((v_item->>'finalPrice')::NUMERIC, 0),
       COALESCE((v_item->>'isPriceModified')::BOOLEAN, FALSE)
@@ -927,8 +877,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION create_booking_with_pets(INTEGER, TEXT, TEXT, TEXT, DATE, TIME, TEXT, NUMERIC, TEXT, TEXT, JSONB) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION create_sale_with_items(INTEGER, INTEGER, TEXT, TEXT, NUMERIC, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, TEXT, NUMERIC, NUMERIC, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION create_booking_with_pets(INTEGER, TEXT, DATE, TIME, TEXT, NUMERIC, TEXT, TEXT, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION create_sale_with_items(INTEGER, INTEGER, NUMERIC, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, TEXT, NUMERIC, NUMERIC, JSONB) TO anon, authenticated;
 
 -- ===================================
 -- COMPLETED

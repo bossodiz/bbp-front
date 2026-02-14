@@ -116,7 +116,6 @@ export function AddPetDialog({
   const { breeds } = useBreeds({
     petTypeId: selectedType,
     active: true,
-    includeMixed: false,
     autoFetch: !!selectedType,
   });
 

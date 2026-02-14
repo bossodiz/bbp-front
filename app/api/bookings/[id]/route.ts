@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { Weight } from "lucide-react";
 
 // GET /api/bookings/:id - ดึงข้อมูลนัดหมายตาม ID
 export async function GET(
@@ -13,6 +14,7 @@ export async function GET(
       .select(
         `
         *,
+        customers(id, name, phone),
         booking_pets(pet_id, service_type, pets(id, name, type, breed, weight))
       `,
       )
@@ -32,14 +34,15 @@ export async function GET(
         type: bp.pets.type,
         breed: bp.pets.breed || "ไม่ระบุสายพันธุ์",
         service: bp.service_type,
+        weight: bp.pets.weight,
       })) || [];
 
     // แปลง snake_case เป็น camelCase
     const booking = {
       id: data.id,
       customerId: data.customer_id,
-      customerName: data.customer_name,
-      phone: data.phone,
+      customerName: data.customers?.name || "ไม่พบข้อมูลลูกค้า",
+      phone: data.customers?.phone || "",
       pets,
       bookingDate: new Date(data.booking_date),
       bookingTime: data.booking_time,
@@ -73,8 +76,6 @@ export async function PUT(
     const body = await request.json();
     const {
       customerId,
-      customerName,
-      phone,
       petServicePairs,
       bookingDate,
       bookingTime,
@@ -91,8 +92,6 @@ export async function PUT(
     };
 
     if (customerId !== undefined) updateData.customer_id = customerId;
-    if (customerName !== undefined) updateData.customer_name = customerName;
-    if (phone !== undefined) updateData.phone = phone;
     if (bookingDate !== undefined) updateData.booking_date = bookingDate;
     if (bookingTime !== undefined) updateData.booking_time = bookingTime;
     if (note !== undefined) updateData.note = note;
@@ -221,12 +220,13 @@ export async function PUT(
         throw replaceError;
       }
     }
-    // ดึงข้อมูลนัดหมายพร้อม pets
+    // ดึงข้อมูลนัดหมายพร้อม pets และ customer
     const { data: bookingWithPets } = await supabaseAdmin
       .from("bookings")
       .select(
         `
         *,
+        customers(id, name, phone),
         booking_pets(pet_id, service_type, pets(id, name, type, breeds(name)))
       `,
       )
@@ -247,8 +247,8 @@ export async function PUT(
     const booking = {
       id: data.id,
       customerId: data.customer_id,
-      customerName: data.customer_name,
-      phone: data.phone,
+      customerName: bookingWithPets?.customers?.name || "ไม่พบข้อมูลลูกค้า",
+      phone: bookingWithPets?.customers?.phone || "",
       pets,
       bookingDate: new Date(data.booking_date),
       bookingTime: data.booking_time,
