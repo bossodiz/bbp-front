@@ -34,9 +34,6 @@ export function POSContent() {
   } = usePOSStore();
   const { getBookingById } = useBookingStore();
   const customers = useCustomerStore((state) => state.customers);
-  const addCustomer = useCustomerStore((state) => state.addCustomer);
-  const addPet = useCustomerStore((state) => state.addPet);
-  const setCustomers = useCustomerStore((state) => state.customers);
   const { services } = useServiceStore();
   const setServices = useServiceStore((state) => state.services);
   const { petTypes, sizes, fetchPetTypes, fetchSizes } =
@@ -128,18 +125,27 @@ export function POSContent() {
 
         setSelectedBooking(booking.id);
 
-        // Find or create customer
-        let customerId: number;
-        let existingCustomer = customers.find((c) => c.phone === booking.phone);
-        if (!existingCustomer) {
-          // Create new customer from booking data
-          const newCustomer = addCustomer({
-            name: booking.customerName,
-            phone: booking.phone,
-          });
-          customerId = newCustomer.id;
-        } else {
-          customerId = existingCustomer.id;
+        // Use customerId from booking (from database)
+        const customerId = booking.customerId;
+
+        // Find or sync customer to local store
+        let existingCustomer = customers.find((c) => c.id === customerId);
+        if (!existingCustomer && booking.customerName && booking.phone) {
+          // Add customer to local store with correct database ID
+          // (customerName and phone come from customers table via join)
+          useCustomerStore.setState((state) => ({
+            customers: [
+              ...state.customers,
+              {
+                id: customerId,
+                name: booking.customerName,
+                phone: booking.phone,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                pets: [],
+              },
+            ],
+          }));
         }
 
         setSelectedCustomer(customerId);
@@ -148,7 +154,7 @@ export function POSContent() {
         if (booking.pets && booking.pets.length > 0) {
           // Process each pet sequentially
           booking.pets.forEach((bookingPet) => {
-            // Get fresh customer data (after addCustomer was called)
+            // Get fresh customer data (after syncing customer)
             const currentCustomers = useCustomerStore.getState().customers;
             const currentCustomer = currentCustomers.find(
               (c) => c.id === customerId,
@@ -157,21 +163,70 @@ export function POSContent() {
               return;
             }
 
-            // Try to find existing pet by name and type
+            // Try to find existing pet by ID from booking, or by name and type
             let pet = currentCustomer.pets.find(
-              (p) => p.name === bookingPet.name && p.type === bookingPet.type,
+              (p) => p.id === bookingPet.petId,
             );
 
-            // Create pet if not exists
             if (!pet) {
-              pet = addPet(customerId, {
+              pet = currentCustomer.pets.find(
+                (p) => p.name === bookingPet.name && p.type === bookingPet.type,
+              );
+            }
+
+            // Create or sync pet with correct database ID
+            if (!pet) {
+              // Add pet to local store with correct database ID
+              const newPet = {
+                id: bookingPet.petId,
+                customerId: customerId,
                 name: bookingPet.name,
                 type: bookingPet.type,
                 breed: bookingPet.breed,
                 isMixedBreed: false,
-                weight: 5, // Default weight, should be adjusted
+                weight: bookingPet.weight || 5,
                 note: `สร้างจากการนัดหมาย - บริการ: ${bookingPet.service}`,
-              });
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              };
+
+              useCustomerStore.setState((state) => ({
+                customers: state.customers.map((c) =>
+                  c.id === customerId
+                    ? { ...c, pets: [...c.pets, newPet], updatedAt: new Date() }
+                    : c,
+                ),
+              }));
+
+              pet = newPet;
+            } else if (pet.id !== bookingPet.petId) {
+              // Update pet ID to match database
+              useCustomerStore.setState((state) => ({
+                customers: state.customers.map((c) =>
+                  c.id === customerId
+                    ? {
+                        ...c,
+                        pets: c.pets.map((p) =>
+                          p.name === bookingPet.name &&
+                          p.type === bookingPet.type
+                            ? {
+                                ...p,
+                                id: bookingPet.petId,
+                                weight: bookingPet.weight || p.weight,
+                              }
+                            : p,
+                        ),
+                        updatedAt: new Date(),
+                      }
+                    : c,
+                ),
+              }));
+
+              pet = {
+                ...pet,
+                id: bookingPet.petId,
+                weight: bookingPet.weight || pet.weight,
+              };
             }
 
             // Select the pet

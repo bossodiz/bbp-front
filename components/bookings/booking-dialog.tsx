@@ -70,15 +70,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const bookingSchema = z.object({
-  customerId: z.number().optional(),
-  customerName: z.string().min(1, "กรุณากรอกชื่อลูกค้า"),
-  phone: z
-    .string()
-    .min(1, "กรุณากรอกเบอร์โทรศัพท์")
-    .refine(
-      (val) => getPhoneDigits(val).length === 10,
-      "เบอร์โทรศัพท์ต้องมี 10 หลัก",
-    ),
+  customerId: z
+    .number({ required_error: "กรุณาเลือกลูกค้า" })
+    .min(1, "กรุณาเลือกลูกค้า"),
   bookingDate: z.date({
     required_error: "กรุณาเลือกวันที่",
   }),
@@ -122,6 +116,10 @@ const timeSlots = [
   "17:00",
   "17:30",
   "18:00",
+  "18:30",
+  "19:00",
+  "19:30",
+  "20:00",
 ];
 
 const serviceTypeOptions = ["อาบน้ำ", "อาบน้ำ + ตัดขน"];
@@ -158,8 +156,6 @@ export function BookingDialog({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
       customerId: undefined,
-      customerName: "",
-      phone: "",
       bookingDate: defaultDate || new Date(),
       bookingTime: "",
       note: "",
@@ -196,8 +192,6 @@ export function BookingDialog({
 
         form.reset({
           customerId: booking.customerId,
-          customerName: booking.customerName,
-          phone: formatPhoneInput(booking.phone),
           bookingDate: new Date(booking.bookingDate),
           bookingTime: timeValue,
           note: booking.note || "",
@@ -211,8 +205,6 @@ export function BookingDialog({
         setPetServicePairs([{ serviceType: "" }]);
         form.reset({
           customerId: undefined,
-          customerName: "",
-          phone: "",
           bookingDate: defaultDate || new Date(),
           bookingTime: "",
           note: "",
@@ -228,23 +220,15 @@ export function BookingDialog({
     setSelectedCustomer(customer);
     setIsNewCustomer(false);
     form.setValue("customerId", customer.id);
-    form.setValue("customerName", customer.name);
-    form.setValue("phone", formatPhoneInput(customer.phone));
     setCustomerSearchOpen(false);
     // รีเซ็ต pet service pairs
     setPetServicePairs([{ serviceType: "" }]);
   };
 
-  // Handle new customer
+  // Handle new customer - redirect to customer management
   const handleNewCustomer = () => {
-    setSelectedCustomer(null);
-    setIsNewCustomer(true);
-    form.setValue("customerId", undefined);
-    form.setValue("customerName", "");
-    form.setValue("phone", "");
+    toast.info("กรุณาเพิ่มลูกค้าจากเมนูลูกค้าก่อน");
     setCustomerSearchOpen(false);
-    // รีเซ็ต pet service pairs
-    setPetServicePairs([{ serviceType: "" }]);
   };
 
   // Pet service pair management
@@ -328,9 +312,7 @@ export function BookingDialog({
       const serviceType = validPairs[0].serviceType;
 
       const bookingData = {
-        customerId: data.customerId,
-        customerName: data.customerName,
-        phone: getPhoneDigits(data.phone),
+        customerId: data.customerId!,
         petServicePairs: validPairs, // ส่ง petServicePairs ไปให้ API
         serviceType,
         bookingDate: formatDateForAPI(data.bookingDate), // Convert Date to YYYY-MM-DD string
@@ -414,9 +396,7 @@ export function BookingDialog({
                       >
                         {selectedCustomer
                           ? `${selectedCustomer.name} (${formatPhoneDisplay(selectedCustomer.phone)})`
-                          : isNewCustomer
-                            ? "ลูกค้าใหม่"
-                            : "เลือกลูกค้า หรือเพิ่มลูกค้าใหม่"}
+                          : "เลือกลูกค้า"}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
@@ -467,52 +447,8 @@ export function BookingDialog({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="customerName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ชื่อลูกค้า</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="เช่น คุณสมชาย"
-                          {...field}
-                          disabled={isEditing || !isNewCustomer}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>เบอร์โทรศัพท์</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="081-234-5678"
-                          value={field.value}
-                          onChange={(e) => {
-                            const formatted = formatPhoneInput(e.target.value);
-                            field.onChange(formatted);
-                          }}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                          disabled={isEditing || !isNewCustomer}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
               {/* Pet Service Pairs - แสดงเมื่อมีลูกค้า */}
-              {(selectedCustomer || isNewCustomer || isEditing) && (
+              {(selectedCustomer || isEditing) && (
                 <div className="space-y-4">
                   <FormLabel>สัตว์เลี้ยงที่ใช้บริการ</FormLabel>
                   {petServicePairs.map((pair, index) => {

@@ -90,9 +90,9 @@ export interface BookingPet {
 
 export interface Booking {
   id: number;
-  customerId?: number;
-  customerName: string;
-  phone: string;
+  customerId: number; // Required - reference to customers table
+  customerName?: string; // Optional - comes from join with customers table
+  phone?: string; // Optional - comes from join with customers table
   pets?: BookingPet[]; // รายการสัตว์เลี้ยงพร้อมข้อมูล
   petIds?: number[]; // รองรับเลือกสัตว์เลี้ยงหลายตัว (สำหรับ POST/PUT)
   serviceType: string;
@@ -123,8 +123,8 @@ export interface Sale {
   id: number;
   bookingId?: number;
   customerId?: number;
-  customerName: string;
-  customerPhone?: string;
+  customerName?: string; // Optional - comes from join with customers table
+  customerPhone?: string; // Optional - comes from join with customers table
   subtotal: number;
   discountAmount: number;
   promotionId?: number;
@@ -144,8 +144,8 @@ export interface SaleItem {
   serviceId: number;
   serviceName: string;
   petId?: number;
-  petName?: string;
-  petType?: "DOG" | "CAT";
+  petName?: string; // Optional - comes from join with pets table
+  petType?: "DOG" | "CAT"; // Optional - comes from join with pets table
   originalPrice: number;
   finalPrice: number;
   isPriceModified: boolean;

@@ -4,9 +4,6 @@ export interface Breed {
   id: number;
   pet_type_id: string;
   name: string;
-  is_mixed: boolean;
-  parent_breed_1_id: number | null;
-  parent_breed_2_id: number | null;
   order_index: number;
   active: boolean;
   created_at: string;
@@ -21,17 +18,11 @@ export interface BreedWithParents extends Breed {
 interface UseBreedsOptions {
   petTypeId?: string;
   active?: boolean;
-  includeMixed?: boolean;
   autoFetch?: boolean;
 }
 
 export function useBreeds(options: UseBreedsOptions = {}) {
-  const {
-    petTypeId,
-    active = true,
-    includeMixed = true,
-    autoFetch = true,
-  } = options;
+  const { petTypeId, active = true, autoFetch = true } = options;
 
   const [breeds, setBreeds] = useState<Breed[]>([]);
   const [loading, setLoading] = useState(false);
@@ -45,8 +36,6 @@ export function useBreeds(options: UseBreedsOptions = {}) {
       const params = new URLSearchParams();
       if (petTypeId) params.append("petTypeId", petTypeId);
       if (active !== undefined) params.append("active", String(active));
-      if (includeMixed !== undefined)
-        params.append("includeMixed", String(includeMixed));
 
       const response = await fetch(`/api/breeds?${params.toString()}`);
 
@@ -61,7 +50,7 @@ export function useBreeds(options: UseBreedsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [petTypeId, active, includeMixed]);
+  }, [petTypeId, active]);
 
   const getBreed = async (id: number): Promise<BreedWithParents | null> => {
     try {
@@ -83,9 +72,6 @@ export function useBreeds(options: UseBreedsOptions = {}) {
   const createBreed = async (breedData: {
     pet_type_id: string;
     name: string;
-    is_mixed?: boolean;
-    parent_breed_1_id?: number | null;
-    parent_breed_2_id?: number | null;
     order_index: number;
     active?: boolean;
   }): Promise<Breed> => {

@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
+        customers(id, name, phone),
         sale_items (
           *,
           pets (id, name, type)
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
+        customers(id, name, phone),
         booking_pets (
           pet_id,
           service_type,
@@ -76,13 +78,13 @@ export async function GET(request: NextRequest) {
     const sales = salesData.map((sale) => ({
       id: sale.id,
       customerId: sale.customer_id,
-      customerName: sale.customer_name,
-      customerPhone: sale.customer_phone,
+      customerName: sale.customers?.name || "ไม่ระบุลูกค้า",
+      customerPhone: sale.customers?.phone || null,
       totalAmount: parseFloat(sale.total_amount),
       items: sale.sale_items.map((item: any) => ({
         id: item.id,
         petId: item.pet_id,
-        petType: item.pet_type,
+        petType: item.pets?.type || null,
         serviceId: item.service_id,
         serviceName: item.service_name,
         quantity: item.quantity,
@@ -104,8 +106,8 @@ export async function GET(request: NextRequest) {
     const bookings = bookingsData.map((booking) => ({
       id: booking.id,
       customerId: booking.customer_id,
-      customerName: booking.customer_name,
-      phone: booking.phone,
+      customerName: booking.customers?.name || "ไม่ระบุลูกค้า",
+      phone: booking.customers?.phone || null,
       pets:
         booking.booking_pets?.map((bp: any) => ({
           petId: bp.pet_id,

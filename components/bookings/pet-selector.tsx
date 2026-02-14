@@ -74,7 +74,6 @@ export function PetSelector({
   const { breeds } = useBreeds({
     petTypeId: newPetForm.type,
     active: true,
-    includeMixed: false,
     autoFetch: !!newPetForm.type,
   });
 

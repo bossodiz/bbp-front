@@ -34,8 +34,6 @@ export async function POST(request: NextRequest) {
       {
         p_booking_id: bookingId ?? null,
         p_customer_id: customerId ?? null,
-        p_customer_name: customerName ?? "ลูกค้าทั่วไป",
-        p_customer_phone: customerPhone ?? null,
         p_subtotal: subtotal ?? 0,
         p_discount_amount: discountAmount ?? 0,
         p_promotion_id: promotionId ?? null,
@@ -81,7 +79,11 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
-        sale_items(*)
+        customers(id, name, phone),
+        sale_items(
+          *,
+          pets(id, name, type)
+        )
       `,
       )
       .order("created_at", { ascending: false })
@@ -105,8 +107,8 @@ export async function GET(request: NextRequest) {
       id: sale.id,
       bookingId: sale.booking_id,
       customerId: sale.customer_id,
-      customerName: sale.customer_name || "ไม่ระบุ",
-      customerPhone: sale.customer_phone,
+      customerName: sale.customers?.name || "ไม่ระบุลูกค้า",
+      customerPhone: sale.customers?.phone || null,
       subtotal: parseFloat(sale.subtotal || 0),
       discountAmount: parseFloat(sale.discount_amount || 0),
       promotionId: sale.promotion_id,
@@ -122,8 +124,8 @@ export async function GET(request: NextRequest) {
         serviceId: item.service_id,
         serviceName: item.service_name || "ไม่ระบุบริการ",
         petId: item.pet_id,
-        petName: item.pet_name,
-        petType: item.pet_type,
+        petName: item.pets?.name || null,
+        petType: item.pets?.type || null,
         originalPrice: parseFloat(item.original_price || 0),
         finalPrice: parseFloat(item.final_price || 0),
         isPriceModified: item.is_price_modified || false,

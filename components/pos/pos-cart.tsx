@@ -225,15 +225,12 @@ export function POSCart() {
       // Prepare sale data
       const saleData = {
         bookingId: selectedBookingId,
-        customerId: customer?.id || null,
-        customerName: customer?.name || booking?.customerName || "ลูกค้าทั่วไป",
-        customerPhone: customer?.phone || booking?.phone || null,
+        customerId:
+          selectedCustomerId || customer?.id || booking?.customerId || null,
         items: cart.map((item) => ({
           serviceId: item.serviceId,
           serviceName: item.serviceName,
           petId: item.petId,
-          petName: item.petName,
-          petType: item.petType,
           originalPrice: item.originalPrice,
           finalPrice: item.finalPrice,
           isPriceModified: item.isPriceModified,

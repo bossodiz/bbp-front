@@ -731,12 +731,12 @@ export function ServiceHistoryList() {
               {/* Customer Info */}
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-sm text-muted-foreground">ลูกค้า</p>
-                <p className="font-medium">{selectedBill.customerName}</p>
-                {selectedBill.customerPhone && (
-                  <p className="text-sm text-muted-foreground">
-                    {formatPhoneDisplay(selectedBill.customerPhone)}
-                  </p>
-                )}
+                <p className="font-medium">
+                  {selectedBill.customerName}
+                  {selectedBill.customerPhone && (
+                    <> ({formatPhoneDisplay(selectedBill.customerPhone)})</>
+                  )}
+                </p>
               </div>
 
               {/* Services */}

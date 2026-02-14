@@ -135,7 +135,6 @@ export function PetDialog({
   } = useBreeds({
     petTypeId: selectedType,
     active: true,
-    includeMixed: false, // Only show pure breeds for selection
     autoFetch: !!selectedType,
   });
 
