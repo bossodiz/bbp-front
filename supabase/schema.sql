@@ -619,39 +619,29 @@ RETURNS TABLE (
   customer_phone TEXT,
   total_spent NUMERIC,
   visit_count BIGINT
-) 
+)
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  IF sort_by = 'visit_count' THEN
-    RETURN QUERY
-    SELECT 
-      s.customer_id,
-      c.name as customer_name,
-      c.phone as customer_phone,
-      SUM(s.total_amount) as total_spent,
-      COUNT(*) as visit_count
-    FROM sales s
-    INNER JOIN customers c ON s.customer_id = c.id
-    WHERE s.customer_id IS NOT NULL
-    GROUP BY s.customer_id, c.name, c.phone
-    ORDER BY COUNT(*) DESC
-    LIMIT result_limit;
-  ELSE
-    RETURN QUERY
-    SELECT 
-      s.customer_id,
-      c.name as customer_name,
-      c.phone as customer_phone,
-      SUM(s.total_amount) as total_spent,
-      COUNT(*) as visit_count
-    FROM sales s
-    INNER JOIN customers c ON s.customer_id = c.id
-    WHERE s.customer_id IS NOT NULL
-    GROUP BY s.customer_id, c.name, c.phone
-    ORDER BY SUM(s.total_amount) DESC
-    LIMIT result_limit;
-  END IF;
+  RETURN QUERY
+  SELECT
+    s.customer_id,
+    c.name::TEXT,
+    c.phone::TEXT,
+    SUM(s.total_amount + s.deposit_used)::NUMERIC AS total_spent,
+    COUNT(*)::BIGINT             AS visit_count
+  FROM sales s
+  INNER JOIN customers c ON c.id = s.customer_id
+  WHERE s.customer_id IS NOT NULL
+  GROUP BY s.customer_id, c.name, c.phone
+  ORDER BY
+    CASE WHEN sort_by = 'visit_count'
+         THEN COUNT(*)
+    END DESC,
+    CASE WHEN sort_by <> 'visit_count'
+         THEN SUM(s.total_amount)
+    END DESC
+  LIMIT result_limit;
 END;
 $$;
 
@@ -663,7 +653,6 @@ GRANT EXECUTE ON FUNCTION get_top_customers(VARCHAR, INTEGER) TO anon, authentic
 -- ===================================
 CREATE OR REPLACE FUNCTION create_booking_with_pets(
   p_customer_id INTEGER,
-  p_service_type TEXT,
   p_booking_date DATE,
   p_booking_time TIME,
   p_note TEXT,
@@ -682,7 +671,6 @@ DECLARE
   v_pet_id INTEGER;
   v_existing_pet pets%ROWTYPE;
   v_booking bookings%ROWTYPE;
-  v_first_service_type TEXT;
 BEGIN
   IF v_customer_id IS NULL THEN
     RAISE EXCEPTION 'กรุณาเลือกลูกค้า';
@@ -691,14 +679,6 @@ BEGIN
   IF p_booking_date IS NULL OR p_booking_time IS NULL THEN
     RAISE EXCEPTION 'กรุณาเลือกวันและเวลา';
   END IF;
-
-  SELECT NULLIF(TRIM(elem->>'serviceType'), '')
-  INTO v_first_service_type
-  FROM jsonb_array_elements(COALESCE(p_pet_service_pairs, '[]'::jsonb)) AS elem
-  WHERE NULLIF(TRIM(elem->>'serviceType'), '') IS NOT NULL
-  LIMIT 1;
-
-  v_first_service_type := COALESCE(v_first_service_type, NULLIF(TRIM(p_service_type), ''), '');
 
   INSERT INTO bookings(
     customer_id,
@@ -877,7 +857,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION create_booking_with_pets(INTEGER, TEXT, DATE, TIME, TEXT, NUMERIC, TEXT, TEXT, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION create_booking_with_pets(INTEGER, DATE, TIME, TEXT, NUMERIC, TEXT, TEXT, JSONB) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION create_sale_with_items(INTEGER, INTEGER, NUMERIC, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, TEXT, NUMERIC, NUMERIC, JSONB) TO anon, authenticated;
 
 -- ===================================

@@ -70,9 +70,6 @@ export function POSCustomerSelector() {
               จากนัดหมาย: {booking.customerName}
             </p>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-xs">
-                {booking.serviceType}
-              </Badge>
               {booking.depositStatus === "HELD" && (
                 <Badge className="text-xs bg-success/10 text-success">
                   มัดจำ {formatCurrency(booking.depositAmount)}

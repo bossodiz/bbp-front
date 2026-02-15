@@ -95,7 +95,6 @@ export interface Booking {
   phone?: string; // Optional - comes from join with customers table
   pets?: BookingPet[]; // รายการสัตว์เลี้ยงพร้อมข้อมูล
   petIds?: number[]; // รองรับเลือกสัตว์เลี้ยงหลายตัว (สำหรับ POST/PUT)
-  serviceType: string;
   bookingDate: Date;
   bookingTime: string;
   note?: string;
