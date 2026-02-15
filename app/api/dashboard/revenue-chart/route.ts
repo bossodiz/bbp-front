@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     // ดึงข้อมูล sales
     const { data: salesData, error: salesError } = await supabaseAdmin
       .from("sales")
-      .select("id, total_amount, created_at")
+      .select("id, total_revenue:total_amount, deposit_used, created_at")
       .gte("created_at", startDate.toISOString())
       .lt("created_at", endDate.toISOString())
       .order("created_at", { ascending: false });
@@ -50,7 +50,8 @@ export async function GET(request: NextRequest) {
 
     const sales = salesData.map((sale) => ({
       id: sale.id,
-      totalAmount: parseFloat(sale.total_amount),
+      totalAmount:
+        parseFloat(sale.total_revenue) + parseFloat(sale.deposit_used),
       createdAt: sale.created_at,
     }));
 
