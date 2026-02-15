@@ -25,28 +25,30 @@ export async function GET(request: NextRequest) {
     // 1. รายได้วันนี้
     const { data: salesToday, error: salesTodayError } = await supabaseAdmin
       .from("sales")
-      .select("total_amount")
+      .select("total_revenue:total_amount, deposit_used")
       .gte("created_at", startTodayUtc)
       .lt("created_at", startTomorrowUtc);
 
     if (salesTodayError) throw salesTodayError;
 
-    const revenueToday = salesToday.reduce(
-      (sum, sale) => sum + parseFloat(sale.total_amount),
+    const revenueToday = (salesToday ?? []).reduce(
+      (sum, row) =>
+        sum + Number(row.total_revenue || 0) + Number(row.deposit_used || 0),
       0,
     );
 
     // 2. รายได้เดือนนี้
     const { data: salesMonthly, error: salesMonthlyError } = await supabaseAdmin
       .from("sales")
-      .select("total_amount")
+      .select("total_revenue:total_amount, deposit_used")
       .gte("created_at", firstDayOfMonth.toISOString())
       .lt("created_at", startTomorrowUtc);
 
     if (salesMonthlyError) throw salesMonthlyError;
 
-    const revenueMonthly = salesMonthly.reduce(
-      (sum, sale) => sum + parseFloat(sale.total_amount),
+    const revenueMonthly = (salesMonthly ?? []).reduce(
+      (sum, sale) =>
+        sum + Number(sale.total_revenue || 0) + Number(sale.deposit_used || 0),
       0,
     );
 
