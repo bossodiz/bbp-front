@@ -308,13 +308,9 @@ export function BookingDialog({
         return;
       }
 
-      // ใช้บริการแรกเป็น serviceType หลัก (สำหรับ backward compatibility)
-      const serviceType = validPairs[0].serviceType;
-
       const bookingData = {
         customerId: data.customerId!,
         petServicePairs: validPairs, // ส่ง petServicePairs ไปให้ API
-        serviceType,
         bookingDate: formatDateForAPI(data.bookingDate), // Convert Date to YYYY-MM-DD string
         bookingTime: data.bookingTime,
         note: data.note,

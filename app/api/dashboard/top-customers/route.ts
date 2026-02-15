@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(topCustomers);
   } catch (error) {
+    console.error("Error fetching top customers:", error);
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลลูกค้าประจำได้" },
       { status: 500 },

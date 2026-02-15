@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
-// GET /api/dashboard/pet-service-chart - ดึงข้อมูลกราฟสัตว์เข้ารับบริการ
+type Period = "weekly" | "monthly" | "yearly" | "last12months";
+type PetType = "DOG" | "CAT";
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const period = searchParams.get("period") || "weekly"; // weekly, monthly, yearly
+    const period = (searchParams.get("period") as Period) || "weekly";
 
     const now = new Date();
     const today = new Date(now);
@@ -18,18 +20,15 @@ export async function GET(request: NextRequest) {
     switch (period) {
       case "weekly":
         startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - 6); // 7 วัน
+        startDate.setDate(startDate.getDate() - 6);
         break;
       case "monthly":
-        // เริ่มจากวันที่ 1 ของเดือนปัจจุบัน
         startDate = new Date(today.getFullYear(), today.getMonth(), 1);
         break;
       case "yearly":
-        // เริ่มจากวันที่ 1 มกราคมของปีปัจจุบัน
         startDate = new Date(today.getFullYear(), 0, 1);
         break;
       case "last12months":
-        // 12 เดือนย้อนหลัง
         startDate = new Date(today);
         startDate.setFullYear(startDate.getFullYear() - 1);
         break;
@@ -38,7 +37,6 @@ export async function GET(request: NextRequest) {
         startDate.setDate(startDate.getDate() - 6);
     }
 
-    // ดึงข้อมูล sales พร้อม sale_items
     const { data: salesData, error: salesError } = await supabaseAdmin
       .from("sales")
       .select(
@@ -46,7 +44,8 @@ export async function GET(request: NextRequest) {
         id,
         created_at,
         sale_items (
-          pet_type
+          pet_id,
+          pets (id, type)
         )
       `,
       )
@@ -56,13 +55,35 @@ export async function GET(request: NextRequest) {
 
     if (salesError) throw salesError;
 
-    const sales = salesData.map((sale: any) => ({
-      id: sale.id,
-      createdAt: sale.created_at,
-      items: sale.sale_items.map((item: any) => ({
-        petType: item.pet_type,
-      })),
-    }));
+    const sales = (salesData ?? []).map((sale: any) => {
+      const uniquePets = new Map<
+        number,
+        { id: number; type: PetType | null }
+      >();
+
+      for (const item of sale.sale_items ?? []) {
+        const petId: number | null = item.pet_id ?? item.pets?.id ?? null;
+        if (!petId) continue;
+
+        if (!uniquePets.has(petId)) {
+          uniquePets.set(petId, {
+            id: petId,
+            type: (item.pets?.type as PetType) ?? null,
+          });
+        }
+      }
+
+      return {
+        id: sale.id,
+        createdAt: sale.created_at,
+        // จะได้รายการ pets แบบไม่ซ้ำแล้ว
+        pets: Array.from(uniquePets.values()),
+        // หรือถ้าคุณอยากคง items เป็น petType ก็ได้
+        items: Array.from(uniquePets.values()).map((p) => ({
+          petType: p.type,
+        })),
+      };
+    });
 
     return NextResponse.json({
       sales,

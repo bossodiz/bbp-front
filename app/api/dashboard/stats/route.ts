@@ -58,7 +58,8 @@ export async function GET(request: NextRequest) {
           `
         id,
         sale_items (
-          pet_type
+          pet_id,
+          pets (id, type)
         )
       `,
         )
@@ -67,18 +68,27 @@ export async function GET(request: NextRequest) {
 
     if (salesTodayItemsError) throw salesTodayItemsError;
 
-    let dogsToday = 0;
-    let catsToday = 0;
+    type PetType = "DOG" | "CAT";
 
-    salesTodayItems.forEach((sale: any) => {
-      sale.sale_items.forEach((item: any) => {
-        if (item.pet_type === "DOG") {
-          dogsToday++;
-        } else if (item.pet_type === "CAT") {
-          catsToday++;
-        }
-      });
-    });
+    interface Pet {
+      id: number;
+      type: PetType;
+    }
+
+    const { dogsToday, catsToday } = salesTodayItems
+      .flatMap((sale: any) => sale.sale_items.map((i: any) => i.pets))
+      .filter(Boolean)
+      .reduce(
+        (acc, pet: Pet) => {
+          if (!acc.seen.has(pet.id)) {
+            acc.seen.add(pet.id);
+            if (pet.type === "DOG") acc.dogsToday++;
+            if (pet.type === "CAT") acc.catsToday++;
+          }
+          return acc;
+        },
+        { dogsToday: 0, catsToday: 0, seen: new Set<number>() },
+      );
 
     // 4. นัดหมายวันนี้ (ทุก status)
     const todayDateStr = new Date().toLocaleDateString("sv-SE");

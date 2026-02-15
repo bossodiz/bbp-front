@@ -119,7 +119,6 @@ export async function GET(request: NextRequest) {
               : bp.pets?.breed || "ไม่ระบุสายพันธุ์",
           service: bp.service_type,
         })) || [],
-      serviceType: booking.service_type,
       bookingDate: booking.booking_date,
       bookingTime: booking.booking_time,
       note: booking.note,
@@ -140,7 +139,10 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
-        sale_items (*)
+        sale_items (
+          *,
+          pets (id, type)
+        )
       `,
       )
       .gte("created_at", todayStart.toISOString())
@@ -171,7 +173,7 @@ export async function GET(request: NextRequest) {
         s.sale_items.some((item: any) => item.pet_id === petId),
       );
       const item = sale?.sale_items.find((item: any) => item.pet_id === petId);
-      return item?.pet_type === "DOG";
+      return item?.pets?.type === "DOG";
     }).length;
 
     const todayCats = Array.from(todayPets).filter((petId) => {
@@ -179,7 +181,7 @@ export async function GET(request: NextRequest) {
         s.sale_items.some((item: any) => item.pet_id === petId),
       );
       const item = sale?.sale_items.find((item: any) => item.pet_id === petId);
-      return item?.pet_type === "CAT";
+      return item?.pets?.type === "CAT";
     }).length;
 
     const todayBookingsCount = todayBookingsData?.length || 0;

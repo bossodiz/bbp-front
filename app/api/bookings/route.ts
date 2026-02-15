@@ -91,7 +91,6 @@ export async function GET(request: NextRequest) {
         customerName: booking.customers?.name || "ไม่พบข้อมูลลูกค้า",
         phone: booking.customers?.phone || "",
         pets,
-        serviceType: booking.service_type,
         bookingDate: new Date(booking.booking_date),
         bookingTime: booking.booking_time,
         note: booking.note,
@@ -122,7 +121,6 @@ export async function POST(request: NextRequest) {
     const {
       customerId,
       petServicePairs,
-      serviceType,
       bookingDate,
       bookingTime,
       note,
@@ -131,7 +129,7 @@ export async function POST(request: NextRequest) {
       status,
     } = body;
 
-    if (!customerId || !serviceType || !bookingDate || !bookingTime) {
+    if (!customerId || !bookingDate || !bookingTime) {
       return NextResponse.json(
         { error: "กรุณากรอกข้อมูลให้ครบถ้วน" },
         { status: 400 },
@@ -142,7 +140,6 @@ export async function POST(request: NextRequest) {
       "create_booking_with_pets",
       {
         p_customer_id: customerId,
-        p_service_type: serviceType,
         p_booking_date: bookingDate,
         p_booking_time: bookingTime,
         p_note: note ?? null,
