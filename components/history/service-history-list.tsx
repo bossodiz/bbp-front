@@ -625,14 +625,30 @@ export function ServiceHistoryList() {
                                                 <p className="text-sm font-medium">
                                                   {formatDate(sale.createdAt)}
                                                 </p>
-                                                <Badge
-                                                  variant="outline"
-                                                  className="text-xs px-1.5 py-0"
-                                                >
-                                                  {saleTypeLabels[
-                                                    sale.saleType as SaleType
-                                                  ] || "บริการ"}
-                                                </Badge>
+                                                {(() => {
+                                                  const itemTypes = new Set(
+                                                    (sale.items || [])
+                                                      .map(
+                                                        (item) => item.itemType,
+                                                      )
+                                                      .filter(Boolean),
+                                                  );
+                                                  return Array.from(
+                                                    itemTypes,
+                                                  ).map((type) => (
+                                                    <Badge
+                                                      key={type}
+                                                      variant="outline"
+                                                      className="text-xs px-1.5 py-0"
+                                                    >
+                                                      {
+                                                        itemTypeLabels[
+                                                          type as ItemType
+                                                        ]
+                                                      }
+                                                    </Badge>
+                                                  ));
+                                                })()}
                                               </div>
                                               <p className="text-xs text-muted-foreground">
                                                 {(sale.items || []).length}{" "}

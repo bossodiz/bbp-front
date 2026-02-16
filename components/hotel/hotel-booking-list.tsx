@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import {
@@ -38,10 +39,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { HotelBookingDialog } from "./hotel-booking-dialog";
-import { HotelCheckoutDialog } from "./hotel-checkout-dialog";
 import { useHotel } from "@/lib/hooks/use-hotel";
-import type { HotelBooking, HotelBookingStatus, DepositStatus } from "@/lib/types";
-import { hotelStatusLabels, depositStatusLabels, petTypeLabels } from "@/lib/types";
+import { usePOSStore } from "@/lib/store";
+import type {
+  HotelBooking,
+  HotelBookingStatus,
+  DepositStatus,
+} from "@/lib/types";
+import {
+  hotelStatusLabels,
+  depositStatusLabels,
+  petTypeLabels,
+} from "@/lib/types";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -64,15 +73,26 @@ interface HotelBookingListProps {
 }
 
 export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
-  const statusFilter = showAll
-    ? undefined
-    : "RESERVED,CHECKED_IN";
-  const { bookings, loading, fetchBookings, checkIn, cancelBooking, deleteBooking } =
-    useHotel({ status: statusFilter });
-  const [editingBooking, setEditingBooking] = useState<HotelBooking | null>(null);
-  const [checkoutBooking, setCheckoutBooking] = useState<HotelBooking | null>(null);
-  const [cancelingBooking, setCancelingBooking] = useState<HotelBooking | null>(null);
-  const [deletingBooking, setDeletingBooking] = useState<HotelBooking | null>(null);
+  const statusFilter = showAll ? undefined : "RESERVED,CHECKED_IN";
+  const router = useRouter();
+  const { setHotelBooking } = usePOSStore();
+  const {
+    bookings,
+    loading,
+    fetchBookings,
+    checkIn,
+    cancelBooking,
+    deleteBooking,
+  } = useHotel({ status: statusFilter });
+  const [editingBooking, setEditingBooking] = useState<HotelBooking | null>(
+    null,
+  );
+  const [cancelingBooking, setCancelingBooking] = useState<HotelBooking | null>(
+    null,
+  );
+  const [deletingBooking, setDeletingBooking] = useState<HotelBooking | null>(
+    null,
+  );
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("th-TH", {
@@ -309,7 +329,10 @@ export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={() => setCheckoutBooking(booking)}
+                  onClick={() => {
+                    setHotelBooking(booking.customerId, booking.id);
+                    router.push("/pos");
+                  }}
                 >
                   <LogOut className="mr-1 h-3 w-3" />
                   Checkout
@@ -440,18 +463,6 @@ export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
         booking={editingBooking}
         onSuccess={fetchBookings}
       />
-
-      {/* Checkout Dialog */}
-      {checkoutBooking && (
-        <HotelCheckoutDialog
-          open={checkoutBooking !== null}
-          onOpenChange={(open) => {
-            if (!open) setCheckoutBooking(null);
-          }}
-          booking={checkoutBooking}
-          onSuccess={fetchBookings}
-        />
-      )}
 
       {/* Cancel Confirmation */}
       <AlertDialog

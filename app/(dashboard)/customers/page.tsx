@@ -19,7 +19,7 @@ export default function CustomersPage() {
       () => {
         fetchCustomers(searchQuery || undefined);
       },
-      searchQuery ? 300 : 0,
+      searchQuery ? 500 : 0,
     ); // No delay for initial load
 
     return () => clearTimeout(timer);

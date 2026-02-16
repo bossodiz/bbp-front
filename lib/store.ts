@@ -496,6 +496,7 @@ interface POSStore {
   togglePetSelection: (petId: number) => void;
   setSelectedBooking: (bookingId: number | null) => void;
   setAppliedPromotion: (promotionId: number | null) => void;
+  setHotelBooking: (customerId: number, bookingId: number) => void;
   resetPOS: () => void;
 }
 
@@ -562,6 +563,16 @@ export const usePOSStore = create<POSStore>((set) => ({
 
   setAppliedPromotion: (promotionId) => {
     set({ appliedPromotionId: promotionId });
+  },
+
+  setHotelBooking: (customerId, bookingId) => {
+    set({
+      cart: [],
+      selectedCustomerId: customerId,
+      selectedPetIds: [],
+      selectedBookingId: bookingId,
+      appliedPromotionId: null,
+    });
   },
 
   resetPOS: () => {

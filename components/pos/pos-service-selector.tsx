@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Scissors, Plus, Dog, Cat } from "lucide-react";
+import { Scissors, Plus, Dog, Cat, Package } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,12 +20,14 @@ import {
   useCustomerStore,
   useServiceConfigStore,
 } from "@/lib/store";
+import { useProducts } from "@/lib/hooks/use-products";
 import { petTypeLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export function POSServiceSelector() {
   const { services } = useServiceStore();
+  const { products } = useProducts();
   const { petTypes, getSizesForPetType } = useServiceConfigStore();
   const { addToCart, selectedPetIds, selectedCustomerId, cart } = usePOSStore();
   const { customers } = useCustomerStore();
@@ -80,7 +83,7 @@ export function POSServiceSelector() {
     );
   };
 
-  const getSizeName = (sizeId: string | undefined) => {
+  const getSizeName = (sizeId: string | null | undefined) => {
     if (!sizeId) return "";
     // Search in all sizes
     const allPetTypes = petTypes;
@@ -131,8 +134,8 @@ export function POSServiceSelector() {
     // Get pet info if petId is provided
     const pet = petId ? selectedPets.find((p) => p.id === petId) : undefined;
 
-    const petTypeId = getPetTypeIdForPet(pet?.type);
-    const petWeight = pet?.weight;
+    const petTypeId = pet?.type ? getPetTypeIdForPet(pet.type) : "DOG";
+    const petWeight = pet?.weight ?? null;
     const estSizeId = estimateSizeFromWeight(petWeight, petTypeId);
     const sizeName = service.isSpecial ? "" : getSizeName(estSizeId);
 
@@ -142,9 +145,9 @@ export function POSServiceSelector() {
       originalPrice: price,
       finalPrice: price,
       isPriceModified: false,
-      petId: petId || null,
-      petName: pet?.name,
-      petType: pet?.type,
+      petId: petId ?? null,
+      petName: pet?.name ?? undefined,
+      petType: pet?.type ?? undefined,
     });
 
     toast.success(
@@ -177,9 +180,37 @@ export function POSServiceSelector() {
   // Separate services into regular and special
   const regularServices = services.filter((s) => !s.isSpecial && s.active);
   const specialServices = services.filter((s) => s.isSpecial && s.active);
+  const activeProducts = products.filter((p) => p.active);
 
-  // Don't show service selector if customer and pets are not selected
-  if (!selectedCustomerId || selectedPets.length === 0) {
+  const handleAddProduct = (
+    productId: number,
+    productName: string,
+    price: number,
+  ) => {
+    const isInCart = cart.some(
+      (item) => item.serviceId === productId && !item.petId,
+    );
+    if (isInCart) {
+      toast.error("สินค้านี้อยู่ในรายการแล้ว");
+      return;
+    }
+
+    addToCart({
+      serviceId: productId,
+      serviceName: productName,
+      originalPrice: price,
+      finalPrice: price,
+      isPriceModified: false,
+      petId: null,
+      petName: undefined,
+      petType: undefined,
+    });
+
+    toast.success(`เพิ่ม "${productName}" ลงตะกร้าแล้ว`);
+  };
+
+  // Don't show service selector if customer is not selected
+  if (!selectedCustomerId) {
     return null;
   }
 
@@ -187,130 +218,80 @@ export function POSServiceSelector() {
     <>
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Scissors className="h-5 w-5" />
-            เลือกบริการ
-          </CardTitle>
+          <CardTitle className="text-lg">เลือกรายการ</CardTitle>
         </CardHeader>
         <CardContent>
-          {selectedPets.length > 0 ? (
-            <div className="space-y-4">
-              {selectedPets.map((pet) => {
-                const petTypeId = getPetTypeIdForPet(pet.type);
-                const estimatedSizeId = estimateSizeFromWeight(
-                  pet.weight,
-                  petTypeId,
-                );
+          <Tabs defaultValue="services" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="services" className="flex items-center gap-2">
+                <Scissors className="h-4 w-4" />
+                บริการ
+              </TabsTrigger>
+              <TabsTrigger value="products" className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                สินค้า
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="services">
+              {selectedPets.length > 0 ? (
+                <div className="space-y-4">
+                  {selectedPets.map((pet) => {
+                    const petTypeId = getPetTypeIdForPet(pet.type);
+                    const estimatedSizeId = estimateSizeFromWeight(
+                      pet.weight,
+                      petTypeId,
+                    );
 
-                return (
-                  <div key={pet.id} className="space-y-3">
-                    <div
-                      className={cn(
-                        "flex items-center gap-2 p-2 rounded-lg border",
-                        pet.type === "DOG"
-                          ? "bg-dog/10 border-dog/20"
-                          : "bg-cat/10 border-cat/20",
-                      )}
-                    >
-                      {pet.type === "DOG" ? (
-                        <Dog className="h-5 w-5 text-dog" />
-                      ) : (
-                        <Cat className="h-5 w-5 text-cat" />
-                      )}
-                      <div>
-                        <p className="font-medium">{pet.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {petTypeLabels[pet.type]} - {pet.breed} (
-                          {pet.weight ? `${pet.weight} kg` : "ไม่ระบุน้ำหนัก"})
-                          {estimatedSizeId && (
-                            <span className="ml-1">
-                              • ขนาด: {getSizeName(estimatedSizeId)}
-                            </span>
+                    return (
+                      <div key={pet.id} className="space-y-3">
+                        <div
+                          className={cn(
+                            "flex items-center gap-2 p-2 rounded-lg border",
+                            pet.type === "DOG"
+                              ? "bg-dog/10 border-dog/20"
+                              : "bg-cat/10 border-cat/20",
                           )}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Regular Services */}
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {regularServices.map((service) => {
-                        const priceInfo = service.prices.find(
-                          (p) =>
-                            p.petTypeId === petTypeId &&
-                            (!estimatedSizeId || p.sizeId === estimatedSizeId),
-                        );
-
-                        if (!priceInfo || priceInfo.price <= 0) return null;
-
-                        // Check if this service+pet combination is already in cart
-                        const isInCart = cart.some(
-                          (item) =>
-                            item.serviceId === service.id &&
-                            item.petId === pet.id,
-                        );
-
-                        return (
-                          <button
-                            key={service.id}
-                            type="button"
-                            disabled={isInCart}
-                            onClick={() =>
-                              handleAddService(
-                                service.id,
-                                service.name,
-                                priceInfo.price,
-                                pet.id,
+                        >
+                          {pet.type === "DOG" ? (
+                            <Dog className="h-5 w-5 text-dog" />
+                          ) : (
+                            <Cat className="h-5 w-5 text-cat" />
+                          )}
+                          <div>
+                            <p className="font-medium">{pet.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {petTypeLabels[pet.type]} - {pet.breed} (
+                              {pet.weight
+                                ? `${pet.weight} kg`
+                                : "ไม่ระบุน้ำหนัก"}
                               )
-                            }
-                            className={cn(
-                              "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
-                              isInCart
-                                ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
-                                : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
-                            )}
-                          >
-                            <div>
-                              <p className="font-medium text-sm">
-                                {service.name} {getSizeName(estimatedSizeId)}
-                              </p>
-                              <p
-                                className={cn(
-                                  "text-lg font-semibold",
-                                  isInCart
-                                    ? "text-muted-foreground"
-                                    : "text-primary",
-                                )}
-                              >
-                                {formatCurrency(priceInfo.price)}
-                              </p>
-                            </div>
-                            {isInCart && (
-                              <Badge variant="secondary" className="text-xs">
-                                เลือกแล้ว
-                              </Badge>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
+                              {estimatedSizeId && (
+                                <span className="ml-1">
+                                  • ขนาด: {getSizeName(estimatedSizeId)}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
 
-                    {/* Special Services Section */}
-                    {specialServices.length > 0 && (
-                      <div className="space-y-2 border-t pt-3 mt-3">
-                        <h4 className="text-sm font-semibold text-muted-foreground">
-                          บริการพิเศษ
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {specialServices.map((service) => {
+                        {/* Regular Services */}
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {regularServices.map((service) => {
+                            const priceInfo = service.prices.find(
+                              (p) =>
+                                p.petTypeId === petTypeId &&
+                                (!estimatedSizeId ||
+                                  p.sizeId === estimatedSizeId),
+                            );
+
+                            if (!priceInfo || priceInfo.price <= 0) return null;
+
                             // Check if this service+pet combination is already in cart
                             const isInCart = cart.some(
                               (item) =>
                                 item.serviceId === service.id &&
                                 item.petId === pet.id,
                             );
-
-                            const price = service.specialPrice || 0;
-                            if (price <= 0) return null;
 
                             return (
                               <button
@@ -321,105 +302,237 @@ export function POSServiceSelector() {
                                   handleAddService(
                                     service.id,
                                     service.name,
-                                    price,
+                                    priceInfo.price,
                                     pet.id,
                                   )
                                 }
                                 className={cn(
-                                  "inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm transition-all",
+                                  "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
                                   isInCart
                                     ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
                                     : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
                                 )}
                               >
-                                <span className="font-medium">
-                                  {service.name}
-                                </span>
-                                <span
-                                  className={cn(
-                                    "font-semibold",
-                                    isInCart
-                                      ? "text-muted-foreground"
-                                      : "text-primary",
-                                  )}
-                                >
-                                  {formatCurrency(price)}
-                                </span>
+                                <div>
+                                  <p className="font-medium text-sm">
+                                    {service.name}{" "}
+                                    {getSizeName(estimatedSizeId)}
+                                  </p>
+                                  <p
+                                    className={cn(
+                                      "text-lg font-semibold",
+                                      isInCart
+                                        ? "text-muted-foreground"
+                                        : "text-primary",
+                                    )}
+                                  >
+                                    {formatCurrency(priceInfo.price)}
+                                  </p>
+                                </div>
+                                {isInCart && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    เลือกแล้ว
+                                  </Badge>
+                                )}
                               </button>
                             );
                           })}
                         </div>
+
+                        {/* Special Services Section */}
+                        {specialServices.length > 0 && (
+                          <div className="space-y-2 border-t pt-3 mt-3">
+                            <h4 className="text-sm font-semibold text-muted-foreground">
+                              บริการพิเศษ
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {specialServices.map((service) => {
+                                // Check if this service+pet combination is already in cart
+                                const isInCart = cart.some(
+                                  (item) =>
+                                    item.serviceId === service.id &&
+                                    item.petId === pet.id,
+                                );
+
+                                const price = service.specialPrice || 0;
+                                if (price <= 0) return null;
+
+                                return (
+                                  <button
+                                    key={service.id}
+                                    type="button"
+                                    disabled={isInCart}
+                                    onClick={() =>
+                                      handleAddService(
+                                        service.id,
+                                        service.name,
+                                        price,
+                                        pet.id,
+                                      )
+                                    }
+                                    className={cn(
+                                      "inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm transition-all",
+                                      isInCart
+                                        ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
+                                        : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
+                                    )}
+                                  >
+                                    <span className="font-medium">
+                                      {service.name}
+                                    </span>
+                                    <span
+                                      className={cn(
+                                        "font-semibold",
+                                        isInCart
+                                          ? "text-muted-foreground"
+                                          : "text-primary",
+                                      )}
+                                    >
+                                      {formatCurrency(price)}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                เลือกลูกค้าและสัตว์เลี้ยงเพื่อดูราคาที่เหมาะสม
-                หรือเลือกบริการด้านล่าง
-              </p>
-              {services.map((service) => (
-                <div key={service.id} className="space-y-2">
-                  <h4 className="font-medium">{service.name}</h4>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {service.prices
-                      .filter((price) => price.price > 0)
-                      .map((price) => (
-                        <button
-                          type="button"
-                          key={price.id}
-                          onClick={() =>
-                            handleAddService(
-                              service.id,
-                              service.name,
-                              price.price,
-                            )
-                          }
-                          className={cn(
-                            "flex items-center justify-between p-3 rounded-lg border text-left hover:border-primary/50 transition-colors",
-                            price.petTypeId === "DOG"
-                              ? "bg-dog/5 hover:bg-dog/10"
-                              : price.petTypeId === "CAT"
-                                ? "bg-cat/5 hover:bg-cat/10"
-                                : "bg-muted/50 hover:bg-muted",
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              variant="outline"
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    เลือกสัตว์เลี้ยงเพื่อดูราคาที่เหมาะสม
+                    หรือเลือกบริการด้านล่าง
+                  </p>
+                  {services.map((service) => (
+                    <div key={service.id} className="space-y-2">
+                      <h4 className="font-medium">{service.name}</h4>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {service.prices
+                          .filter((price) => price.price > 0)
+                          .map((price) => (
+                            <button
+                              type="button"
+                              key={price.id}
+                              onClick={() =>
+                                handleAddService(
+                                  service.id,
+                                  service.name,
+                                  price.price,
+                                )
+                              }
                               className={cn(
-                                "text-xs",
+                                "flex items-center justify-between p-3 rounded-lg border text-left hover:border-primary/50 transition-colors",
                                 price.petTypeId === "DOG"
-                                  ? "border-dog/30 text-dog"
+                                  ? "bg-dog/5 hover:bg-dog/10"
                                   : price.petTypeId === "CAT"
-                                    ? "border-cat/30 text-cat"
-                                    : "",
+                                    ? "bg-cat/5 hover:bg-cat/10"
+                                    : "bg-muted/50 hover:bg-muted",
                               )}
                             >
-                              {getPetTypeName(price.petTypeId)}
-                            </Badge>
-                            <span className="text-sm">
-                              {getSizeName(price.sizeId)}
-                              {getSizeDescription(price.sizeId) && (
-                                <span className="text-muted-foreground ml-1">
-                                  ({getSizeDescription(price.sizeId)})
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-xs",
+                                    price.petTypeId === "DOG"
+                                      ? "border-dog/30 text-dog"
+                                      : price.petTypeId === "CAT"
+                                        ? "border-cat/30 text-cat"
+                                        : "",
+                                  )}
+                                >
+                                  {getPetTypeName(price.petTypeId)}
+                                </Badge>
+                                <span className="text-sm">
+                                  {getSizeName(price.sizeId)}
+                                  {getSizeDescription(price.sizeId) && (
+                                    <span className="text-muted-foreground ml-1">
+                                      ({getSizeDescription(price.sizeId)})
+                                    </span>
+                                  )}
                                 </span>
-                              )}
-                            </span>
-                          </div>
-                          <span className="font-semibold">
-                            {formatCurrency(price.price)}
-                          </span>
-                        </button>
-                      ))}
-                  </div>
+                              </div>
+                              <span className="font-semibold">
+                                {formatCurrency(price.price)}
+                              </span>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
+            </TabsContent>
+            <TabsContent value="products">
+              {activeProducts.length === 0 ? (
+                <div className="text-center py-8">
+                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    ไม่มีสินค้าในระบบ
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {activeProducts.map((product) => {
+                    const isInCart = cart.some(
+                      (item) => item.serviceId === product.id && !item.petId,
+                    );
+
+                    return (
+                      <button
+                        key={product.id}
+                        type="button"
+                        disabled={isInCart}
+                        onClick={() =>
+                          handleAddProduct(
+                            product.id,
+                            product.name,
+                            product.price,
+                          )
+                        }
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
+                          isInCart
+                            ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
+                            : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
+                        )}
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{product.name}</p>
+                          {product.category && (
+                            <p className="text-xs text-muted-foreground">
+                              {product.category}
+                            </p>
+                          )}
+                          <p
+                            className={cn(
+                              "text-lg font-semibold",
+                              isInCart
+                                ? "text-muted-foreground"
+                                : "text-primary",
+                            )}
+                          >
+                            {formatCurrency(product.price)}
+                          </p>
+                        </div>
+                        {isInCart && (
+                          <Badge variant="secondary" className="text-xs">
+                            เลือกแล้ว
+                          </Badge>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 

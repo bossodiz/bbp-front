@@ -154,13 +154,29 @@ export function CustomerList({
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium truncate">
                             {customer.name}
                           </p>
-                          <Badge variant="secondary" className="text-xs">
-                            {customer.pets.length} สัตว์เลี้ยง
-                          </Badge>
+                          {customer.pets.map((pet) => (
+                            <Badge
+                              key={pet.id}
+                              variant="secondary"
+                              className={cn(
+                                "text-xs",
+                                pet.type === "DOG"
+                                  ? "bg-dog/10 text-dog border-dog/30"
+                                  : "bg-cat/10 text-cat border-cat/30",
+                              )}
+                            >
+                              {pet.type === "DOG" ? (
+                                <Dog className="h-3 w-3 mr-1" />
+                              ) : (
+                                <Cat className="h-3 w-3 mr-1" />
+                              )}
+                              {pet.name}
+                            </Badge>
+                          ))}
                         </div>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Phone className="h-3 w-3" />
