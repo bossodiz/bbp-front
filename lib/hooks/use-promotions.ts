@@ -24,7 +24,7 @@ export function usePromotions() {
 
   // สร้างโปรโมชั่นใหม่
   const addPromotion = async (
-    promotionData: Omit<Promotion, "id" | "createdAt">,
+    promotionData: Omit<Promotion, "id" | "createdAt" | "updatedAt">,
   ) => {
     try {
       const response = await fetch("/api/promotions", {

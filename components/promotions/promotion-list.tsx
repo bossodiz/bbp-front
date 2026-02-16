@@ -10,7 +10,7 @@ import { PromotionDialog } from "./promotion-dialog";
 import { usePromotions } from "@/lib/hooks/use-promotions";
 import { useServices } from "@/lib/hooks/use-services";
 import type { Promotion } from "@/lib/types";
-import { promotionTypeLabels } from "@/lib/types";
+import { promotionTypeLabels, applicableToLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -170,9 +170,14 @@ export function PromotionList({
                     >
                       {formatValue(promotion)}
                     </Badge>
-                    <p className="text-xs text-muted-foreground">
-                      {promotionTypeLabels[promotion.type]}
-                    </p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-xs text-muted-foreground">
+                        {promotionTypeLabels[promotion.type]}
+                      </p>
+                      <Badge variant="outline" className="text-xs px-1.5 py-0">
+                        {applicableToLabels[promotion.applicableTo || "ALL"]}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between mt-4 pt-4 border-t">

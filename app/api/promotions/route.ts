@@ -18,6 +18,7 @@ export async function GET() {
       type: promo.type,
       value: parseFloat(promo.value),
       freeServiceId: promo.free_service_id,
+      applicableTo: promo.applicable_to || "ALL",
       active: promo.active,
       startDate: promo.start_date ? new Date(promo.start_date) : undefined,
       endDate: promo.end_date ? new Date(promo.end_date) : undefined,
@@ -38,8 +39,16 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, type, value, freeServiceId, active, startDate, endDate } =
-      body;
+    const {
+      name,
+      type,
+      value,
+      freeServiceId,
+      applicableTo,
+      active,
+      startDate,
+      endDate,
+    } = body;
 
     // Validation
     if (!name || !type || value === undefined) {
@@ -64,6 +73,7 @@ export async function POST(request: NextRequest) {
         type,
         value,
         free_service_id: freeServiceId || null,
+        applicable_to: applicableTo || "ALL",
         active: active !== undefined ? active : true,
         start_date: startDate || null,
         end_date: endDate || null,
@@ -80,6 +90,7 @@ export async function POST(request: NextRequest) {
       type: data.type,
       value: parseFloat(data.value),
       freeServiceId: data.free_service_id,
+      applicableTo: data.applicable_to || "ALL",
       active: data.active,
       startDate: data.start_date ? new Date(data.start_date) : undefined,
       endDate: data.end_date ? new Date(data.end_date) : undefined,

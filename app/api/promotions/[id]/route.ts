@@ -26,6 +26,7 @@ export async function GET(
       type: data.type,
       value: parseFloat(data.value),
       freeServiceId: data.free_service_id,
+      applicableTo: data.applicable_to || "ALL",
       active: data.active,
       startDate: data.start_date ? new Date(data.start_date) : undefined,
       endDate: data.end_date ? new Date(data.end_date) : undefined,
@@ -50,8 +51,16 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, type, value, freeServiceId, active, startDate, endDate } =
-      body;
+    const {
+      name,
+      type,
+      value,
+      freeServiceId,
+      applicableTo,
+      active,
+      startDate,
+      endDate,
+    } = body;
 
     // Validation
     if (type === "FREE_SERVICE" && !freeServiceId) {
@@ -70,6 +79,7 @@ export async function PUT(
     if (type !== undefined) updateData.type = type;
     if (value !== undefined) updateData.value = value;
     if (freeServiceId !== undefined) updateData.free_service_id = freeServiceId;
+    if (applicableTo !== undefined) updateData.applicable_to = applicableTo;
     if (active !== undefined) updateData.active = active;
     if (startDate !== undefined) updateData.start_date = startDate;
     if (endDate !== undefined) updateData.end_date = endDate;
@@ -93,6 +103,7 @@ export async function PUT(
       type: data.type,
       value: parseFloat(data.value),
       freeServiceId: data.free_service_id,
+      applicableTo: data.applicable_to || "ALL",
       active: data.active,
       startDate: data.start_date ? new Date(data.start_date) : undefined,
       endDate: data.end_date ? new Date(data.end_date) : undefined,

@@ -72,12 +72,41 @@ export interface Promotion {
   type: "PERCENT" | "AMOUNT" | "FREE_SERVICE";
   value: number;
   freeServiceId?: number;
+  applicableTo: ApplicableTo;
   active: boolean;
   startDate?: Date;
   endDate?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Product Types
+export interface Product {
+  id: number;
+  name: string;
+  sku?: string;
+  description?: string;
+  category?: string;
+  price: number;
+  cost: number;
+  stockQuantity: number;
+  minStock: number;
+  unit: string;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const productCategoryOptions = [
+  "อาหาร",
+  "ขนม",
+  "ของเล่น",
+  "อุปกรณ์",
+  "เวชภัณฑ์",
+  "แชมพู/สบู่",
+  "เสื้อผ้า",
+  "อื่นๆ",
+] as const;
 
 // Booking Types
 export interface BookingPet {
@@ -122,8 +151,10 @@ export interface Sale {
   id: number;
   bookingId?: number;
   customerId?: number;
-  customerName?: string; // Optional - comes from join with customers table
-  customerPhone?: string; // Optional - comes from join with customers table
+  customerName?: string;
+  customerPhone?: string;
+  saleType: SaleType;
+  hotelBookingId?: number;
   subtotal: number;
   discountAmount: number;
   promotionId?: number;
@@ -143,8 +174,12 @@ export interface SaleItem {
   serviceId: number;
   serviceName: string;
   petId?: number;
-  petName?: string; // Optional - comes from join with pets table
-  petType?: "DOG" | "CAT"; // Optional - comes from join with pets table
+  petName?: string;
+  petType?: "DOG" | "CAT";
+  itemType: ItemType;
+  quantity: number;
+  unitPrice: number;
+  productId?: number;
   originalPrice: number;
   finalPrice: number;
   isPriceModified: boolean;
@@ -183,11 +218,67 @@ export interface Payment {
   createdAt: Date;
 }
 
+// Hotel Types
+export type HotelBookingStatus =
+  | "RESERVED"
+  | "CHECKED_IN"
+  | "CHECKED_OUT"
+  | "CANCELLED";
+
+export interface HotelAdditionalService {
+  id: number;
+  hotelBookingId: number;
+  serviceId?: number;
+  serviceName: string;
+  originalPrice: number;
+  finalPrice: number;
+  isPriceModified: boolean;
+}
+
+export interface HotelBooking {
+  id: number;
+  customerId: number;
+  customerName?: string;
+  customerPhone?: string;
+  petId: number;
+  petName?: string;
+  petType?: "DOG" | "CAT";
+  petBreed?: string;
+  checkInDate: string;
+  checkOutDate?: string;
+  ratePerNight: number;
+  totalNights?: number;
+  roomTotal: number;
+  depositAmount: number;
+  depositStatus: DepositStatus;
+  additionalServicesTotal: number;
+  discountAmount: number;
+  grandTotal: number;
+  paidAmount: number;
+  remainingAmount: number;
+  paymentMethod?: PaymentMethod;
+  note?: string;
+  status: HotelBookingStatus;
+  additionalServices?: HotelAdditionalService[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const hotelStatusLabels: Record<HotelBookingStatus, string> = {
+  RESERVED: "จองแล้ว",
+  CHECKED_IN: "เข้าพักอยู่",
+  CHECKED_OUT: "รับกลับแล้ว",
+  CANCELLED: "ยกเลิก",
+};
+
 // Utility types
 export type PetType = "DOG" | "CAT"; // For pet registration (still fixed)
 export type DepositStatus = "NONE" | "HELD" | "USED" | "FORFEITED";
 export type PaymentMethod = "CASH" | "QR" | "CREDIT_CARD";
 export type PromotionType = "PERCENT" | "AMOUNT" | "FREE_SERVICE";
+export type SaleType = "SERVICE" | "HOTEL" | "PRODUCT" | "MIXED";
+export type ItemType = "SERVICE" | "HOTEL_ROOM" | "PRODUCT";
+export type ApplicableTo = "ALL" | "SERVICE" | "HOTEL" | "PRODUCT";
 
 // Label maps for display (for pet registration)
 export const petTypeLabels: Record<PetType, string> = {
@@ -212,4 +303,24 @@ export const promotionTypeLabels: Record<PromotionType, string> = {
   PERCENT: "ลดเปอร์เซ็นต์",
   AMOUNT: "ลดเป็นบาท",
   FREE_SERVICE: "แถมบริการ",
+};
+
+export const saleTypeLabels: Record<SaleType, string> = {
+  SERVICE: "บริการ",
+  HOTEL: "โรงแรม",
+  PRODUCT: "สินค้า",
+  MIXED: "ผสม",
+};
+
+export const itemTypeLabels: Record<ItemType, string> = {
+  SERVICE: "บริการ",
+  HOTEL_ROOM: "ค่าห้องพัก",
+  PRODUCT: "สินค้า",
+};
+
+export const applicableToLabels: Record<ApplicableTo, string> = {
+  ALL: "ทั้งหมด",
+  SERVICE: "บริการ",
+  HOTEL: "โรงแรม",
+  PRODUCT: "สินค้า",
 };

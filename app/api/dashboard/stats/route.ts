@@ -22,34 +22,51 @@ export async function GET(request: NextRequest) {
       1,
     );
 
-    // 1. รายได้วันนี้
+    // 1. รายได้วันนี้ (แยกตาม sale_type)
     const { data: salesToday, error: salesTodayError } = await supabaseAdmin
       .from("sales")
-      .select("total_revenue:total_amount, deposit_used")
+      .select("total_revenue:total_amount, deposit_used, sale_type")
       .gte("created_at", startTodayUtc)
       .lt("created_at", startTomorrowUtc);
 
     if (salesTodayError) throw salesTodayError;
 
-    const revenueToday = (salesToday ?? []).reduce(
-      (sum, row) =>
-        sum + Number(row.total_revenue || 0) + Number(row.deposit_used || 0),
-      0,
+    const calcRevenue = (rows: any[]) =>
+      rows.reduce(
+        (sum, row) =>
+          sum + Number(row.total_revenue || 0) + Number(row.deposit_used || 0),
+        0,
+      );
+
+    const revenueToday = calcRevenue(salesToday ?? []);
+    const revenueTodayService = calcRevenue(
+      (salesToday ?? []).filter((s: any) => s.sale_type === "SERVICE"),
+    );
+    const revenueTodayHotel = calcRevenue(
+      (salesToday ?? []).filter((s: any) => s.sale_type === "HOTEL"),
+    );
+    const revenueTodayProduct = calcRevenue(
+      (salesToday ?? []).filter((s: any) => s.sale_type === "PRODUCT"),
     );
 
-    // 2. รายได้เดือนนี้
+    // 2. รายได้เดือนนี้ (แยกตาม sale_type)
     const { data: salesMonthly, error: salesMonthlyError } = await supabaseAdmin
       .from("sales")
-      .select("total_revenue:total_amount, deposit_used")
+      .select("total_revenue:total_amount, deposit_used, sale_type")
       .gte("created_at", firstDayOfMonth.toISOString())
       .lt("created_at", startTomorrowUtc);
 
     if (salesMonthlyError) throw salesMonthlyError;
 
-    const revenueMonthly = (salesMonthly ?? []).reduce(
-      (sum, sale) =>
-        sum + Number(sale.total_revenue || 0) + Number(sale.deposit_used || 0),
-      0,
+    const revenueMonthly = calcRevenue(salesMonthly ?? []);
+    const revenueMonthlyService = calcRevenue(
+      (salesMonthly ?? []).filter((s: any) => s.sale_type === "SERVICE"),
+    );
+    const revenueMonthlyHotel = calcRevenue(
+      (salesMonthly ?? []).filter((s: any) => s.sale_type === "HOTEL"),
+    );
+    const revenueMonthlyProduct = calcRevenue(
+      (salesMonthly ?? []).filter((s: any) => s.sale_type === "PRODUCT"),
     );
 
     // 3. สัตว์เข้ารับบริการวันนี้ (แยกหมา/แมว)
@@ -104,12 +121,29 @@ export async function GET(request: NextRequest) {
 
     const bookingsToday = bookingsTodayData?.length || 0;
 
+    // 5. สินค้าใกล้หมด
+    const { data: lowStockData, error: lowStockError } = await supabaseAdmin
+      .from("products")
+      .select("id")
+      .eq("active", true)
+      .filter("stock_quantity", "lte", "min_stock")
+      .gt("min_stock", 0);
+
+    const lowStockCount = lowStockData?.length || 0;
+
     return NextResponse.json({
       revenueToday,
+      revenueTodayService,
+      revenueTodayHotel,
+      revenueTodayProduct,
       revenueMonthly,
+      revenueMonthlyService,
+      revenueMonthlyHotel,
+      revenueMonthlyProduct,
       catsToday,
       dogsToday,
       bookingsToday,
+      lowStockCount,
     });
   } catch (error) {
     return NextResponse.json(

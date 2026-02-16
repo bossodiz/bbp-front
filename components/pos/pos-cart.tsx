@@ -227,6 +227,7 @@ export function POSCart() {
         bookingId: selectedBookingId,
         customerId:
           selectedCustomerId || customer?.id || booking?.customerId || null,
+        saleType: "SERVICE",
         items: cart.map((item) => ({
           serviceId: item.serviceId,
           serviceName: item.serviceName,
@@ -234,6 +235,9 @@ export function POSCart() {
           originalPrice: item.originalPrice,
           finalPrice: item.finalPrice,
           isPriceModified: item.isPriceModified,
+          itemType: "SERVICE",
+          quantity: 1,
+          unitPrice: item.finalPrice,
         })),
         subtotal,
         discountAmount,

@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
       paymentMethod,
       cashReceived,
       change,
+      saleType,
+      hotelBookingId,
     } = body;
 
     if (!items || items.length === 0) {
@@ -44,6 +46,8 @@ export async function POST(request: NextRequest) {
         p_cash_received: paymentMethod === "CASH" ? cashReceived : null,
         p_change: paymentMethod === "CASH" ? change : null,
         p_items: items,
+        p_sale_type: saleType || "SERVICE",
+        p_hotel_booking_id: hotelBookingId ?? null,
       },
     );
 
@@ -109,6 +113,8 @@ export async function GET(request: NextRequest) {
       customerId: sale.customer_id,
       customerName: sale.customers?.name || "ไม่ระบุลูกค้า",
       customerPhone: sale.customers?.phone || null,
+      saleType: sale.sale_type || "SERVICE",
+      hotelBookingId: sale.hotel_booking_id,
       subtotal: parseFloat(sale.subtotal || 0),
       discountAmount: parseFloat(sale.discount_amount || 0),
       promotionId: sale.promotion_id,
@@ -126,6 +132,9 @@ export async function GET(request: NextRequest) {
         petId: item.pet_id,
         petName: item.pets?.name || null,
         petType: item.pets?.type || null,
+        itemType: item.item_type || "SERVICE",
+        quantity: item.quantity || 1,
+        unitPrice: parseFloat(item.unit_price || 0),
         originalPrice: parseFloat(item.original_price || 0),
         finalPrice: parseFloat(item.final_price || 0),
         isPriceModified: item.is_price_modified || false,

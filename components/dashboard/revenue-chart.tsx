@@ -29,8 +29,20 @@ import { toUtcIsoFromBangkokLocal } from "@/lib/utils";
 
 const chartConfig = {
   revenue: {
-    label: "รายได้",
+    label: "รายได้รวม",
     color: "var(--color-chart-1)",
+  },
+  service: {
+    label: "บริการ",
+    color: "var(--color-chart-1)",
+  },
+  hotel: {
+    label: "โรงแรม",
+    color: "var(--color-chart-2)",
+  },
+  product: {
+    label: "สินค้า",
+    color: "var(--color-chart-3)",
   },
 } satisfies ChartConfig;
 
@@ -64,12 +76,14 @@ export function RevenueChart() {
         return {
           date: days[date.getDay()],
           revenue: 0,
+          service: 0,
+          hotel: 0,
+          product: 0,
           dateObj: date,
         };
       });
 
       sales.forEach((sale) => {
-        // ข้อมูลจาก DB เป็น UTC+7 อยู่แล้ว ไม่ต้องแปลง
         const saleDate = new Date(sale.createdAt);
         saleDate.setHours(0, 0, 0, 0);
 
@@ -81,6 +95,13 @@ export function RevenueChart() {
 
         if (matchingIndex >= 0) {
           data[matchingIndex].revenue += sale.totalAmount;
+          if (sale.saleType === "SERVICE")
+            data[matchingIndex].service += sale.totalAmount;
+          else if (sale.saleType === "HOTEL")
+            data[matchingIndex].hotel += sale.totalAmount;
+          else if (sale.saleType === "PRODUCT")
+            data[matchingIndex].product += sale.totalAmount;
+          else data[matchingIndex].service += sale.totalAmount;
         }
       });
 
@@ -106,12 +127,14 @@ export function RevenueChart() {
         return {
           date: `${date.getDate()}`,
           revenue: 0,
+          service: 0,
+          hotel: 0,
+          product: 0,
           dateObj: date,
         };
       });
 
       sales.forEach((sale) => {
-        // ข้อมูลจาก DB เป็น UTC+7 อยู่แล้ว ไม่ต้องแปลง
         const saleDate = new Date(sale.createdAt);
         saleDate.setHours(0, 0, 0, 0);
 
@@ -123,6 +146,13 @@ export function RevenueChart() {
 
         if (matchingIndex >= 0) {
           data[matchingIndex].revenue += sale.totalAmount;
+          if (sale.saleType === "SERVICE")
+            data[matchingIndex].service += sale.totalAmount;
+          else if (sale.saleType === "HOTEL")
+            data[matchingIndex].hotel += sale.totalAmount;
+          else if (sale.saleType === "PRODUCT")
+            data[matchingIndex].product += sale.totalAmount;
+          else data[matchingIndex].service += sale.totalAmount;
         }
       });
 
@@ -155,6 +185,9 @@ export function RevenueChart() {
         return {
           date: months[targetDate.getMonth()],
           revenue: 0,
+          service: 0,
+          hotel: 0,
+          product: 0,
           monthStart: targetDate,
           monthIndex: targetDate.getMonth(),
           year: targetDate.getFullYear(),
@@ -162,18 +195,23 @@ export function RevenueChart() {
       });
 
       sales.forEach((sale) => {
-        // ข้อมูลจาก DB เป็น UTC+7 อยู่แล้ว ไม่ต้องแปลง
         const saleDate = new Date(sale.createdAt);
         const saleYear = saleDate.getFullYear();
         const saleMonth = saleDate.getMonth();
 
-        // หา index ที่ตรงกับเดือนและปีของ sale
         const matchingIndex = data.findIndex(
           (item) => item.year === saleYear && item.monthIndex === saleMonth,
         );
 
         if (matchingIndex >= 0) {
           data[matchingIndex].revenue += sale.totalAmount;
+          if (sale.saleType === "SERVICE")
+            data[matchingIndex].service += sale.totalAmount;
+          else if (sale.saleType === "HOTEL")
+            data[matchingIndex].hotel += sale.totalAmount;
+          else if (sale.saleType === "PRODUCT")
+            data[matchingIndex].product += sale.totalAmount;
+          else data[matchingIndex].service += sale.totalAmount;
         }
       });
 
@@ -207,6 +245,9 @@ export function RevenueChart() {
         return {
           date: months[targetDate.getMonth()],
           revenue: 0,
+          service: 0,
+          hotel: 0,
+          product: 0,
           monthStart: targetDate,
           monthIndex: targetDate.getMonth(),
           year: targetDate.getFullYear(),
@@ -224,6 +265,13 @@ export function RevenueChart() {
 
         if (matchingIndex >= 0) {
           data[matchingIndex].revenue += sale.totalAmount;
+          if (sale.saleType === "SERVICE")
+            data[matchingIndex].service += sale.totalAmount;
+          else if (sale.saleType === "HOTEL")
+            data[matchingIndex].hotel += sale.totalAmount;
+          else if (sale.saleType === "PRODUCT")
+            data[matchingIndex].product += sale.totalAmount;
+          else data[matchingIndex].service += sale.totalAmount;
         }
       });
 
@@ -353,10 +401,29 @@ export function RevenueChart() {
               />
               <Area
                 type="monotone"
-                dataKey="revenue"
+                dataKey="service"
+                stackId="1"
                 stroke="var(--color-chart-1)"
                 fill="var(--color-chart-1)"
-                fillOpacity={0.2}
+                fillOpacity={0.3}
+                strokeWidth={2}
+              />
+              <Area
+                type="monotone"
+                dataKey="hotel"
+                stackId="1"
+                stroke="var(--color-chart-2)"
+                fill="var(--color-chart-2)"
+                fillOpacity={0.3}
+                strokeWidth={2}
+              />
+              <Area
+                type="monotone"
+                dataKey="product"
+                stackId="1"
+                stroke="var(--color-chart-3)"
+                fill="var(--color-chart-3)"
+                fillOpacity={0.3}
                 strokeWidth={2}
               />
             </AreaChart>

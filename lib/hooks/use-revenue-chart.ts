@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 interface Sale {
   id: number;
   totalAmount: number;
+  saleType: string;
   createdAt: string;
 }
 

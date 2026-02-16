@@ -4,10 +4,17 @@ import { useState, useEffect } from "react";
 
 interface DashboardStats {
   revenueToday: number;
+  revenueTodayService: number;
+  revenueTodayHotel: number;
+  revenueTodayProduct: number;
   revenueMonthly: number;
+  revenueMonthlyService: number;
+  revenueMonthlyHotel: number;
+  revenueMonthlyProduct: number;
   catsToday: number;
   dogsToday: number;
   bookingsToday: number;
+  lowStockCount: number;
 }
 
 export function useDashboardStats() {

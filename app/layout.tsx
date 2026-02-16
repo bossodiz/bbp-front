@@ -16,7 +16,7 @@ const _prompt = Prompt({
 export const metadata: Metadata = {
   title: "Pet Grooming - ระบบจัดการร้านอาบน้ำตัดขนสัตว์",
   description: "ระบบบริหารจัดการร้านอาบน้ำตัดขนสัตว์ครบวงจร",
-  generator: "v0.app",
+  generator: "bbp.app",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

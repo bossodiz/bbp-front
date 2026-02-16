@@ -38,20 +38,23 @@ export async function GET(request: NextRequest) {
         startDate.setDate(startDate.getDate() - 6);
     }
 
-    // ดึงข้อมูล sales
+    // ดึงข้อมูล sales (รวม sale_type)
     const { data: salesData, error: salesError } = await supabaseAdmin
       .from("sales")
-      .select("id, total_revenue:total_amount, deposit_used, created_at")
+      .select(
+        "id, total_revenue:total_amount, deposit_used, created_at, sale_type",
+      )
       .gte("created_at", startDate.toISOString())
       .lt("created_at", endDate.toISOString())
       .order("created_at", { ascending: false });
 
     if (salesError) throw salesError;
 
-    const sales = salesData.map((sale) => ({
+    const sales = salesData.map((sale: any) => ({
       id: sale.id,
       totalAmount:
         parseFloat(sale.total_revenue) + parseFloat(sale.deposit_used),
+      saleType: sale.sale_type || "SERVICE",
       createdAt: sale.created_at,
     }));
 

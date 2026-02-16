@@ -32,8 +32,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { usePromotions } from "@/lib/hooks/use-promotions";
 import { useServices } from "@/lib/hooks/use-services";
-import type { Promotion, PromotionType } from "@/lib/types";
-import { promotionTypeLabels } from "@/lib/types";
+import type { Promotion, PromotionType, ApplicableTo } from "@/lib/types";
+import { promotionTypeLabels, applicableToLabels } from "@/lib/types";
 import { toast } from "sonner";
 
 const promotionSchema = z
@@ -44,6 +44,7 @@ const promotionSchema = z
     }),
     value: z.coerce.number().min(0, "ค่าต้องมากกว่าหรือเท่ากับ 0").optional(),
     freeServiceId: z.coerce.number().optional(),
+    applicableTo: z.enum(["ALL", "SERVICE", "HOTEL", "PRODUCT"]),
     active: z.boolean(),
   })
   .refine(
@@ -101,6 +102,7 @@ export function PromotionDialog({
       type: undefined,
       value: 0,
       freeServiceId: undefined,
+      applicableTo: "ALL" as ApplicableTo,
       active: true,
     },
     mode: "onChange",
@@ -116,6 +118,7 @@ export function PromotionDialog({
           type: promotion.type,
           value: promotion.value,
           freeServiceId: promotion.freeServiceId,
+          applicableTo: promotion.applicableTo || "ALL",
           active: promotion.active,
         });
       } else {
@@ -124,6 +127,7 @@ export function PromotionDialog({
           type: undefined,
           value: 0,
           freeServiceId: undefined,
+          applicableTo: "ALL",
           active: true,
         });
       }
@@ -136,9 +140,10 @@ export function PromotionDialog({
       const promotionData = {
         name: data.name,
         type: data.type as PromotionType,
-        value: data.type === "FREE_SERVICE" ? 0 : data.value,
+        value: data.type === "FREE_SERVICE" ? 0 : (data.value ?? 0),
         freeServiceId:
           data.type === "FREE_SERVICE" ? data.freeServiceId : undefined,
+        applicableTo: data.applicableTo as ApplicableTo,
         active: data.active,
       };
 
@@ -261,6 +266,35 @@ export function PromotionDialog({
                 )}
               />
             )}
+
+            <FormField
+              control={form.control}
+              name="applicableTo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ใช้ได้กับ</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือกประเภท" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {(
+                        Object.keys(applicableToLabels) as Array<
+                          keyof typeof applicableToLabels
+                        >
+                      ).map((key) => (
+                        <SelectItem key={key} value={key}>
+                          {applicableToLabels[key]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {watchType === "FREE_SERVICE" && (
               <FormField

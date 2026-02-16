@@ -11,6 +11,9 @@ import {
   CalendarDays,
   Loader2,
   RefreshCcw,
+  Scissors,
+  BedDouble,
+  Package,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,8 +45,13 @@ import { Separator } from "@/components/ui/separator";
 import { useCustomerStore } from "@/lib/store";
 import { useSales } from "@/lib/hooks/use-sales";
 import { formatPhoneDisplay, cn } from "@/lib/utils";
-import { petTypeLabels, paymentMethodLabels } from "@/lib/types";
-import type { Sale } from "@/lib/types";
+import {
+  petTypeLabels,
+  paymentMethodLabels,
+  saleTypeLabels,
+  itemTypeLabels,
+} from "@/lib/types";
+import type { Sale, SaleType, ItemType } from "@/lib/types";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 
@@ -593,16 +601,42 @@ export function ServiceHistoryList() {
                                           className="flex items-center justify-between p-3 rounded-lg border bg-card cursor-pointer hover:bg-accent/50 hover:border-primary/50 transition-colors"
                                         >
                                           <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                              <CalendarDays className="h-5 w-5" />
+                                            <div
+                                              className={cn(
+                                                "flex h-10 w-10 items-center justify-center rounded-lg",
+                                                sale.saleType === "HOTEL"
+                                                  ? "bg-chart-2/10 text-chart-2"
+                                                  : sale.saleType === "PRODUCT"
+                                                    ? "bg-chart-3/10 text-chart-3"
+                                                    : "bg-primary/10 text-primary",
+                                              )}
+                                            >
+                                              {sale.saleType === "HOTEL" ? (
+                                                <BedDouble className="h-5 w-5" />
+                                              ) : sale.saleType ===
+                                                "PRODUCT" ? (
+                                                <Package className="h-5 w-5" />
+                                              ) : (
+                                                <Scissors className="h-5 w-5" />
+                                              )}
                                             </div>
                                             <div>
-                                              <p className="text-sm font-medium">
-                                                {formatDate(sale.createdAt)}
-                                              </p>
+                                              <div className="flex items-center gap-2">
+                                                <p className="text-sm font-medium">
+                                                  {formatDate(sale.createdAt)}
+                                                </p>
+                                                <Badge
+                                                  variant="outline"
+                                                  className="text-xs px-1.5 py-0"
+                                                >
+                                                  {saleTypeLabels[
+                                                    sale.saleType as SaleType
+                                                  ] || "บริการ"}
+                                                </Badge>
+                                              </div>
                                               <p className="text-xs text-muted-foreground">
                                                 {(sale.items || []).length}{" "}
-                                                บริการ •{" "}
+                                                รายการ •{" "}
                                                 {paymentMethodLabels[
                                                   sale.paymentMethod
                                                 ] || sale.paymentMethod}
@@ -741,7 +775,13 @@ export function ServiceHistoryList() {
 
               {/* Services */}
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">รายการบริการ</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-medium">รายการ</h4>
+                  <Badge variant="outline" className="text-xs">
+                    {saleTypeLabels[selectedBill.saleType as SaleType] ||
+                      "บริการ"}
+                  </Badge>
+                </div>
                 {(selectedBill.items || []).map((item) => (
                   <div
                     key={item.id}
@@ -761,13 +801,28 @@ export function ServiceHistoryList() {
                         <p className="text-sm font-medium">
                           {item.serviceName}
                         </p>
-                        {item.petName && (
-                          <p className="text-xs text-muted-foreground">
-                            {item.petName}
-                            {item.petType &&
-                              ` (${petTypeLabels[item.petType]})`}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {item.petName && (
+                            <p className="text-xs text-muted-foreground">
+                              {item.petName}
+                              {item.petType &&
+                                ` (${petTypeLabels[item.petType]})`}
+                            </p>
+                          )}
+                          {item.itemType && item.itemType !== "SERVICE" && (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs px-1 py-0"
+                            >
+                              {itemTypeLabels[item.itemType as ItemType]}
+                            </Badge>
+                          )}
+                          {item.quantity > 1 && (
+                            <span className="text-xs text-muted-foreground">
+                              x{item.quantity}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">

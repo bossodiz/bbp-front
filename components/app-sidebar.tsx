@@ -11,6 +11,8 @@ import {
   ShoppingCart,
   PawPrint,
   History,
+  BedDouble,
+  Package,
 } from "lucide-react";
 import {
   Sidebar,
@@ -47,6 +49,11 @@ const managementItems = [
     icon: Scissors,
   },
   {
+    title: "สินค้า",
+    url: "/products",
+    icon: Package,
+  },
+  {
     title: "โปรโมชั่น",
     url: "/promotions",
     icon: Tag,
@@ -58,6 +65,11 @@ const operationItems = [
     title: "นัดหมาย",
     url: "/bookings",
     icon: Calendar,
+  },
+  {
+    title: "โรงแรมสัตว์เลี้ยง",
+    url: "/hotel",
+    icon: BedDouble,
   },
   {
     title: "ขายหน้าร้าน (POS)",
