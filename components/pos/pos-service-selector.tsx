@@ -186,12 +186,20 @@ export function POSServiceSelector() {
     productId: number,
     productName: string,
     price: number,
+    stockQuantity: number,
   ) => {
-    const isInCart = cart.some(
-      (item) => item.serviceId === productId && !item.petId,
+    const existing = cart.find(
+      (item) =>
+        (item.itemType || "SERVICE") === "PRODUCT" &&
+        item.productId === productId,
     );
-    if (isInCart) {
-      toast.error("สินค้านี้อยู่ในรายการแล้ว");
+    const existingQty = existing?.quantity ?? 0;
+    if (stockQuantity <= 0) {
+      toast.error("สินค้าในสต็อกหมด");
+      return;
+    }
+    if (existingQty >= stockQuantity) {
+      toast.error("จำนวนสินค้าในตะกร้าเกินสต๊อก");
       return;
     }
 
@@ -201,12 +209,14 @@ export function POSServiceSelector() {
       originalPrice: price,
       finalPrice: price,
       isPriceModified: false,
+      itemType: "PRODUCT",
+      productId,
+      quantity: 1,
+      maxQuantity: stockQuantity,
       petId: null,
       petName: undefined,
       petType: undefined,
     });
-
-    toast.success(`เพิ่ม "${productName}" ลงตะกร้าแล้ว`);
   };
 
   // Don't show service selector if customer is not selected
@@ -480,25 +490,33 @@ export function POSServiceSelector() {
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2">
                   {activeProducts.map((product) => {
-                    const isInCart = cart.some(
-                      (item) => item.serviceId === product.id && !item.petId,
+                    const existing = cart.find(
+                      (item) =>
+                        (item.itemType || "SERVICE") === "PRODUCT" &&
+                        item.productId === product.id,
                     );
+                    const existingQty = existing?.quantity ?? 0;
+                    const outOfStock = product.stockQuantity <= 0;
+                    const isMaxed =
+                      !outOfStock && existingQty >= product.stockQuantity;
+                    const disabled = outOfStock || isMaxed;
 
                     return (
                       <button
                         key={product.id}
                         type="button"
-                        disabled={isInCart}
+                        disabled={disabled}
                         onClick={() =>
                           handleAddProduct(
                             product.id,
                             product.name,
                             product.price,
+                            product.stockQuantity,
                           )
                         }
                         className={cn(
                           "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
-                          isInCart
+                          disabled
                             ? "bg-muted/50 border-muted cursor-not-allowed opacity-60"
                             : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
                         )}
@@ -513,7 +531,7 @@ export function POSServiceSelector() {
                           <p
                             className={cn(
                               "text-lg font-semibold",
-                              isInCart
+                              disabled
                                 ? "text-muted-foreground"
                                 : "text-primary",
                             )}
@@ -521,9 +539,13 @@ export function POSServiceSelector() {
                             {formatCurrency(product.price)}
                           </p>
                         </div>
-                        {isInCart && (
+                        {outOfStock ? (
                           <Badge variant="secondary" className="text-xs">
-                            เลือกแล้ว
+                            หมด
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            {existingQty}/{product.stockQuantity}
                           </Badge>
                         )}
                       </button>

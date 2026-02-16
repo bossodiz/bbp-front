@@ -6,6 +6,8 @@ import {
   Trash2,
   Tag,
   Pencil,
+  Minus,
+  Plus,
   CreditCard,
   QrCode,
   Banknote,
@@ -53,6 +55,8 @@ export function POSCart() {
     cart,
     removeFromCart,
     updateCartItemPrice,
+    incrementCartItemQuantity,
+    decrementCartItemQuantity,
     clearCart,
     appliedPromotionId,
     setAppliedPromotion,
@@ -143,7 +147,21 @@ export function POSCart() {
 
   // Calculate totals
   const subtotal = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.finalPrice, 0);
+    return cart.reduce((sum, item) => {
+      const qty = item.quantity ?? 1;
+      return sum + item.finalPrice * qty;
+    }, 0);
+  }, [cart]);
+
+  const saleType = useMemo(() => {
+    const types = new Set(
+      cart.map((item) => (item.itemType || "SERVICE") as "SERVICE" | "PRODUCT"),
+    );
+    if (types.size === 1) {
+      const t = Array.from(types)[0];
+      return t === "PRODUCT" ? "PRODUCT" : "SERVICE";
+    }
+    return "MIXED";
   }, [cart]);
 
   const discountAmount = useMemo(() => {
@@ -227,7 +245,7 @@ export function POSCart() {
         bookingId: selectedBookingId,
         customerId:
           selectedCustomerId || customer?.id || booking?.customerId || null,
-        saleType: "SERVICE",
+        saleType,
         items: cart.map((item) => ({
           serviceId: item.serviceId,
           serviceName: item.serviceName,
@@ -235,9 +253,10 @@ export function POSCart() {
           originalPrice: item.originalPrice,
           finalPrice: item.finalPrice,
           isPriceModified: item.isPriceModified,
-          itemType: "SERVICE",
-          quantity: 1,
+          itemType: item.itemType || "SERVICE",
+          quantity: item.quantity ?? 1,
           unitPrice: item.finalPrice,
+          productId: item.productId ?? null,
         })),
         subtotal,
         discountAmount,
@@ -317,6 +336,12 @@ export function POSCart() {
                           <p className="text-sm font-medium truncate">
                             {item.serviceName}
                           </p>
+                          {(item.itemType || "SERVICE") === "PRODUCT" && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              ({formatCurrency(item.finalPrice)} x{" "}
+                              {item.quantity ?? 1})
+                            </span>
+                          )}
                           {item.petId && item.petType && (
                             <>
                               {item.petType === "DOG" ? (
@@ -333,6 +358,38 @@ export function POSCart() {
                           )}
                         </div>
                       </div>
+
+                      {(item.itemType || "SERVICE") === "PRODUCT" && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            onClick={() => decrementCartItemQuantity(item.id)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <div className="min-w-6 text-center text-sm font-medium">
+                            {item.quantity ?? 1}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0"
+                            onClick={() => {
+                              const maxQty = item.maxQuantity ?? null;
+                              const qty = item.quantity ?? 1;
+                              if (maxQty && qty >= maxQty) {
+                                toast.error("จำนวนสินค้าในตะกร้าเกินสต๊อก");
+                                return;
+                              }
+                              incrementCartItemQuantity(item.id);
+                            }}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
 
                       {editingItemId === item.id ? (
                         <div className="flex items-center gap-1 shrink-0">
@@ -682,14 +739,25 @@ export function POSCart() {
 
                 {/* Items */}
                 <div className="border-t border-b py-2 mb-3">
-                  <div className="font-medium mb-2">รายการบริการ</div>
+                  <div className="font-medium mb-2">รายการ</div>
                   {cart.map((item, index) => (
                     <div
                       key={index}
                       className="flex justify-between text-sm mb-1"
                     >
-                      <span className="truncate pr-1">{item.serviceName}</span>
-                      <span>{formatCurrency(item.finalPrice)}</span>
+                      <span className="truncate pr-1">
+                        {item.serviceName}
+                        {(item.itemType || "SERVICE") === "PRODUCT" && (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            ({formatCurrency(item.finalPrice)} x{" "}
+                            {item.quantity ?? 1})
+                          </span>
+                        )}
+                      </span>
+                      <span>
+                        {formatCurrency(item.finalPrice * (item.quantity ?? 1))}
+                      </span>
                     </div>
                   ))}
                 </div>

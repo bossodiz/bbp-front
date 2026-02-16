@@ -476,6 +476,10 @@ export interface CartItem {
   originalPrice: number;
   finalPrice: number;
   isPriceModified: boolean;
+  itemType?: "SERVICE" | "PRODUCT";
+  productId?: number | null;
+  quantity?: number;
+  maxQuantity?: number | null;
   petId: number | null;
   petName?: string;
   petType?: "DOG" | "CAT";
@@ -491,6 +495,8 @@ interface POSStore {
   addToCart: (item: Omit<CartItem, "id">) => void;
   removeFromCart: (id: string) => void;
   updateCartItemPrice: (id: string, price: number) => void;
+  incrementCartItemQuantity: (id: string) => void;
+  decrementCartItemQuantity: (id: string) => void;
   clearCart: () => void;
   setSelectedCustomer: (customerId: number | null) => void;
   togglePetSelection: (petId: number) => void;
@@ -509,13 +515,54 @@ export const usePOSStore = create<POSStore>((set) => ({
   _cartCounter: 0,
 
   addToCart: (item) => {
-    set((state) => ({
-      cart: [
-        ...state.cart,
-        { ...item, id: `cart-${state._cartCounter}-${item.serviceId}` },
-      ],
-      _cartCounter: state._cartCounter + 1,
-    }));
+    set((state) => {
+      const itemType = item.itemType || "SERVICE";
+      const qty = item.quantity ?? 1;
+
+      if (itemType === "PRODUCT" && item.productId) {
+        const existingIndex = state.cart.findIndex(
+          (c) =>
+            (c.itemType || "SERVICE") === "PRODUCT" &&
+            c.productId === item.productId,
+        );
+
+        if (existingIndex >= 0) {
+          const existing = state.cart[existingIndex];
+          const existingQty = existing.quantity ?? 1;
+          const maxQty = existing.maxQuantity ?? item.maxQuantity ?? null;
+          const nextQty = maxQty
+            ? Math.min(existingQty + qty, maxQty)
+            : existingQty + qty;
+
+          return {
+            cart: state.cart.map((c, idx) =>
+              idx === existingIndex
+                ? {
+                    ...c,
+                    quantity: nextQty,
+                    maxQuantity: maxQty,
+                  }
+                : c,
+            ),
+          };
+        }
+      }
+
+      return {
+        cart: [
+          ...state.cart,
+          {
+            ...item,
+            itemType,
+            productId: item.productId ?? null,
+            quantity: qty,
+            maxQuantity: item.maxQuantity ?? null,
+            id: `cart-${state._cartCounter}-${item.serviceId}`,
+          },
+        ],
+        _cartCounter: state._cartCounter + 1,
+      };
+    });
   },
 
   removeFromCart: (id) => {
@@ -536,6 +583,38 @@ export const usePOSStore = create<POSStore>((set) => ({
           : item,
       ),
     }));
+  },
+
+  incrementCartItemQuantity: (id) => {
+    set((state) => ({
+      cart: state.cart.map((item) => {
+        if (item.id !== id) return item;
+        const qty = item.quantity ?? 1;
+        const maxQty = item.maxQuantity ?? null;
+        if (maxQty && qty >= maxQty) return item;
+        return { ...item, quantity: qty + 1 };
+      }),
+    }));
+  },
+
+  decrementCartItemQuantity: (id) => {
+    set((state) => {
+      const target = state.cart.find((c) => c.id === id);
+      if (!target) return { cart: state.cart };
+      const qty = target.quantity ?? 1;
+
+      if (qty <= 1) {
+        return { cart: state.cart.filter((c) => c.id !== id) };
+      }
+
+      return {
+        cart: state.cart.map((item) =>
+          item.id === id
+            ? { ...item, quantity: (item.quantity ?? 1) - 1 }
+            : item,
+        ),
+      };
+    });
   },
 
   clearCart: () => {
