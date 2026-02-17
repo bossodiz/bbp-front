@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useCustomerStore } from "@/lib/store";
 import type { Customer, Pet } from "@/lib/types";
 
 interface UseCustomersReturn {
@@ -83,6 +84,8 @@ export function useCustomers(): UseCustomersReturn {
       }));
 
       setCustomers(transformedCustomers);
+      // Sync to Zustand store
+      useCustomerStore.setState({ customers: transformedCustomers });
     } catch (err: any) {
       setError(err.message);
     } finally {

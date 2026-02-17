@@ -521,38 +521,6 @@ export interface Database {
           updated_at?: string;
         };
       };
-      hotel_additional_services: {
-        Row: {
-          id: number;
-          hotel_booking_id: number;
-          service_id: number | null;
-          service_name: string;
-          original_price: number;
-          final_price: number;
-          is_price_modified: boolean;
-          created_at: string;
-        };
-        Insert: {
-          id?: number;
-          hotel_booking_id: number;
-          service_id?: number | null;
-          service_name: string;
-          original_price: number;
-          final_price: number;
-          is_price_modified?: boolean;
-          created_at?: string;
-        };
-        Update: {
-          id?: number;
-          hotel_booking_id?: number;
-          service_id?: number | null;
-          service_name?: string;
-          original_price?: number;
-          final_price?: number;
-          is_price_modified?: boolean;
-          created_at?: string;
-        };
-      };
     };
   };
 }

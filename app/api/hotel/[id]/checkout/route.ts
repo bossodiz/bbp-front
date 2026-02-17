@@ -51,8 +51,7 @@ export async function POST(
         `
         *,
         customers (id, name, phone),
-        pets (id, name, type, breed, weight),
-        hotel_additional_services (*)
+        pets (id, name, type, breed, weight)
       `,
       )
       .eq("id", bookingId)

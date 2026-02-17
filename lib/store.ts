@@ -490,6 +490,7 @@ interface POSStore {
   selectedCustomerId: number | null;
   selectedPetIds: number[];
   selectedBookingId: number | null;
+  selectedHotelBookingId: number | null;
   appliedPromotionId: number | null;
   _cartCounter: number;
   addToCart: (item: Omit<CartItem, "id">) => void;
@@ -502,15 +503,19 @@ interface POSStore {
   togglePetSelection: (petId: number) => void;
   setSelectedBooking: (bookingId: number | null) => void;
   setAppliedPromotion: (promotionId: number | null) => void;
-  setHotelBooking: (customerId: number, bookingId: number) => void;
+  setHotelBooking: (
+    customerId: number | null,
+    hotelBookingId: number | null,
+  ) => void;
   resetPOS: () => void;
 }
 
-export const usePOSStore = create<POSStore>((set) => ({
+export const usePOSStore = create<POSStore>((set, get) => ({
   cart: [],
   selectedCustomerId: null,
   selectedPetIds: [],
   selectedBookingId: null,
+  selectedHotelBookingId: null,
   appliedPromotionId: null,
   _cartCounter: 0,
 
@@ -644,22 +649,44 @@ export const usePOSStore = create<POSStore>((set) => ({
     set({ appliedPromotionId: promotionId });
   },
 
-  setHotelBooking: (customerId, bookingId) => {
+  setHotelBooking: (customerId, hotelBookingId) => {
+    const s = get();
+    if (
+      s.cart.length === 0 &&
+      s.selectedCustomerId === customerId &&
+      s.selectedPetIds.length === 0 &&
+      s.selectedBookingId === null &&
+      s.selectedHotelBookingId === hotelBookingId &&
+      s.appliedPromotionId === null
+    )
+      return;
     set({
       cart: [],
       selectedCustomerId: customerId,
       selectedPetIds: [],
-      selectedBookingId: bookingId,
+      selectedBookingId: null,
+      selectedHotelBookingId: hotelBookingId,
       appliedPromotionId: null,
     });
   },
 
   resetPOS: () => {
+    const s = get();
+    if (
+      s.cart.length === 0 &&
+      s.selectedCustomerId === null &&
+      s.selectedPetIds.length === 0 &&
+      s.selectedBookingId === null &&
+      s.selectedHotelBookingId === null &&
+      s.appliedPromotionId === null
+    )
+      return;
     set({
       cart: [],
       selectedCustomerId: null,
       selectedPetIds: [],
       selectedBookingId: null,
+      selectedHotelBookingId: null,
       appliedPromotionId: null,
     });
   },

@@ -40,7 +40,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { HotelBookingDialog } from "./hotel-booking-dialog";
 import { useHotel } from "@/lib/hooks/use-hotel";
-import { usePOSStore } from "@/lib/store";
 import type {
   HotelBooking,
   HotelBookingStatus,
@@ -75,7 +74,6 @@ interface HotelBookingListProps {
 export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
   const statusFilter = showAll ? undefined : "RESERVED,CHECKED_IN";
   const router = useRouter();
-  const { setHotelBooking } = usePOSStore();
   const {
     bookings,
     loading,
@@ -330,8 +328,7 @@ export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
                   variant="default"
                   size="sm"
                   onClick={() => {
-                    setHotelBooking(booking.customerId, booking.id);
-                    router.push("/pos");
+                    router.push(`/pos?hotelId=${booking.id}`);
                   }}
                 >
                   <LogOut className="mr-1 h-3 w-3" />

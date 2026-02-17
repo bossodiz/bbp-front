@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useServiceStore } from "@/lib/store";
 import type { Service } from "@/lib/types";
 
 interface UseServicesOptions {
@@ -65,6 +66,8 @@ export function useServices(
       }));
 
       setServices(transformedServices);
+      // Sync to Zustand store
+      useServiceStore.setState({ services: transformedServices });
     } catch (err: any) {
       setError(err.message);
     } finally {

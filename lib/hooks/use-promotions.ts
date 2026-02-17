@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePromotionStore } from "@/lib/store";
 import type { Promotion } from "@/lib/types";
 
 export function usePromotions() {
@@ -15,6 +16,8 @@ export function usePromotions() {
       if (!response.ok) throw new Error("ไม่สามารถดึงข้อมูลโปรโมชั่นได้");
       const data = await response.json();
       setPromotions(data);
+      // Sync to Zustand store
+      usePromotionStore.setState({ promotions: data });
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {

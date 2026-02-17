@@ -16,8 +16,7 @@ export async function GET(
         `
         *,
         customers (id, name, phone),
-        pets (id, name, type, breed, breed_2, is_mixed_breed, weight),
-        hotel_additional_services (*)
+        pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
       `,
       )
       .eq("id", bookingId)
@@ -39,9 +38,10 @@ export async function GET(
       petId: data.pet_id,
       petName: data.pets?.name || "",
       petType: data.pets?.type || "",
-      petBreed: data.pets?.is_mixed_breed && data.pets?.breed_2
-        ? `${data.pets.breed} - ${data.pets.breed_2}`
-        : data.pets?.breed || "",
+      petBreed:
+        data.pets?.is_mixed_breed && data.pets?.breed_2
+          ? `${data.pets.breed} - ${data.pets.breed_2}`
+          : data.pets?.breed || "",
       checkInDate: data.check_in_date,
       checkOutDate: data.check_out_date,
       ratePerNight: parseFloat(data.rate_per_night) || 0,
@@ -49,8 +49,7 @@ export async function GET(
       roomTotal: parseFloat(data.room_total) || 0,
       depositAmount: parseFloat(data.deposit_amount) || 0,
       depositStatus: data.deposit_status,
-      additionalServicesTotal:
-        parseFloat(data.additional_services_total) || 0,
+      additionalServicesTotal: parseFloat(data.additional_services_total) || 0,
       discountAmount: parseFloat(data.discount_amount) || 0,
       grandTotal: parseFloat(data.grand_total) || 0,
       paidAmount: parseFloat(data.paid_amount) || 0,
@@ -58,17 +57,7 @@ export async function GET(
       paymentMethod: data.payment_method,
       note: data.note,
       status: data.status,
-      additionalServices: (data.hotel_additional_services || []).map(
-        (svc: any) => ({
-          id: svc.id,
-          hotelBookingId: svc.hotel_booking_id,
-          serviceId: svc.service_id,
-          serviceName: svc.service_name,
-          originalPrice: parseFloat(svc.original_price) || 0,
-          finalPrice: parseFloat(svc.final_price) || 0,
-          isPriceModified: svc.is_price_modified,
-        }),
-      ),
+      additionalServices: [],
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };

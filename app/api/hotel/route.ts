@@ -14,8 +14,7 @@ export async function GET(request: NextRequest) {
         `
         *,
         customers (id, name, phone),
-        pets (id, name, type, breed, breed_2, is_mixed_breed, weight),
-        hotel_additional_services (*)
+        pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
       `,
       )
       .order("created_at", { ascending: false });
@@ -43,9 +42,10 @@ export async function GET(request: NextRequest) {
       petId: booking.pet_id,
       petName: booking.pets?.name || "",
       petType: booking.pets?.type || "",
-      petBreed: booking.pets?.is_mixed_breed && booking.pets?.breed_2
-        ? `${booking.pets.breed} - ${booking.pets.breed_2}`
-        : booking.pets?.breed || "",
+      petBreed:
+        booking.pets?.is_mixed_breed && booking.pets?.breed_2
+          ? `${booking.pets.breed} - ${booking.pets.breed_2}`
+          : booking.pets?.breed || "",
       checkInDate: booking.check_in_date,
       checkOutDate: booking.check_out_date,
       ratePerNight: parseFloat(booking.rate_per_night) || 0,
@@ -62,17 +62,7 @@ export async function GET(request: NextRequest) {
       paymentMethod: booking.payment_method,
       note: booking.note,
       status: booking.status,
-      additionalServices: (booking.hotel_additional_services || []).map(
-        (svc: any) => ({
-          id: svc.id,
-          hotelBookingId: svc.hotel_booking_id,
-          serviceId: svc.service_id,
-          serviceName: svc.service_name,
-          originalPrice: parseFloat(svc.original_price) || 0,
-          finalPrice: parseFloat(svc.final_price) || 0,
-          isPriceModified: svc.is_price_modified,
-        }),
-      ),
+      additionalServices: [],
       createdAt: booking.created_at,
       updatedAt: booking.updated_at,
     }));

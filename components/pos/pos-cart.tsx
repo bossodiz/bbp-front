@@ -15,6 +15,7 @@ import {
   Dog,
   Cat,
   X,
+  BedDouble,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ import {
   useCustomerStore,
   useServiceConfigStore,
 } from "@/lib/store";
-import type { PaymentMethod, Booking } from "@/lib/types";
+import type { PaymentMethod, Booking, HotelBooking } from "@/lib/types";
 import { paymentMethodLabels } from "@/lib/types";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
 import { toast } from "sonner";
@@ -51,22 +52,25 @@ import { format } from "date-fns";
 import { th } from "date-fns/locale";
 
 export function POSCart() {
-  const {
-    cart,
-    removeFromCart,
-    updateCartItemPrice,
-    incrementCartItemQuantity,
-    decrementCartItemQuantity,
-    clearCart,
-    appliedPromotionId,
-    setAppliedPromotion,
-    selectedBookingId,
-    selectedCustomerId,
-    resetPOS,
-  } = usePOSStore();
-  const { promotions } = usePromotionStore();
-  const { getBookingById, useDeposit } = useBookingStore();
-  const customers = useCustomerStore((state) => state.customers);
+  const removeFromCart = usePOSStore.getState().removeFromCart;
+  const updateCartItemPrice = usePOSStore.getState().updateCartItemPrice;
+
+  const incrementCartItemQuantity = usePOSStore(
+    (s) => s.incrementCartItemQuantity,
+  );
+  const decrementCartItemQuantity = usePOSStore(
+    (s) => s.decrementCartItemQuantity,
+  );
+  const clearCart = usePOSStore((s) => s.clearCart);
+  const setAppliedPromotion = usePOSStore((s) => s.setAppliedPromotion);
+  const resetPOS = usePOSStore((s) => s.resetPOS);
+  const cart = usePOSStore((s) => s.cart);
+  const appliedPromotionId = usePOSStore((s) => s.appliedPromotionId);
+  const selectedBookingId = usePOSStore((s) => s.selectedBookingId);
+  const selectedHotelBookingId = usePOSStore((s) => s.selectedHotelBookingId);
+  const selectedCustomerId = usePOSStore((s) => s.selectedCustomerId);
+  const promotions = usePromotionStore((s) => s.promotions);
+  const customers = useCustomerStore((s) => s.customers);
 
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState("");
@@ -75,18 +79,11 @@ export function POSCart() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [cashReceived, setCashReceived] = useState("");
   const [booking, setBooking] = useState<Booking | null>(null);
+  const [hotelBooking, setHotelBooking] = useState<HotelBooking | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
   const priceInputRef = useRef<HTMLInputElement>(null);
   const cashInputRef = useRef<HTMLInputElement>(null);
-
-  const { petTypes, getSizesForPetType } = useServiceConfigStore();
-
-  // Prevent hydration issues
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   // Fetch booking from API if selectedBookingId exists
   useEffect(() => {
@@ -95,10 +92,14 @@ export function POSCart() {
       return;
     }
 
+    let stale = false;
+
     const fetchBooking = async () => {
       try {
         // Try local store first
-        let bookingData = getBookingById(selectedBookingId);
+        let bookingData = useBookingStore
+          .getState()
+          .getBookingById(selectedBookingId);
 
         // If not in local store, fetch from API
         if (!bookingData) {
@@ -107,15 +108,46 @@ export function POSCart() {
             bookingData = await response.json();
           }
         }
-
-        setBooking(bookingData || null);
+        if (!stale) setBooking(bookingData || null);
       } catch (error) {
-        setBooking(null);
+        if (!stale) setBooking(null);
       }
     };
 
     fetchBooking();
-  }, [selectedBookingId, getBookingById]);
+
+    return () => {
+      stale = true;
+    };
+  }, [selectedBookingId]);
+
+  // Fetch hotel booking from API if selectedHotelBookingId exists
+  useEffect(() => {
+    if (!selectedHotelBookingId) {
+      setHotelBooking(null);
+      return;
+    }
+
+    let stale = false;
+
+    const fetchHotelBooking = async () => {
+      try {
+        const response = await fetch(`/api/hotel/${selectedHotelBookingId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (!stale) setHotelBooking(result.data || null);
+        }
+      } catch (error) {
+        if (!stale) setHotelBooking(null);
+      }
+    };
+
+    fetchHotelBooking();
+
+    return () => {
+      stale = true;
+    };
+  }, [selectedHotelBookingId]);
 
   useEffect(() => {
     if (editingItemId && priceInputRef.current) {
@@ -145,15 +177,31 @@ export function POSCart() {
     }).format(amount);
   };
 
+  // Hotel room total calculation
+  const hotelTotalNights = useMemo(() => {
+    if (!hotelBooking) return 0;
+    const checkIn = new Date(hotelBooking.checkInDate);
+    const now = new Date();
+    const diffTime = now.getTime() - checkIn.getTime();
+    return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  }, [hotelBooking]);
+
+  const hotelRoomTotal = useMemo(() => {
+    if (!hotelBooking) return 0;
+    return hotelBooking.ratePerNight * hotelTotalNights;
+  }, [hotelBooking, hotelTotalNights]);
+
   // Calculate totals
   const subtotal = useMemo(() => {
-    return cart.reduce((sum, item) => {
+    const cartTotal = cart.reduce((sum, item) => {
       const qty = item.quantity ?? 1;
       return sum + item.finalPrice * qty;
     }, 0);
-  }, [cart]);
+    return cartTotal + hotelRoomTotal;
+  }, [cart, hotelRoomTotal]);
 
   const saleType = useMemo(() => {
+    if (selectedHotelBookingId) return "HOTEL" as const;
     const types = new Set(
       cart.map((item) => (item.itemType || "SERVICE") as "SERVICE" | "PRODUCT"),
     );
@@ -162,7 +210,7 @@ export function POSCart() {
       return t === "PRODUCT" ? "PRODUCT" : "SERVICE";
     }
     return "MIXED";
-  }, [cart]);
+  }, [cart, selectedHotelBookingId]);
 
   const discountAmount = useMemo(() => {
     if (!appliedPromotion) return 0;
@@ -183,8 +231,10 @@ export function POSCart() {
   }, [discountAmount, customDiscountAmount]);
 
   const depositUsed = useMemo(() => {
+    if (hotelBooking?.depositStatus === "HELD")
+      return hotelBooking.depositAmount;
     return booking?.depositStatus === "HELD" ? booking.depositAmount : 0;
-  }, [booking]);
+  }, [booking, hotelBooking]);
 
   const totalAmount = useMemo(() => {
     return Math.max(0, subtotal - totalDiscount - depositUsed);
@@ -223,7 +273,7 @@ export function POSCart() {
 
   const handlePayment = async () => {
     try {
-      if (cart.length === 0) {
+      if (cart.length === 0 && !selectedHotelBookingId) {
         toast.error("กรุณาเลือกบริการก่อน");
         return;
       }
@@ -234,6 +284,95 @@ export function POSCart() {
       }
 
       setIsSaving(true);
+
+      // If hotel booking checkout, use the hotel checkout API
+      if (selectedHotelBookingId && hotelBooking) {
+        const additionalServices = cart
+          .filter((item) => (item.itemType || "SERVICE") === "SERVICE")
+          .map((item) => ({
+            serviceId: item.serviceId,
+            serviceName: item.serviceName,
+            originalPrice: item.originalPrice,
+            finalPrice: item.finalPrice,
+            isPriceModified: item.isPriceModified,
+          }));
+
+        const checkOutDate = new Date().toISOString().split("T")[0];
+
+        const response = await fetch(
+          `/api/hotel/${selectedHotelBookingId}/checkout`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              checkOutDate,
+              additionalServices,
+              discountAmount: discountAmount,
+              paymentMethod,
+              cashReceived: paymentMethod === "CASH" ? cashReceivedNum : null,
+              note: hotelBooking.note || undefined,
+              promotionId: appliedPromotionId || undefined,
+              customDiscount: customDiscountAmount || undefined,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "ไม่สามารถ checkout ได้");
+        }
+
+        // Also save product items as separate sale if any
+        const productItems = cart.filter(
+          (item) => (item.itemType || "SERVICE") === "PRODUCT",
+        );
+        if (productItems.length > 0) {
+          const productSaleData = {
+            customerId: selectedCustomerId || hotelBooking.customerId || null,
+            saleType: "PRODUCT",
+            items: productItems.map((item) => ({
+              serviceId: item.serviceId,
+              serviceName: item.serviceName,
+              petId: item.petId,
+              originalPrice: item.originalPrice,
+              finalPrice: item.finalPrice,
+              isPriceModified: item.isPriceModified,
+              itemType: "PRODUCT",
+              quantity: item.quantity ?? 1,
+              unitPrice: item.finalPrice,
+              productId: item.productId ?? null,
+            })),
+            subtotal: productItems.reduce(
+              (sum, item) => sum + item.finalPrice * (item.quantity ?? 1),
+              0,
+            ),
+            discountAmount: 0,
+            promotionId: null,
+            customDiscount: 0,
+            depositUsed: 0,
+            totalAmount: productItems.reduce(
+              (sum, item) => sum + item.finalPrice * (item.quantity ?? 1),
+              0,
+            ),
+            paymentMethod,
+            cashReceived: null,
+            change: null,
+          };
+
+          await fetch("/api/sales", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(productSaleData),
+          });
+        }
+
+        toast.success("Checkout สำเร็จ!");
+        setShowPaymentDialog(false);
+        resetPOS();
+        setCashReceived("");
+        setPaymentMethod("CASH");
+        return;
+      }
 
       // Get customer info
       const customer = selectedCustomerId
@@ -283,10 +422,10 @@ export function POSCart() {
 
       // Use deposit if applicable
       const bookingToUse = selectedBookingId
-        ? getBookingById(selectedBookingId)
+        ? useBookingStore.getState().getBookingById(selectedBookingId)
         : null;
       if (bookingToUse?.depositStatus === "HELD") {
-        useDeposit(bookingToUse.id);
+        useBookingStore.getState().useDeposit(bookingToUse.id);
       }
 
       toast.success("ชำระเงินและบันทึกข้อมูลสำเร็จ!");
@@ -317,141 +456,197 @@ export function POSCart() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {cart.length === 0 ? (
+          {cart.length === 0 && !hotelBooking ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <ShoppingCart className="h-10 w-10 mb-2 opacity-50" />
               <p className="text-sm">ยังไม่มีรายการในตะกร้า</p>
             </div>
           ) : (
             <>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/50"
-                  >
-                    <div className="flex-1 min-w-0 flex items-center gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-medium truncate">
-                            {item.serviceName}
-                          </p>
-                          {(item.itemType || "SERVICE") === "PRODUCT" && (
-                            <span className="text-xs text-muted-foreground truncate">
-                              ({formatCurrency(item.finalPrice)} x{" "}
-                              {item.quantity ?? 1})
-                            </span>
-                          )}
-                          {item.petId && item.petType && (
-                            <>
-                              {item.petType === "DOG" ? (
-                                <Dog className="h-3 w-3 text-dog shrink-0" />
-                              ) : (
-                                <Cat className="h-3 w-3 text-cat shrink-0" />
-                              )}
-                              {item.petName && (
-                                <span className="text-xs text-muted-foreground truncate">
-                                  ({item.petName})
-                                </span>
-                              )}
-                            </>
-                          )}
+              {/* Hotel Booking Info */}
+              {hotelBooking && (
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                    <BedDouble className="h-4 w-4" />
+                    <span>โรงแรม - {hotelBooking.petName}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div className="flex justify-between">
+                      <span>
+                        เข้าพัก:{" "}
+                        {new Date(hotelBooking.checkInDate).toLocaleDateString(
+                          "th-TH",
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>
+                        ค่าห้อง ({hotelTotalNights} คืน ×{" "}
+                        {formatCurrency(hotelBooking.ratePerNight)})
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(hotelRoomTotal)}
+                      </span>
+                    </div>
+                    {hotelBooking.depositAmount > 0 &&
+                      hotelBooking.depositStatus === "HELD" && (
+                        <div className="flex justify-between text-primary">
+                          <span>มัดจำ</span>
+                          <span>
+                            {formatCurrency(hotelBooking.depositAmount)}
+                          </span>
                         </div>
+                      )}
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {cart.map((item) => {
+                  const isProduct = (item.itemType || "SERVICE") === "PRODUCT";
+                  const qty = item.quantity ?? 1;
+                  const lineTotal = item.finalPrice * qty;
+
+                  return (
+                    <div key={item.id} className="p-2 rounded-lg bg-muted/50">
+                      {/* Row 1: Name + delete button */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium truncate">
+                              {item.serviceName}
+                            </p>
+                            {isProduct && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1 py-0 shrink-0"
+                              >
+                                สินค้า
+                              </Badge>
+                            )}
+                            {item.petId && item.petType && (
+                              <>
+                                {item.petType === "DOG" ? (
+                                  <Dog className="h-3 w-3 text-dog shrink-0" />
+                                ) : (
+                                  <Cat className="h-3 w-3 text-cat shrink-0" />
+                                )}
+                                {item.petName && (
+                                  <span className="text-xs text-muted-foreground truncate">
+                                    ({item.petName})
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive h-6 w-6 p-0 shrink-0"
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
 
-                      {(item.itemType || "SERVICE") === "PRODUCT" && (
+                      {/* Row 2: Price + Quantity + Total */}
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        {/* Unit price (editable) */}
                         <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0"
-                            onClick={() => decrementCartItemQuantity(item.id)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                          <div className="min-w-6 text-center text-sm font-medium">
-                            {item.quantity ?? 1}
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0"
-                            onClick={() => {
-                              const maxQty = item.maxQuantity ?? null;
-                              const qty = item.quantity ?? 1;
-                              if (maxQty && qty >= maxQty) {
-                                toast.error("จำนวนสินค้าในตะกร้าเกินสต๊อก");
-                                return;
-                              }
-                              incrementCartItemQuantity(item.id);
-                            }}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-
-                      {editingItemId === item.id ? (
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Input
-                            ref={priceInputRef}
-                            type="number"
-                            value={editingPrice}
-                            onChange={(e) => setEditingPrice(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            className="h-7 w-20 text-sm"
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 w-7 p-0"
-                            onClick={handleSavePrice}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 shrink-0">
-                          {item.isPriceModified && (
-                            <span className="text-xs text-muted-foreground line-through">
-                              {formatCurrency(item.originalPrice)}
-                            </span>
+                          {editingItemId === item.id ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                ref={priceInputRef}
+                                type="number"
+                                value={editingPrice}
+                                onChange={(e) =>
+                                  setEditingPrice(e.target.value)
+                                }
+                                onKeyDown={handleKeyDown}
+                                className="h-7 w-20 text-sm"
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0"
+                                onClick={handleSavePrice}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              {item.isPriceModified && (
+                                <span className="text-xs text-muted-foreground line-through">
+                                  {formatCurrency(item.originalPrice)}
+                                </span>
+                              )}
+                              <span
+                                className={cn(
+                                  "text-xs",
+                                  item.isPriceModified
+                                    ? "text-warning"
+                                    : "text-muted-foreground",
+                                )}
+                              >
+                                {formatCurrency(item.finalPrice)}
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-5 w-5 p-0"
+                                onClick={() =>
+                                  handleEditPrice(item.id, item.finalPrice)
+                                }
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </div>
                           )}
-                          <span
-                            className={cn(
-                              "text-sm font-medium",
-                              item.isPriceModified && "text-warning",
-                            )}
-                          >
-                            {formatCurrency(item.finalPrice)}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 w-6 p-0"
-                            onClick={() =>
-                              handleEditPrice(item.id, item.finalPrice)
-                            }
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
                         </div>
-                      )}
+
+                        {/* Quantity controls (for products) */}
+                        {isProduct && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() => decrementCartItemQuantity(item.id)}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <div className="min-w-5 text-center text-xs font-medium">
+                              {qty}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                const maxQty = item.maxQuantity ?? null;
+                                if (maxQty && qty >= maxQty) {
+                                  toast.error("จำนวนสินค้าในตะกร้าเกินสต๊อก");
+                                  return;
+                                }
+                                incrementCartItemQuantity(item.id);
+                              }}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Line total */}
+                        <span className="text-sm font-semibold shrink-0">
+                          {formatCurrency(lineTotal)}
+                        </span>
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive h-6 w-6 p-0 shrink-0"
-                      onClick={() => removeFromCart(item.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-
               <Separator />
-
               {/* Promotion Section */}
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-1">
@@ -505,11 +700,25 @@ export function POSCart() {
                   </div>
                 </div>
               </div>
-
               <Separator />
-
               {/* Summary */}
               <div className="space-y-2 text-sm">
+                {hotelBooking && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      ค่าห้องพัก ({hotelTotalNights} คืน)
+                    </span>
+                    <span>{formatCurrency(hotelRoomTotal)}</span>
+                  </div>
+                )}
+                {cart.length > 0 && hotelBooking && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      บริการ/สินค้าเสริม ({cart.length} รายการ)
+                    </span>
+                    <span>{formatCurrency(subtotal - hotelRoomTotal)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">ยอดรวม</span>
                   <span>{formatCurrency(subtotal)}</span>
@@ -540,7 +749,6 @@ export function POSCart() {
                   </span>
                 </div>
               </div>
-
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -705,7 +913,9 @@ export function POSCart() {
                       {selectedCustomerId
                         ? customers.find((c) => c.id === selectedCustomerId)
                             ?.name || "ลูกค้าทั่วไป"
-                        : booking?.customerName || "ลูกค้าทั่วไป"}
+                        : hotelBooking?.customerName ||
+                          booking?.customerName ||
+                          "ลูกค้าทั่วไป"}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -715,51 +925,55 @@ export function POSCart() {
                         selectedCustomerId
                           ? customers.find((c) => c.id === selectedCustomerId)
                               ?.phone || "-"
-                          : booking?.phone || "-",
+                          : hotelBooking?.customerPhone ||
+                              booking?.phone ||
+                              "-",
                       )}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>วันที่:</span>
                     <span>
-                      {isMounted
-                        ? format(new Date(), "dd/MM/yyyy", { locale: th })
-                        : "--/--/----"}
+                      {format(new Date(), "dd/MM/yyyy", { locale: th })}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>เวลา:</span>
-                    <span>
-                      {isMounted
-                        ? format(new Date(), "HH:mm", { locale: th })
-                        : "--:--"}
-                    </span>
+                    <span>{format(new Date(), "HH:mm", { locale: th })}</span>
                   </div>
                 </div>
 
                 {/* Items */}
                 <div className="border-t border-b py-2 mb-3">
                   <div className="font-medium mb-2">รายการ</div>
-                  {cart.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between text-sm mb-1"
-                    >
+                  {hotelBooking && (
+                    <div className="flex justify-between text-sm mb-1">
                       <span className="truncate pr-1">
-                        {item.serviceName}
-                        {(item.itemType || "SERVICE") === "PRODUCT" && (
-                          <span className="text-muted-foreground">
-                            {" "}
-                            ({formatCurrency(item.finalPrice)} x{" "}
-                            {item.quantity ?? 1})
-                          </span>
-                        )}
+                        ค่าห้องพัก ({hotelTotalNights} คืน)
                       </span>
-                      <span>
-                        {formatCurrency(item.finalPrice * (item.quantity ?? 1))}
-                      </span>
+                      <span>{formatCurrency(hotelRoomTotal)}</span>
                     </div>
-                  ))}
+                  )}
+                  {cart.map((item, index) => {
+                    const qty = item.quantity ?? 1;
+                    return (
+                      <div
+                        key={index}
+                        className="flex justify-between text-sm mb-1"
+                      >
+                        <span className="truncate pr-1">
+                          {item.serviceName}
+                          {qty > 1 && (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              ({formatCurrency(item.finalPrice)} x {qty})
+                            </span>
+                          )}
+                        </span>
+                        <span>{formatCurrency(item.finalPrice * qty)}</span>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Summary */}

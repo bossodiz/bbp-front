@@ -87,6 +87,11 @@ CREATE TRIGGER trigger_decrease_product_stock
 -- 5. อัพเดตฟังก์ชัน create_sale_with_items
 --    รองรับ product_id ใน items
 -- ===================================
+
+-- ลบ function เวอร์ชันเก่าทั้งหมดก่อน
+DROP FUNCTION IF EXISTS create_sale_with_items(INTEGER, INTEGER, NUMERIC, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, TEXT, NUMERIC, NUMERIC, JSONB, TEXT, INTEGER);
+DROP FUNCTION IF EXISTS create_sale_with_items(INTEGER, INTEGER, NUMERIC, NUMERIC, INTEGER, NUMERIC, NUMERIC, NUMERIC, VARCHAR, NUMERIC, NUMERIC, JSONB, VARCHAR, INTEGER);
+
 CREATE OR REPLACE FUNCTION create_sale_with_items(
   p_booking_id INTEGER DEFAULT NULL,
   p_customer_id INTEGER DEFAULT NULL,
@@ -96,11 +101,11 @@ CREATE OR REPLACE FUNCTION create_sale_with_items(
   p_custom_discount DECIMAL DEFAULT 0,
   p_deposit_used DECIMAL DEFAULT 0,
   p_total_amount DECIMAL DEFAULT 0,
-  p_payment_method VARCHAR DEFAULT 'CASH',
+  p_payment_method TEXT DEFAULT 'CASH',
   p_cash_received DECIMAL DEFAULT NULL,
   p_change DECIMAL DEFAULT NULL,
   p_items JSONB DEFAULT '[]'::jsonb,
-  p_sale_type VARCHAR DEFAULT 'SERVICE',
+  p_sale_type TEXT DEFAULT 'SERVICE',
   p_hotel_booking_id INTEGER DEFAULT NULL
 )
 RETURNS INTEGER AS $$

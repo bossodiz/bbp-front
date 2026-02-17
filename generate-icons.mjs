@@ -18,8 +18,6 @@ async function generateIcons() {
       .png()
       .toFile("./public/icon-192.png");
 
-    console.log("✅ Created icon-192.png");
-
     // Generate 512x512 icon
     await image
       .resize(512, 512, {
@@ -28,10 +26,6 @@ async function generateIcons() {
       })
       .png()
       .toFile("./public/icon-512.png");
-
-    console.log("✅ Created icon-512.png");
-
-    console.log("\n🎉 Icons generated successfully!");
   } catch (error) {
     console.error("❌ Error generating icons:", error);
   }

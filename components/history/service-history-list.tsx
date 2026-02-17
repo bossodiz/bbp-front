@@ -56,7 +56,7 @@ import { format } from "date-fns";
 import { th } from "date-fns/locale";
 
 export function ServiceHistoryList() {
-  const { customers } = useCustomerStore();
+  const customers = useCustomerStore((s) => s.customers);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState<
     "all" | "today" | "yesterday" | "week" | "month" | "custom"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { POSServiceSelector } from "./pos-service-selector";
 import { POSCart } from "./pos-cart";
@@ -10,304 +10,281 @@ import {
   useBookingStore,
   useCustomerStore,
   useServiceStore,
-  usePromotionStore,
   useServiceConfigStore,
 } from "@/lib/store";
-import { useCustomers } from "@/lib/hooks/use-customers";
-import { useServices } from "@/lib/hooks/use-services";
-import { usePromotions } from "@/lib/hooks/use-promotions";
-import type { Booking } from "@/lib/types";
+import { fetchAllPOSData } from "@/lib/utils/fetch-pos-data";
 
 export function POSContent() {
   const searchParams = useSearchParams();
   const bookingId = searchParams.get("bookingId");
-  const [loadingBooking, setLoadingBooking] = useState(false);
-  const hasLoadedData = useRef(false);
+  const hotelId = searchParams.get("hotelId");
+
   const hasLoadedBooking = useRef<string | null>(null);
-
-  const {
-    setSelectedBooking,
-    setSelectedCustomer,
-    togglePetSelection,
-    addToCart,
-    resetPOS,
-  } = usePOSStore();
-  const { getBookingById } = useBookingStore();
-  const customers = useCustomerStore((state) => state.customers);
-  const { services } = useServiceStore();
-  const setServices = useServiceStore((state) => state.services);
-  const { petTypes, sizes, fetchPetTypes, fetchSizes } =
-    useServiceConfigStore();
-
-  // Fetch customers and services from API
-  const { customers: apiCustomers, fetchCustomers } = useCustomers();
-  const { services: apiServices, fetchServices } = useServices({
-    autoFetch: false,
-  });
-  const { promotions: apiPromotions, fetchPromotions } = usePromotions();
-
-  // Load customers, services, petTypes and sizes on mount (only once)
-  useEffect(() => {
-    if (!hasLoadedData.current) {
-      hasLoadedData.current = true;
-      fetchCustomers();
-      fetchPromotions();
-      fetchServices();
-      fetchPetTypes();
-      fetchSizes();
-    }
-  }, []);
-
-  // Sync API data to stores
-  useEffect(() => {
-    if (apiCustomers.length > 0) {
-      // Sync customers to local store
-      useCustomerStore.setState({ customers: apiCustomers });
-    }
-  }, [apiCustomers]);
+  const hasResetForBooking = useRef<string | null>(null);
+  const hasLoadedHotel = useRef<string | null>(null);
+  const dataPromise = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
-    if (apiServices.length > 0) {
-      // Sync services to local store
-      useServiceStore.setState({ services: apiServices });
-    }
-  }, [apiServices]);
+    let cancelled = false;
 
-  useEffect(() => {
-    if (apiPromotions.length > 0) {
-      // Sync promotions to local store
-      usePromotionStore.setState({ promotions: apiPromotions });
-    }
-  }, [apiPromotions]);
+    const run = async () => {
+      // Load all POS data on mount (reuse same promise across Strict Mode remounts)
+      if (!dataPromise.current) {
+        dataPromise.current = fetchAllPOSData();
+      }
+      await dataPromise.current;
 
-  useEffect(() => {
-    // Reset POS when component mounts without booking
-    if (!bookingId) {
-      resetPOS();
-      hasLoadedBooking.current = null;
-      return;
-    }
+      if (cancelled) return;
 
-    // Prevent loading the same booking twice
-    if (hasLoadedBooking.current === bookingId) {
-      return;
-    }
+      // --- Hotel flow (URL param hotelId) ---
+      if (hotelId) {
+        if (hasLoadedHotel.current === hotelId) return;
 
-    // Wait for services, petTypes and sizes to load before processing booking
-    if (
-      apiServices.length === 0 ||
-      petTypes.length === 0 ||
-      sizes.length === 0
-    ) {
-      return;
-    }
+        usePOSStore.getState().resetPOS();
+        hasLoadedBooking.current = null;
+        hasResetForBooking.current = null;
 
-    // Mark this booking as being loaded
-    hasLoadedBooking.current = bookingId;
+        try {
+          const response = await fetch(`/api/hotel/${hotelId}`);
+          if (!response.ok || cancelled) return;
+          const result = await response.json();
+          const hotel = result.data;
+          if (!hotel || cancelled) return;
 
-    // Load booking data from API or local store
-    const loadAndProcessBooking = async () => {
-      setLoadingBooking(true);
-      try {
-        // Try local store first
-        let booking = getBookingById(Number(bookingId));
+          hasLoadedHotel.current = hotelId;
+          usePOSStore.getState().setHotelBooking(hotel.customerId, hotel.id);
+        } catch {
+          // Error loading hotel booking
+        }
+        return;
+      }
 
-        // If not in local store, fetch from API
-        if (!booking) {
-          const response = await fetch(`/api/bookings/${bookingId}`);
-          if (!response.ok) {
-            return;
+      // Not hotel flow — clear hotel ref
+      hasLoadedHotel.current = null;
+
+      // --- Booking flow (URL param bookingId) ---
+      if (bookingId) {
+        if (hasLoadedBooking.current === bookingId) return;
+
+        if (hasResetForBooking.current !== bookingId) {
+          hasResetForBooking.current = bookingId;
+          usePOSStore.getState().resetPOS();
+        }
+
+        hasLoadedBooking.current = bookingId;
+
+        try {
+          const getBookingById = useBookingStore.getState().getBookingById;
+          let booking = getBookingById(Number(bookingId));
+
+          if (!booking) {
+            const response = await fetch(`/api/bookings/${bookingId}`);
+            if (!response.ok || cancelled) return;
+            booking = await response.json();
           }
-          booking = await response.json();
-        }
 
-        if (!booking) return;
+          if (!booking || cancelled) return;
 
-        setSelectedBooking(booking.id);
+          usePOSStore.getState().setSelectedBooking(booking.id);
 
-        // Use customerId from booking (from database)
-        const customerId = booking.customerId;
+          const customerId = booking.customerId;
 
-        // Find or sync customer to local store
-        let existingCustomer = customers.find((c) => c.id === customerId);
-        if (!existingCustomer && booking.customerName && booking.phone) {
-          // Add customer to local store with correct database ID
-          // (customerName and phone come from customers table via join)
-          useCustomerStore.setState((state) => ({
-            customers: [
-              ...state.customers,
-              {
-                id: customerId,
-                name: booking.customerName,
-                phone: booking.phone,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                pets: [],
-              },
-            ],
-          }));
-        }
+          const customers = useCustomerStore.getState().customers;
+          let existingCustomer = customers.find((c) => c.id === customerId);
+          if (!existingCustomer && booking.customerName && booking.phone) {
+            // Add customer to local store with correct database ID
+            // (customerName and phone come from customers table via join)
+            useCustomerStore.setState((state: any) => ({
+              customers: [
+                ...state.customers,
+                {
+                  id: customerId,
+                  name: booking.customerName,
+                  phone: booking.phone,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                  pets: [],
+                },
+              ],
+            }));
+          }
 
-        setSelectedCustomer(customerId);
+          usePOSStore.getState().setSelectedCustomer(customerId);
 
-        // Handle pets from booking
-        if (booking.pets && booking.pets.length > 0) {
-          // Process each pet sequentially
-          booking.pets.forEach((bookingPet) => {
-            // Get fresh customer data (after syncing customer)
-            const currentCustomers = useCustomerStore.getState().customers;
-            const currentCustomer = currentCustomers.find(
-              (c) => c.id === customerId,
-            );
-            if (!currentCustomer) {
-              return;
-            }
-
-            // Try to find existing pet by ID from booking, or by name and type
-            let pet = currentCustomer.pets.find(
-              (p) => p.id === bookingPet.petId,
-            );
-
-            if (!pet) {
-              pet = currentCustomer.pets.find(
-                (p) => p.name === bookingPet.name && p.type === bookingPet.type,
+          // Handle pets from booking
+          if (booking.pets && booking.pets.length > 0) {
+            // Process each pet sequentially
+            booking.pets.forEach((bookingPet: any) => {
+              // Get fresh customer data (after syncing customer)
+              const currentCustomers = useCustomerStore.getState().customers;
+              const services = useServiceStore.getState().services;
+              const currentCustomer = currentCustomers.find(
+                (c) => c.id === customerId,
               );
-            }
+              if (!currentCustomer) {
+                return;
+              }
 
-            // Create or sync pet with correct database ID
-            if (!pet) {
-              // Add pet to local store with correct database ID
-              const newPet = {
-                id: bookingPet.petId,
-                customerId: customerId,
-                name: bookingPet.name,
-                type: bookingPet.type,
-                breed: bookingPet.breed,
-                isMixedBreed: false,
-                weight: bookingPet.weight || 5,
-                note: `สร้างจากการนัดหมาย - บริการ: ${bookingPet.service}`,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              };
-
-              useCustomerStore.setState((state) => ({
-                customers: state.customers.map((c) =>
-                  c.id === customerId
-                    ? { ...c, pets: [...c.pets, newPet], updatedAt: new Date() }
-                    : c,
-                ),
-              }));
-
-              pet = newPet;
-            } else if (pet.id !== bookingPet.petId) {
-              // Update pet ID to match database
-              useCustomerStore.setState((state) => ({
-                customers: state.customers.map((c) =>
-                  c.id === customerId
-                    ? {
-                        ...c,
-                        pets: c.pets.map((p) =>
-                          p.name === bookingPet.name &&
-                          p.type === bookingPet.type
-                            ? {
-                                ...p,
-                                id: bookingPet.petId,
-                                weight: bookingPet.weight || p.weight,
-                              }
-                            : p,
-                        ),
-                        updatedAt: new Date(),
-                      }
-                    : c,
-                ),
-              }));
-
-              pet = {
-                ...pet,
-                id: bookingPet.petId,
-                weight: bookingPet.weight || pet.weight,
-              };
-            }
-
-            // Select the pet
-            togglePetSelection(pet.id);
-
-            // Auto-add service from booking
-            if (bookingPet.service && apiServices.length > 0) {
-              // Find matching service by name (case-insensitive)
-              const matchingService = apiServices.find(
-                (s) =>
-                  s.name.toLowerCase().trim() ===
-                  bookingPet.service.toLowerCase().trim(),
+              // Try to find existing pet by ID from booking, or by name and type
+              let pet = currentCustomer.pets.find(
+                (p) => p.id === bookingPet.petId,
               );
 
-              if (matchingService) {
-                // Map pet type to service pet type ID
-                const petTypeId = pet.type; // "DOG" or "CAT"
+              if (!pet) {
+                pet = currentCustomer.pets.find(
+                  (p) =>
+                    p.name === bookingPet.name && p.type === bookingPet.type,
+                );
+              }
 
-                // Get sizes for this pet type
-                const { getSizesForPetType } = useServiceConfigStore.getState();
-                const sizesForType = getSizesForPetType(petTypeId).filter(
-                  (s) => s.active,
+              // Create or sync pet with correct database ID
+              if (!pet) {
+                // Add pet to local store with correct database ID
+                const newPet = {
+                  id: bookingPet.petId,
+                  customerId: customerId,
+                  name: bookingPet.name,
+                  type: bookingPet.type,
+                  breed: bookingPet.breed,
+                  isMixedBreed: false,
+                  weight: bookingPet.weight || 5,
+                  note: `สร้างจากการนัดหมาย - บริการ: ${bookingPet.service}`,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                };
+
+                useCustomerStore.setState((state) => ({
+                  customers: state.customers.map((c) =>
+                    c.id === customerId
+                      ? {
+                          ...c,
+                          pets: [...c.pets, newPet],
+                          updatedAt: new Date(),
+                        }
+                      : c,
+                  ),
+                }));
+
+                pet = newPet;
+              } else if (pet.id !== bookingPet.petId) {
+                // Update pet ID to match database
+                useCustomerStore.setState((state) => ({
+                  customers: state.customers.map((c) =>
+                    c.id === customerId
+                      ? {
+                          ...c,
+                          pets: c.pets.map((p) =>
+                            p.name === bookingPet.name &&
+                            p.type === bookingPet.type
+                              ? {
+                                  ...p,
+                                  id: bookingPet.petId,
+                                  weight: bookingPet.weight || p.weight,
+                                }
+                              : p,
+                          ),
+                          updatedAt: new Date(),
+                        }
+                      : c,
+                  ),
+                }));
+
+                pet = {
+                  ...pet,
+                  id: bookingPet.petId,
+                  weight: bookingPet.weight || pet.weight,
+                };
+              }
+
+              // Select the pet
+              usePOSStore.getState().togglePetSelection(pet.id);
+
+              // Auto-add service from booking
+              if (bookingPet.service && services.length > 0) {
+                // Find matching service by name (case-insensitive)
+                const matchingService = services.find(
+                  (s) =>
+                    s.name.toLowerCase().trim() ===
+                    bookingPet.service.toLowerCase().trim(),
                 );
 
-                // Estimate size based on weight
-                let estimatedSizeId: string | null = null;
-                if (pet.weight && sizesForType.length > 0) {
-                  for (const size of sizesForType) {
-                    const min = size.minWeight ?? 0;
-                    const max = size.maxWeight ?? Infinity;
-                    if (pet.weight >= min && pet.weight <= max) {
-                      estimatedSizeId = size.id;
-                      break;
+                if (matchingService) {
+                  // Map pet type to service pet type ID
+                  const petTypeId = pet.type; // "DOG" or "CAT"
+
+                  // Get sizes for this pet type
+                  const { getSizesForPetType } =
+                    useServiceConfigStore.getState();
+                  const sizesForType = getSizesForPetType(petTypeId).filter(
+                    (s) => s.active,
+                  );
+
+                  // Estimate size based on weight
+                  let estimatedSizeId: string | null = null;
+                  if (pet.weight && sizesForType.length > 0) {
+                    for (const size of sizesForType) {
+                      const min = size.minWeight ?? 0;
+                      const max = size.maxWeight ?? Infinity;
+                      if (pet.weight >= min && pet.weight <= max) {
+                        estimatedSizeId = size.id;
+                        break;
+                      }
+                    }
+                    // Fallback to first size if no match
+                    if (!estimatedSizeId) {
+                      estimatedSizeId = sizesForType[0]?.id || null;
                     }
                   }
-                  // Fallback to first size if no match
-                  if (!estimatedSizeId) {
-                    estimatedSizeId = sizesForType[0]?.id || null;
+
+                  // Find price for this pet type and size
+                  let servicePrice = 0;
+                  if (matchingService.isSpecial) {
+                    servicePrice = matchingService.specialPrice || 0;
+                  } else {
+                    const priceInfo = matchingService.prices.find(
+                      (p) =>
+                        p.petTypeId === petTypeId &&
+                        (!estimatedSizeId || p.sizeId === estimatedSizeId),
+                    );
+                    servicePrice = priceInfo?.price || 0;
+                  }
+
+                  // Add to cart if price is valid
+                  if (servicePrice > 0) {
+                    usePOSStore.getState().addToCart({
+                      serviceId: matchingService.id,
+                      serviceName: matchingService.name,
+                      originalPrice: servicePrice,
+                      finalPrice: servicePrice,
+                      isPriceModified: false,
+                      petId: pet.id,
+                      petName: pet.name,
+                      petType: pet.type,
+                    });
                   }
                 }
-
-                // Find price for this pet type and size
-                let servicePrice = 0;
-                if (matchingService.isSpecial) {
-                  servicePrice = matchingService.specialPrice || 0;
-                } else {
-                  const priceInfo = matchingService.prices.find(
-                    (p) =>
-                      p.petTypeId === petTypeId &&
-                      (!estimatedSizeId || p.sizeId === estimatedSizeId),
-                  );
-                  servicePrice = priceInfo?.price || 0;
-                }
-
-                // Add to cart if price is valid
-                if (servicePrice > 0) {
-                  addToCart({
-                    serviceId: matchingService.id,
-                    serviceName: matchingService.name,
-                    originalPrice: servicePrice,
-                    finalPrice: servicePrice,
-                    isPriceModified: false,
-                    petId: pet.id,
-                    petName: pet.name,
-                    petType: pet.type,
-                  });
-                }
               }
-            }
-          });
+            });
+          }
+        } catch (error) {
+          // Error loading booking
         }
-      } catch (error) {
-        // Error loading booking
-      } finally {
-        setLoadingBooking(false);
+        return;
       }
+
+      // --- No URL params: reset everything ---
+      usePOSStore.getState().resetPOS();
+      hasLoadedBooking.current = null;
+      hasResetForBooking.current = null;
     };
 
-    loadAndProcessBooking();
+    run();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookingId, apiServices.length, petTypes.length, sizes.length]);
+  }, [bookingId, hotelId]);
 
   return (
     <div className="space-y-6">

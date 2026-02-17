@@ -6,32 +6,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useCustomerStore, usePOSStore, useBookingStore } from "@/lib/store";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
 
 export function POSCustomerSelector() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { customers, searchCustomers } = useCustomerStore();
-  const {
-    selectedCustomerId,
-    selectedPetIds,
-    selectedBookingId,
-    setSelectedCustomer,
-    togglePetSelection,
-  } = usePOSStore();
-  const { getBookingById } = useBookingStore();
 
-  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
-  const selectedPets =
-    selectedCustomer?.pets.filter((p) => selectedPetIds.includes(p.id)) || [];
+  const customers = useCustomerStore((s) => s.customers);
+  const searchCustomers = useCustomerStore((s) => s.searchCustomers);
+  const selectedCustomerId = usePOSStore((s) => s.selectedCustomerId);
+  const selectedPetIds = usePOSStore((s) => s.selectedPetIds);
+  const selectedBookingId = usePOSStore((s) => s.selectedBookingId);
+  const setSelectedCustomer = usePOSStore((s) => s.setSelectedCustomer);
+  const togglePetSelection = usePOSStore((s) => s.togglePetSelection);
+  const getBookingById = useBookingStore((s) => s.getBookingById);
+
   const booking = selectedBookingId ? getBookingById(selectedBookingId) : null;
+  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
 
   const filteredCustomers = searchQuery
     ? searchCustomers(searchQuery)
@@ -46,7 +37,6 @@ export function POSCustomerSelector() {
   };
 
   const handleSelectCustomer = (customerId: number) => {
-    const customer = customers.find((c) => c.id === customerId);
     setSelectedCustomer(customerId);
     setSearchQuery("");
   };

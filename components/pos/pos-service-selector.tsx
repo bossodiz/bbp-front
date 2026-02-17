@@ -26,11 +26,17 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export function POSServiceSelector() {
-  const { services } = useServiceStore();
   const { products } = useProducts();
-  const { petTypes, getSizesForPetType } = useServiceConfigStore();
-  const { addToCart, selectedPetIds, selectedCustomerId, cart } = usePOSStore();
-  const { customers } = useCustomerStore();
+  const services = useServiceStore((s) => s.services);
+
+  const selectedPetIds = usePOSStore((s) => s.selectedPetIds);
+  const selectedCustomerId = usePOSStore((s) => s.selectedCustomerId);
+  const cart = usePOSStore((s) => s.cart);
+  const addToCart = usePOSStore((s) => s.addToCart);
+  const customers = useCustomerStore((s) => s.customers);
+  const petTypes = useServiceConfigStore((s) => s.petTypes);
+  const getSizesForPetType = useServiceConfigStore((s) => s.getSizesForPetType);
+
   const [showPetSelectDialog, setShowPetSelectDialog] = useState(false);
   const [pendingService, setPendingService] = useState<{
     serviceId: number;
