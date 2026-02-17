@@ -17,7 +17,6 @@ export async function GET() {
       name: promo.name,
       type: promo.type,
       value: parseFloat(promo.value),
-      freeServiceId: promo.free_service_id,
       applicableTo: promo.applicable_to || "ALL",
       active: promo.active,
       startDate: promo.start_date ? new Date(promo.start_date) : undefined,
@@ -58,13 +57,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (type === "FREE_SERVICE" && !freeServiceId) {
-      return NextResponse.json(
-        { error: "กรุณาเลือกบริการฟรี" },
-        { status: 400 },
-      );
-    }
-
     // แปลง camelCase เป็น snake_case สำหรับ database
     const { data, error } = await supabaseAdmin
       .from("promotions")
@@ -72,7 +64,6 @@ export async function POST(request: NextRequest) {
         name,
         type,
         value,
-        free_service_id: freeServiceId || null,
         applicable_to: applicableTo || "ALL",
         active: active !== undefined ? active : true,
         start_date: startDate || null,
@@ -89,7 +80,6 @@ export async function POST(request: NextRequest) {
       name: data.name,
       type: data.type,
       value: parseFloat(data.value),
-      freeServiceId: data.free_service_id,
       applicableTo: data.applicable_to || "ALL",
       active: data.active,
       startDate: data.start_date ? new Date(data.start_date) : undefined,

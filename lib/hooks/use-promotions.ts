@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePromotionStore } from "@/lib/store";
 import type { Promotion } from "@/lib/types";
 
 export function usePromotions() {
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ใช้ข้อมูลจาก Zustand store โดยตรง - ไม่ trigger re-render
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ดึงข้อมูลโปรโมชั่นทั้งหมด
+  // ดึงข้อมูลโปรโมชั่นทั้งหมด - sync เข้า store เท่านั้น
   const fetchPromotions = async () => {
     try {
       setLoading(true);
@@ -15,8 +15,7 @@ export function usePromotions() {
       const response = await fetch("/api/promotions");
       if (!response.ok) throw new Error("ไม่สามารถดึงข้อมูลโปรโมชั่นได้");
       const data = await response.json();
-      setPromotions(data);
-      // Sync to Zustand store
+      // อัพเดทเข้า Zustand store อย่างเดียว
       usePromotionStore.setState({ promotions: data });
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
@@ -101,12 +100,10 @@ export function usePromotions() {
     }
   };
 
-  useEffect(() => {
-    fetchPromotions();
-  }, []);
+  // ไม่มี auto-fetch - ให้ component เรียก fetchPromotions() เอง
 
   return {
-    promotions,
+    promotions: usePromotionStore.getState().promotions, // อ่านจาก store
     loading,
     error,
     fetchPromotions,

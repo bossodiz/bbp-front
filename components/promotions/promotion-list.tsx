@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Pencil, Percent, Banknote, Gift, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { PromotionDialog } from "./promotion-dialog";
 import { usePromotions } from "@/lib/hooks/use-promotions";
-import { useServices } from "@/lib/hooks/use-services";
+import { usePromotionStore } from "@/lib/store";
 import type { Promotion } from "@/lib/types";
 import { promotionTypeLabels, applicableToLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,6 @@ import { toast } from "sonner";
 const typeIcons = {
   PERCENT: Percent,
   AMOUNT: Banknote,
-  FREE_SERVICE: Gift,
 };
 
 interface PromotionListProps {
@@ -29,12 +28,17 @@ export function PromotionList({
   addDialogOpen = false,
   onAddDialogChange,
 }: PromotionListProps = {}) {
-  const { promotions, loading, togglePromotion, fetchPromotions } =
-    usePromotions();
-  const { services } = useServices();
+  // อ่าน promotions จาก Zustand store โดยตรง
+  const promotions = usePromotionStore((s) => s.promotions);
+  const { loading, togglePromotion, fetchPromotions } = usePromotions();
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(
     null,
   );
+
+  // Fetch ครั้งเดียวตอน mount
+  useEffect(() => {
+    fetchPromotions();
+  }, []);
 
   const handleToggle = async (id: number, active: boolean) => {
     try {
@@ -45,24 +49,16 @@ export function PromotionList({
     }
   };
 
-  const formatValue = useCallback(
-    (promotion: Promotion) => {
-      switch (promotion.type) {
-        case "PERCENT":
-          return `ลด ${promotion.value}%`;
-        case "AMOUNT":
-          return `ลด ${promotion.value} บาท`;
-        case "FREE_SERVICE":
-          const service = services.find(
-            (s) => s.id === promotion.freeServiceId,
-          );
-          return `แถม ${service?.name || "บริการ"}`;
-        default:
-          return "";
-      }
-    },
-    [services],
-  );
+  const formatValue = useCallback((promotion: Promotion) => {
+    switch (promotion.type) {
+      case "PERCENT":
+        return `ลด ${promotion.value}%`;
+      case "AMOUNT":
+        return `ลด ${promotion.value} บาท`;
+      default:
+        return "";
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -77,12 +73,7 @@ export function PromotionList({
         {/* Add Promotion Dialog */}
         <PromotionDialog
           open={addDialogOpen}
-          onOpenChange={(open) => {
-            onAddDialogChange?.(open);
-            if (!open) {
-              fetchPromotions();
-            }
-          }}
+          onOpenChange={(open) => onAddDialogChange?.(open)}
         />
 
         {/* Edit Promotion Dialog */}
@@ -91,7 +82,6 @@ export function PromotionList({
           onOpenChange={(open) => {
             if (!open) {
               setEditingPromotion(null);
-              fetchPromotions();
             }
           }}
           promotion={editingPromotion}
@@ -112,12 +102,7 @@ export function PromotionList({
         {/* Add Promotion Dialog */}
         <PromotionDialog
           open={addDialogOpen}
-          onOpenChange={(open) => {
-            onAddDialogChange?.(open);
-            if (!open) {
-              fetchPromotions();
-            }
-          }}
+          onOpenChange={(open) => onAddDialogChange?.(open)}
         />
 
         {/* Edit Promotion Dialog */}
@@ -126,7 +111,6 @@ export function PromotionList({
           onOpenChange={(open) => {
             if (!open) {
               setEditingPromotion(null);
-              fetchPromotions();
             }
           }}
           promotion={editingPromotion}
@@ -211,13 +195,7 @@ export function PromotionList({
       {/* Add Promotion Dialog */}
       <PromotionDialog
         open={addDialogOpen}
-        onOpenChange={(open) => {
-          onAddDialogChange?.(open);
-          if (!open) {
-            // Refresh data เมื่อปิด dialog
-            fetchPromotions();
-          }
-        }}
+        onOpenChange={(open) => onAddDialogChange?.(open)}
       />
 
       {/* Edit Promotion Dialog */}
@@ -226,8 +204,6 @@ export function PromotionList({
         onOpenChange={(open) => {
           if (!open) {
             setEditingPromotion(null);
-            // Refresh data เมื่อปิด dialog
-            fetchPromotions();
           }
         }}
         promotion={editingPromotion}

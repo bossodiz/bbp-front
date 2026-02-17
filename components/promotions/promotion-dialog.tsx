@@ -31,7 +31,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { usePromotions } from "@/lib/hooks/use-promotions";
-import { useServices } from "@/lib/hooks/use-services";
 import type { Promotion, PromotionType, ApplicableTo } from "@/lib/types";
 import { promotionTypeLabels, applicableToLabels } from "@/lib/types";
 import { toast } from "sonner";
@@ -39,11 +38,10 @@ import { toast } from "sonner";
 const promotionSchema = z
   .object({
     name: z.string().min(1, "กรุณากรอกชื่อโปรโมชั่น"),
-    type: z.enum(["PERCENT", "AMOUNT", "FREE_SERVICE"], {
+    type: z.enum(["PERCENT", "AMOUNT"], {
       required_error: "กรุณาเลือกประเภทโปรโมชั่น",
     }),
     value: z.coerce.number().min(0, "ค่าต้องมากกว่าหรือเท่ากับ 0").optional(),
-    freeServiceId: z.coerce.number().optional(),
     applicableTo: z.enum(["ALL", "SERVICE", "HOTEL", "PRODUCT"]),
     active: z.boolean(),
   })
@@ -62,19 +60,6 @@ const promotionSchema = z
       message: "กรุณากรอกค่าส่วนลด",
       path: ["value"],
     },
-  )
-  .refine(
-    (data) => {
-      // If type is FREE_SERVICE, freeServiceId is required
-      if (data.type === "FREE_SERVICE" && !data.freeServiceId) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "กรุณาเลือกบริการที่แถม",
-      path: ["freeServiceId"],
-    },
   );
 
 type PromotionFormData = z.infer<typeof promotionSchema>;
@@ -91,7 +76,6 @@ export function PromotionDialog({
   promotion,
 }: PromotionDialogProps) {
   const { addPromotion, updatePromotion } = usePromotions();
-  const { services } = useServices({ autoFetch: true });
   const [submitting, setSubmitting] = useState(false);
   const isEditing = promotion !== null && promotion !== undefined;
 
@@ -101,7 +85,6 @@ export function PromotionDialog({
       name: "",
       type: undefined,
       value: 0,
-      freeServiceId: undefined,
       applicableTo: "ALL" as ApplicableTo,
       active: true,
     },
@@ -117,7 +100,6 @@ export function PromotionDialog({
           name: promotion.name,
           type: promotion.type,
           value: promotion.value,
-          freeServiceId: promotion.freeServiceId,
           applicableTo: promotion.applicableTo || "ALL",
           active: promotion.active,
         });
@@ -126,7 +108,6 @@ export function PromotionDialog({
           name: "",
           type: undefined,
           value: 0,
-          freeServiceId: undefined,
           applicableTo: "ALL",
           active: true,
         });
@@ -140,9 +121,7 @@ export function PromotionDialog({
       const promotionData = {
         name: data.name,
         type: data.type as PromotionType,
-        value: data.type === "FREE_SERVICE" ? 0 : (data.value ?? 0),
-        freeServiceId:
-          data.type === "FREE_SERVICE" ? data.freeServiceId : undefined,
+        value: data.value ?? 0,
         applicableTo: data.applicableTo as ApplicableTo,
         active: data.active,
       };
@@ -295,39 +274,6 @@ export function PromotionDialog({
                 </FormItem>
               )}
             />
-
-            {watchType === "FREE_SERVICE" && (
-              <FormField
-                control={form.control}
-                name="freeServiceId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>บริการที่แถม</FormLabel>
-                    <Select
-                      onValueChange={(value) => field.onChange(Number(value))}
-                      value={field.value?.toString()}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="เลือกบริการ" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {services.map((service) => (
-                          <SelectItem
-                            key={service.id}
-                            value={service.id.toString()}
-                          >
-                            {service.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <FormField
               control={form.control}

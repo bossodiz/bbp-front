@@ -194,18 +194,13 @@ CREATE TABLE promotions (
   name VARCHAR(255) NOT NULL,
   type VARCHAR(20) NOT NULL,
   value DECIMAL(10,2) NOT NULL,
-  free_service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
   active BOOLEAN NOT NULL DEFAULT true,
   start_date DATE,
   end_date DATE,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   
-  CONSTRAINT check_promotion_type CHECK (type IN ('PERCENT', 'AMOUNT', 'FREE_SERVICE')),
-  CONSTRAINT check_free_service CHECK (
-    (type = 'FREE_SERVICE' AND free_service_id IS NOT NULL) OR
-    (type != 'FREE_SERVICE' AND free_service_id IS NULL)
-  )
+  CONSTRAINT check_promotion_type CHECK (type IN ('PERCENT', 'AMOUNT')),
 );
 
 CREATE INDEX idx_promotions_active ON promotions(active);
@@ -461,10 +456,10 @@ INSERT INTO pets (id, customer_id, name, type, breed, breed_2, is_mixed_breed, w
 SELECT setval('pets_id_seq', 3, true);
 
 -- Promotions (Sample Data)
-INSERT INTO promotions (id, name, type, value, free_service_id, active, start_date, end_date, created_at, updated_at) VALUES 
-(1, 'ส่วนลด 10%', 'PERCENT', 10.00, null, true, null, null, NOW(), NOW()),
-(2, 'ส่วนลด 50 บาท', 'AMOUNT', 50.00, null, true, null, null, NOW(), NOW()),
-(3, 'ส่วนลด 100 บาท', 'AMOUNT', 100.00, null, true, null, null, NOW(), NOW());
+INSERT INTO promotions (id, name, type, value, active, start_date, end_date, created_at, updated_at) VALUES 
+(1, 'ส่วนลด 10%', 'PERCENT', 10.00, true, null, null, NOW(), NOW()),
+(2, 'ส่วนลด 50 บาท', 'AMOUNT', 50.00, true, null, null, NOW(), NOW()),
+(3, 'ส่วนลด 100 บาท', 'AMOUNT', 100.00, true, null, null, NOW(), NOW());
 
 -- Reset promotions sequence to continue from 3
 SELECT setval('promotions_id_seq', 3, true);

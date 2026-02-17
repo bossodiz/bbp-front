@@ -208,9 +208,8 @@ export interface Database {
         Row: {
           id: number;
           name: string;
-          type: "PERCENT" | "AMOUNT" | "FREE_SERVICE";
+          type: "PERCENT" | "AMOUNT";
           value: number;
-          free_service_id: number | null;
           applicable_to: "ALL" | "SERVICE" | "HOTEL" | "PRODUCT";
           active: boolean;
           start_date: string | null;
@@ -221,9 +220,8 @@ export interface Database {
         Insert: {
           id?: number;
           name: string;
-          type: "PERCENT" | "AMOUNT" | "FREE_SERVICE";
+          type: "PERCENT" | "AMOUNT";
           value: number;
-          free_service_id?: number | null;
           applicable_to?: "ALL" | "SERVICE" | "HOTEL" | "PRODUCT";
           active?: boolean;
           start_date?: string | null;
@@ -234,9 +232,8 @@ export interface Database {
         Update: {
           id?: number;
           name?: string;
-          type?: "PERCENT" | "AMOUNT" | "FREE_SERVICE";
+          type?: "PERCENT" | "AMOUNT";
           value?: number;
-          free_service_id?: number | null;
           applicable_to?: "ALL" | "SERVICE" | "HOTEL" | "PRODUCT";
           active?: boolean;
           start_date?: string | null;

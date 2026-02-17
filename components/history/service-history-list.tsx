@@ -8,7 +8,6 @@ import {
   Dog,
   Cat,
   Calendar as CalendarIcon,
-  CalendarDays,
   Loader2,
   RefreshCcw,
   Scissors,

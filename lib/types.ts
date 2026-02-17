@@ -69,7 +69,7 @@ export interface ServicePrice {
 export interface Promotion {
   id: number;
   name: string;
-  type: "PERCENT" | "AMOUNT" | "FREE_SERVICE";
+  type: "PERCENT" | "AMOUNT";
   value: number;
   freeServiceId?: number;
   applicableTo: ApplicableTo;
@@ -275,7 +275,7 @@ export const hotelStatusLabels: Record<HotelBookingStatus, string> = {
 export type PetType = "DOG" | "CAT"; // For pet registration (still fixed)
 export type DepositStatus = "NONE" | "HELD" | "USED" | "FORFEITED";
 export type PaymentMethod = "CASH" | "QR" | "CREDIT_CARD";
-export type PromotionType = "PERCENT" | "AMOUNT" | "FREE_SERVICE";
+export type PromotionType = "PERCENT" | "AMOUNT";
 export type SaleType = "SERVICE" | "HOTEL" | "PRODUCT" | "MIXED";
 export type ItemType = "SERVICE" | "HOTEL_ROOM" | "PRODUCT";
 export type ApplicableTo = "ALL" | "SERVICE" | "HOTEL" | "PRODUCT";
@@ -302,7 +302,6 @@ export const paymentMethodLabels: Record<PaymentMethod, string> = {
 export const promotionTypeLabels: Record<PromotionType, string> = {
   PERCENT: "ลดเปอร์เซ็นต์",
   AMOUNT: "ลดเป็นบาท",
-  FREE_SERVICE: "แถมบริการ",
 };
 
 export const saleTypeLabels: Record<SaleType, string> = {

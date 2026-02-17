@@ -25,7 +25,6 @@ export async function GET(
       name: data.name,
       type: data.type,
       value: parseFloat(data.value),
-      freeServiceId: data.free_service_id,
       applicableTo: data.applicable_to || "ALL",
       active: data.active,
       startDate: data.start_date ? new Date(data.start_date) : undefined,
@@ -62,14 +61,6 @@ export async function PUT(
       endDate,
     } = body;
 
-    // Validation
-    if (type === "FREE_SERVICE" && !freeServiceId) {
-      return NextResponse.json(
-        { error: "กรุณาเลือกบริการฟรี" },
-        { status: 400 },
-      );
-    }
-
     // แปลง camelCase เป็น snake_case
     const updateData: any = {
       updated_at: new Date().toISOString(),
@@ -78,7 +69,6 @@ export async function PUT(
     if (name !== undefined) updateData.name = name;
     if (type !== undefined) updateData.type = type;
     if (value !== undefined) updateData.value = value;
-    if (freeServiceId !== undefined) updateData.free_service_id = freeServiceId;
     if (applicableTo !== undefined) updateData.applicable_to = applicableTo;
     if (active !== undefined) updateData.active = active;
     if (startDate !== undefined) updateData.start_date = startDate;
@@ -102,7 +92,6 @@ export async function PUT(
       name: data.name,
       type: data.type,
       value: parseFloat(data.value),
-      freeServiceId: data.free_service_id,
       applicableTo: data.applicable_to || "ALL",
       active: data.active,
       startDate: data.start_date ? new Date(data.start_date) : undefined,
