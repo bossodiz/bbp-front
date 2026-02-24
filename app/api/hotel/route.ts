@@ -1,7 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
-// GET /api/hotel - ดึงรายการจองโรงแรมทั้งหมด
+function toNumber(value: any): number {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function mapHotelBooking(booking: any, checkoutSale: any | null) {
+  const saleItems = checkoutSale?.sale_items || [];
+  const roomItem =
+    saleItems.find((item: any) => item.item_type === "HOTEL_ROOM") || null;
+  const additionalServiceItems = saleItems.filter(
+    (item: any) => item.item_type === "SERVICE",
+  );
+
+  const roomTotal = roomItem ? toNumber(roomItem.final_price) : 0;
+  const totalNights = roomItem ? Number(roomItem.quantity || 0) || null : null;
+  const additionalServicesTotal = additionalServiceItems.reduce(
+    (sum: number, item: any) => sum + toNumber(item.final_price),
+    0,
+  );
+  const discountAmount = checkoutSale
+    ? toNumber(checkoutSale.discount_amount) +
+      toNumber(checkoutSale.custom_discount)
+    : 0;
+  const grandTotal = checkoutSale
+    ? toNumber(checkoutSale.total_amount) + toNumber(checkoutSale.deposit_used)
+    : 0;
+
+  return {
+    id: booking.id,
+    customerId: booking.customer_id,
+    customerName: booking.customers?.name || "",
+    customerPhone: booking.customers?.phone || "",
+    petId: booking.pet_id,
+    petName: booking.pets?.name || "",
+    petType: booking.pets?.type || "",
+    petBreed:
+      booking.pets?.is_mixed_breed && booking.pets?.breed_2
+        ? `${booking.pets.breed} - ${booking.pets.breed_2}`
+        : booking.pets?.breed || "",
+    checkInDate: booking.check_in_date,
+    checkOutDate: booking.check_out_date,
+    ratePerNight: toNumber(booking.rate_per_night),
+    totalNights,
+    roomTotal,
+    depositAmount: toNumber(booking.deposit_amount),
+    depositStatus: booking.deposit_status,
+    additionalServicesTotal,
+    discountAmount,
+    grandTotal,
+    paidAmount: checkoutSale ? grandTotal : 0,
+    remainingAmount: checkoutSale ? 0 : grandTotal,
+    paymentMethod: checkoutSale?.payment_method || null,
+    note: booking.note,
+    status: booking.status,
+    additionalServices: additionalServiceItems.map((item: any) => ({
+      serviceId: item.service_id,
+      serviceName: item.service_name,
+      originalPrice: toNumber(item.original_price),
+      finalPrice: toNumber(item.final_price),
+      isPriceModified: Boolean(item.is_price_modified),
+    })),
+    createdAt: booking.created_at,
+    updatedAt: booking.updated_at,
+  };
+}
+
+// GET /api/hotel - list hotel bookings
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -20,52 +86,79 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false });
 
     if (status) {
-      // Support multiple statuses separated by comma
-      const statuses = status.split(",").map((s) => s.trim());
-      query = query.in("status", statuses);
+      const statuses = status
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (statuses.length > 0) {
+        query = query.in("status", statuses);
+      }
     }
 
     if (customerId) {
-      query = query.eq("customer_id", parseInt(customerId));
+      const parsedCustomerId = Number(customerId);
+      if (!Number.isFinite(parsedCustomerId)) {
+        return NextResponse.json(
+          { data: null, error: "Invalid customerId" },
+          { status: 400 },
+        );
+      }
+      query = query.eq("customer_id", parsedCustomerId);
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
 
-    // Transform to camelCase
-    const transformed = (data || []).map((booking: any) => ({
-      id: booking.id,
-      customerId: booking.customer_id,
-      customerName: booking.customers?.name || "",
-      customerPhone: booking.customers?.phone || "",
-      petId: booking.pet_id,
-      petName: booking.pets?.name || "",
-      petType: booking.pets?.type || "",
-      petBreed:
-        booking.pets?.is_mixed_breed && booking.pets?.breed_2
-          ? `${booking.pets.breed} - ${booking.pets.breed_2}`
-          : booking.pets?.breed || "",
-      checkInDate: booking.check_in_date,
-      checkOutDate: booking.check_out_date,
-      ratePerNight: parseFloat(booking.rate_per_night) || 0,
-      totalNights: booking.total_nights,
-      roomTotal: parseFloat(booking.room_total) || 0,
-      depositAmount: parseFloat(booking.deposit_amount) || 0,
-      depositStatus: booking.deposit_status,
-      additionalServicesTotal:
-        parseFloat(booking.additional_services_total) || 0,
-      discountAmount: parseFloat(booking.discount_amount) || 0,
-      grandTotal: parseFloat(booking.grand_total) || 0,
-      paidAmount: parseFloat(booking.paid_amount) || 0,
-      remainingAmount: parseFloat(booking.remaining_amount) || 0,
-      paymentMethod: booking.payment_method,
-      note: booking.note,
-      status: booking.status,
-      additionalServices: [],
-      createdAt: booking.created_at,
-      updatedAt: booking.updated_at,
-    }));
+    const bookingIds = (data || []).map((booking: any) => booking.id);
+    const salesByBookingId = new Map<number, any>();
+
+    if (bookingIds.length > 0) {
+      const { data: checkoutSales, error: salesError } = await supabaseAdmin
+        .from("sales")
+        .select(
+          `
+          id,
+          hotel_booking_id,
+          subtotal,
+          discount_amount,
+          custom_discount,
+          deposit_used,
+          total_amount,
+          payment_method,
+          created_at,
+          sale_items (
+            id,
+            service_id,
+            service_name,
+            pet_id,
+            original_price,
+            final_price,
+            is_price_modified,
+            item_type,
+            quantity,
+            unit_price
+          )
+        `,
+        )
+        .eq("sale_type", "HOTEL")
+        .in("hotel_booking_id", bookingIds)
+        .order("created_at", { ascending: false })
+        .order("id", { foreignTable: "sale_items", ascending: true });
+
+      if (salesError) throw salesError;
+
+      for (const sale of checkoutSales || []) {
+        const bookingIdKey = Number(sale.hotel_booking_id);
+        if (!Number.isFinite(bookingIdKey)) continue;
+        if (!salesByBookingId.has(bookingIdKey)) {
+          salesByBookingId.set(bookingIdKey, sale);
+        }
+      }
+    }
+
+    const transformed = (data || []).map((booking: any) =>
+      mapHotelBooking(booking, salesByBookingId.get(Number(booking.id)) || null),
+    );
 
     return NextResponse.json({ data: transformed, error: null });
   } catch (error: any) {
@@ -76,29 +169,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/hotel - สร้างการจองโรงแรมใหม่
+// POST /api/hotel - create hotel booking
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      customerId,
-      petId,
-      checkInDate,
-      ratePerNight,
-      depositAmount,
-      note,
-    } = body;
+    const { customerId, petId, checkInDate, ratePerNight, depositAmount, note } =
+      body;
 
     if (!customerId || !petId || !checkInDate) {
       return NextResponse.json(
-        { data: null, error: "กรุณาระบุลูกค้า สัตว์เลี้ยง และวันเข้าพัก" },
+        { data: null, error: "customerId, petId and checkInDate are required" },
         { status: 400 },
       );
     }
 
     if (!ratePerNight || ratePerNight <= 0) {
       return NextResponse.json(
-        { data: null, error: "กรุณาระบุราคาต่อคืน" },
+        { data: null, error: "ratePerNight must be greater than 0" },
         { status: 400 },
       );
     }
@@ -121,14 +208,17 @@ export async function POST(request: NextRequest) {
         `
         *,
         customers (id, name, phone),
-        pets (id, name, type, breed, weight)
+        pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
       `,
       )
       .single();
 
     if (error) throw error;
 
-    return NextResponse.json({ data, error: null }, { status: 201 });
+    return NextResponse.json(
+      { data: mapHotelBooking(data, null), error: null },
+      { status: 201 },
+    );
   } catch (error: any) {
     return NextResponse.json(
       { data: null, error: error.message },

@@ -21,7 +21,9 @@ interface PetServiceChartData {
   };
 }
 
-export function usePetServiceChart(period: "weekly" | "monthly" | "yearly") {
+export function usePetServiceChart(
+  period: "weekly" | "monthly" | "yearly" | "last12months",
+) {
   const [data, setData] = useState<PetServiceChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

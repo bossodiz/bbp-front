@@ -220,8 +220,8 @@ export function ServiceHistoryList() {
 
           const stat = statsMap.get(customerId)!;
           stat.sales.push(sale);
-          // total_amount in database now includes deposit, so no need to add separately
-          stat.totalSpent += sale.subtotal || 0;
+          // Gross bill value = payable now + deposit used (if any)
+          stat.totalSpent += (sale.totalAmount || 0) + (sale.depositUsed || 0);
           const saleDate =
             typeof sale.createdAt === "string"
               ? new Date(sale.createdAt)
@@ -661,7 +661,8 @@ export function ServiceHistoryList() {
                                           <div className="text-right">
                                             <p className="text-sm font-semibold text-primary">
                                               {formatCurrency(
-                                                sale.subtotal || 0,
+                                                (sale.totalAmount || 0) +
+                                                  (sale.depositUsed || 0),
                                               )}
                                             </p>
                                           </div>
@@ -860,7 +861,12 @@ export function ServiceHistoryList() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">ยอดรวม</span>
-                  <span>{formatCurrency(selectedBill.subtotal)}</span>
+                  <span>
+                    {formatCurrency(
+                      (selectedBill.totalAmount || 0) +
+                        (selectedBill.depositUsed || 0),
+                    )}
+                  </span>
                 </div>
                 {selectedBill.discountAmount > 0 && (
                   <div className="flex justify-between text-success">
@@ -884,9 +890,7 @@ export function ServiceHistoryList() {
                 <div className="flex justify-between text-lg font-semibold">
                   <span>ยอดชำระเพิ่ม</span>
                   <span className="text-primary">
-                    {formatCurrency(
-                      selectedBill.subtotal - (selectedBill.depositUsed || 0),
-                    )}
+                    {formatCurrency(selectedBill.totalAmount || 0)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

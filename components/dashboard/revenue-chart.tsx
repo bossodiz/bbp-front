@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -22,10 +22,8 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
-import { useRevenueChart } from "@/lib/hooks/use-revenue-chart";
-
 import { Loader2 } from "lucide-react";
-import { toUtcIsoFromBangkokLocal } from "@/lib/utils";
+import { useRevenueChart } from "@/lib/hooks/use-revenue-chart";
 
 const chartConfig = {
   revenue: {
@@ -50,259 +48,27 @@ type PeriodType = "weekly" | "monthly" | "yearly" | "last12months";
 
 export function RevenueChart() {
   const [period, setPeriod] = useState<PeriodType>("weekly");
-
   const { data, loading } = useRevenueChart(period);
 
-  const nowBkk = new Date();
+  const chartData = useMemo(() => data?.points || [], [data?.points]);
 
-  // เอาวันตาม "เครื่องผู้ใช้" (ไทย) แล้วสร้าง boundary เป็น UTC
-  const y = nowBkk.getFullYear();
-  const m = nowBkk.getMonth() + 1;
-  const d = nowBkk.getDate();
+  const totalRevenue = useMemo(
+    () => chartData.reduce((sum, item) => sum + item.revenue, 0),
+    [chartData],
+  );
 
-  const startTodayUtc = toUtcIsoFromBangkokLocal(y, m, d, 0, 0, 0);
-  const startTomorrowUtc = toUtcIsoFromBangkokLocal(y, m, d + 1, 0, 0, 0);
-
-  // จัดกลุ่มข้อมูลตาม period
-  const chartData = useMemo(() => {
-    const sales = data?.sales || [];
-
-    if (period === "weekly") {
-      // รายวัน 7 วัน
-      const days = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
-      const data = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date(startTodayUtc);
-        date.setDate(date.getDate() - (6 - i));
-        return {
-          date: days[date.getDay()],
-          revenue: 0,
-          service: 0,
-          hotel: 0,
-          product: 0,
-          dateObj: date,
-        };
-      });
-
-      sales.forEach((sale) => {
-        const saleDate = new Date(sale.createdAt);
-        saleDate.setHours(0, 0, 0, 0);
-
-        const matchingIndex = data.findIndex((item) => {
-          const itemDate = new Date(item.dateObj);
-          itemDate.setHours(0, 0, 0, 0);
-          return itemDate.getTime() === saleDate.getTime();
-        });
-
-        if (matchingIndex >= 0) {
-          data[matchingIndex].revenue += sale.totalAmount;
-          if (sale.saleType === "SERVICE")
-            data[matchingIndex].service += sale.totalAmount;
-          else if (sale.saleType === "HOTEL")
-            data[matchingIndex].hotel += sale.totalAmount;
-          else if (sale.saleType === "PRODUCT")
-            data[matchingIndex].product += sale.totalAmount;
-          else data[matchingIndex].service += sale.totalAmount;
-        }
-      });
-
-      return data;
-    } else if (period === "monthly") {
-      // รายวัน - แสดงทั้งเดือน (วันที่ 1 ถึงวันสุดท้าย)
-      const firstDayOfMonth = new Date(
-        nowBkk.getFullYear(),
-        nowBkk.getMonth(),
-        1,
-      );
-      const lastDayOfMonth = new Date(
-        nowBkk.getFullYear(),
-        nowBkk.getMonth() + 1,
-        0,
-      );
-
-      const daysInMonth = lastDayOfMonth.getDate();
-
-      const data = Array.from({ length: daysInMonth }, (_, i) => {
-        const date = new Date(firstDayOfMonth);
-        date.setDate(i + 1);
-        return {
-          date: `${date.getDate()}`,
-          revenue: 0,
-          service: 0,
-          hotel: 0,
-          product: 0,
-          dateObj: date,
-        };
-      });
-
-      sales.forEach((sale) => {
-        const saleDate = new Date(sale.createdAt);
-        saleDate.setHours(0, 0, 0, 0);
-
-        const matchingIndex = data.findIndex((item) => {
-          const itemDate = new Date(item.dateObj);
-          itemDate.setHours(0, 0, 0, 0);
-          return itemDate.getTime() === saleDate.getTime();
-        });
-
-        if (matchingIndex >= 0) {
-          data[matchingIndex].revenue += sale.totalAmount;
-          if (sale.saleType === "SERVICE")
-            data[matchingIndex].service += sale.totalAmount;
-          else if (sale.saleType === "HOTEL")
-            data[matchingIndex].hotel += sale.totalAmount;
-          else if (sale.saleType === "PRODUCT")
-            data[matchingIndex].product += sale.totalAmount;
-          else data[matchingIndex].service += sale.totalAmount;
-        }
-      });
-
-      return data;
-    } else if (period === "yearly") {
-      // รายเดือน 12 เดือน
-      const months = [
-        "ม.ค.",
-        "ก.พ.",
-        "มี.ค.",
-        "เม.ย.",
-        "พ.ค.",
-        "มิ.ย.",
-        "ก.ค.",
-        "ส.ค.",
-        "ก.ย.",
-        "ต.ค.",
-        "พ.ย.",
-        "ธ.ค.",
-      ];
-
-      // สร้างข้อมูล 12 เดือนของปีปัจจุบัน (มกราคม-ธันวาคม)
-      const data = Array.from({ length: 12 }, (_, i) => {
-        const targetDate = new Date(
-          nowBkk.getFullYear(),
-          i, // เดือน 0-11 (มกราคม-ธันวาคม)
-          1,
-        );
-
-        return {
-          date: months[targetDate.getMonth()],
-          revenue: 0,
-          service: 0,
-          hotel: 0,
-          product: 0,
-          monthStart: targetDate,
-          monthIndex: targetDate.getMonth(),
-          year: targetDate.getFullYear(),
-        };
-      });
-
-      sales.forEach((sale) => {
-        const saleDate = new Date(sale.createdAt);
-        const saleYear = saleDate.getFullYear();
-        const saleMonth = saleDate.getMonth();
-
-        const matchingIndex = data.findIndex(
-          (item) => item.year === saleYear && item.monthIndex === saleMonth,
-        );
-
-        if (matchingIndex >= 0) {
-          data[matchingIndex].revenue += sale.totalAmount;
-          if (sale.saleType === "SERVICE")
-            data[matchingIndex].service += sale.totalAmount;
-          else if (sale.saleType === "HOTEL")
-            data[matchingIndex].hotel += sale.totalAmount;
-          else if (sale.saleType === "PRODUCT")
-            data[matchingIndex].product += sale.totalAmount;
-          else data[matchingIndex].service += sale.totalAmount;
-        }
-      });
-
-      return data;
-    } else {
-      // 12 เดือนย้อนหลัง
-      const months = [
-        "ม.ค.",
-        "ก.พ.",
-        "มี.ค.",
-        "เม.ย.",
-        "พ.ค.",
-        "มิ.ย.",
-        "ก.ค.",
-        "ส.ค.",
-        "ก.ย.",
-        "ต.ค.",
-        "พ.ย.",
-        "ธ.ค.",
-      ];
-
-      // สร้างข้อมูล 12 เดือนย้อนหลังจากเดือนปัจจุบัน
-      const data = Array.from({ length: 12 }, (_, i) => {
-        const monthsAgo = 11 - i; // 11, 10, 9, ..., 0
-        const targetDate = new Date(
-          nowBkk.getFullYear(),
-          nowBkk.getMonth() - monthsAgo,
-          1,
-        );
-
-        return {
-          date: months[targetDate.getMonth()],
-          revenue: 0,
-          service: 0,
-          hotel: 0,
-          product: 0,
-          monthStart: targetDate,
-          monthIndex: targetDate.getMonth(),
-          year: targetDate.getFullYear(),
-        };
-      });
-
-      sales.forEach((sale) => {
-        const saleDate = new Date(sale.createdAt);
-        const saleYear = saleDate.getFullYear();
-        const saleMonth = saleDate.getMonth();
-
-        const matchingIndex = data.findIndex(
-          (item) => item.year === saleYear && item.monthIndex === saleMonth,
-        );
-
-        if (matchingIndex >= 0) {
-          data[matchingIndex].revenue += sale.totalAmount;
-          if (sale.saleType === "SERVICE")
-            data[matchingIndex].service += sale.totalAmount;
-          else if (sale.saleType === "HOTEL")
-            data[matchingIndex].hotel += sale.totalAmount;
-          else if (sale.saleType === "PRODUCT")
-            data[matchingIndex].product += sale.totalAmount;
-          else data[matchingIndex].service += sale.totalAmount;
-        }
-      });
-
-      return data;
-    }
-  }, [data?.sales, period, startTodayUtc]);
-
-  const totalRevenue = chartData.reduce((sum, item) => sum + item.revenue, 0);
-
-  // สร้าง label สำหรับเดือน
   const monthLabel = useMemo(() => {
     if (period !== "monthly") return "";
-    const months = [
-      "มกราคม",
-      "กุมภาพันธ์",
-      "มีนาคม",
-      "เมษายน",
-      "พฤษภาคม",
-      "มิถุนายน",
-      "กรกฎาคม",
-      "สิงหาคม",
-      "กันยายน",
-      "ตุลาคม",
-      "พฤศจิกายน",
-      "ธันวาคม",
-    ];
-    const dateObj = new Date(startTodayUtc);
-    return `${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
-  }, [period, startTodayUtc]);
+    const start = data?.dateRange?.start;
+    if (!start) return "";
 
-  // คำนวณ max value และ tick formatter
+    return new Intl.DateTimeFormat("th-TH", {
+      timeZone: "Asia/Bangkok",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(start));
+  }, [period, data?.dateRange?.start]);
+
   const maxRevenue = Math.max(...chartData.map((item) => item.revenue), 0);
   const yAxisConfig = useMemo(() => {
     if (maxRevenue === 0) {
@@ -314,7 +80,6 @@ export function RevenueChart() {
 
     const magnitude = Math.pow(10, Math.floor(Math.log10(maxRevenue)));
     const maxTick = Math.ceil(maxRevenue / magnitude) * magnitude;
-    const step = maxTick / 5; // แบ่งเป็น 5 ช่อง
 
     return {
       domain: [0, maxTick],
@@ -348,7 +113,7 @@ export function RevenueChart() {
             value={period}
             onValueChange={(value: PeriodType) => setPeriod(value)}
           >
-            <SelectTrigger className="w-full sm:w-32">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

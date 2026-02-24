@@ -1,135 +1,146 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { sumSaleRevenueBreakdowns, toNumber } from "@/lib/dashboard-revenue";
 import { toUtcIsoFromBangkokLocal } from "@/lib/utils";
 
-// GET /api/dashboard/stats - ดึงสถิติ dashboard
-export async function GET(request: NextRequest) {
+function getBangkokDateParts() {
+  const now = new Date();
+  const bkkNow = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
+  );
+  return {
+    year: bkkNow.getFullYear(),
+    month: bkkNow.getMonth() + 1,
+    day: bkkNow.getDate(),
+  };
+}
+
+function formatDateYmd(year: number, month: number, day: number) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+// GET /api/dashboard/stats
+export async function GET(_request: NextRequest) {
   try {
-    const nowBkk = new Date();
+    const { year, month, day } = getBangkokDateParts();
 
-    // เอาวันตาม "เครื่องผู้ใช้" (ไทย) แล้วสร้าง boundary เป็น UTC
-    const y = nowBkk.getFullYear();
-    const m = nowBkk.getMonth() + 1;
-    const d = nowBkk.getDate();
-
-    const startTodayUtc = toUtcIsoFromBangkokLocal(y, m, d, 0, 0, 0);
-    const startTomorrowUtc = toUtcIsoFromBangkokLocal(y, m, d + 1, 0, 0, 0);
-
-    // วันแรกของเดือนนี้
-    const firstDayOfMonth = new Date(
-      nowBkk.getFullYear(),
-      nowBkk.getMonth(),
-      1,
+    const startTodayUtc = toUtcIsoFromBangkokLocal(year, month, day, 0, 0, 0);
+    const startTomorrowUtc = toUtcIsoFromBangkokLocal(
+      year,
+      month,
+      day + 1,
+      0,
+      0,
+      0,
     );
+    const startMonthUtc = toUtcIsoFromBangkokLocal(year, month, 1, 0, 0, 0);
+    const todayDateYmd = formatDateYmd(year, month, day);
 
-    // 1. รายได้วันนี้ (แยกตาม sale_type)
     const { data: salesToday, error: salesTodayError } = await supabaseAdmin
       .from("sales")
-      .select("total_revenue:total_amount, deposit_used, sale_type")
+      .select(
+        `
+        total_amount,
+        deposit_used,
+        sale_type,
+        sale_items (
+          item_type,
+          quantity,
+          unit_price,
+          final_price
+        )
+      `,
+      )
       .gte("created_at", startTodayUtc)
       .lt("created_at", startTomorrowUtc);
-
     if (salesTodayError) throw salesTodayError;
 
-    const calcRevenue = (rows: any[]) =>
-      rows.reduce(
-        (sum, row) =>
-          sum + Number(row.total_revenue || 0) + Number(row.deposit_used || 0),
-        0,
-      );
-
-    const revenueToday = calcRevenue(salesToday ?? []);
-    const revenueTodayService = calcRevenue(
-      (salesToday ?? []).filter((s: any) => s.sale_type === "SERVICE"),
-    );
-    const revenueTodayHotel = calcRevenue(
-      (salesToday ?? []).filter((s: any) => s.sale_type === "HOTEL"),
-    );
-    const revenueTodayProduct = calcRevenue(
-      (salesToday ?? []).filter((s: any) => s.sale_type === "PRODUCT"),
-    );
-
-    // 2. รายได้เดือนนี้ (แยกตาม sale_type)
     const { data: salesMonthly, error: salesMonthlyError } = await supabaseAdmin
       .from("sales")
-      .select("total_revenue:total_amount, deposit_used, sale_type")
-      .gte("created_at", firstDayOfMonth.toISOString())
+      .select(
+        `
+        total_amount,
+        deposit_used,
+        sale_type,
+        sale_items (
+          item_type,
+          quantity,
+          unit_price,
+          final_price
+        )
+      `,
+      )
+      .gte("created_at", startMonthUtc)
       .lt("created_at", startTomorrowUtc);
-
     if (salesMonthlyError) throw salesMonthlyError;
 
-    const revenueMonthly = calcRevenue(salesMonthly ?? []);
-    const revenueMonthlyService = calcRevenue(
-      (salesMonthly ?? []).filter((s: any) => s.sale_type === "SERVICE"),
-    );
-    const revenueMonthlyHotel = calcRevenue(
-      (salesMonthly ?? []).filter((s: any) => s.sale_type === "HOTEL"),
-    );
-    const revenueMonthlyProduct = calcRevenue(
-      (salesMonthly ?? []).filter((s: any) => s.sale_type === "PRODUCT"),
-    );
+    const revenueTodayBreakdown = sumSaleRevenueBreakdowns(salesToday || []);
+    const revenueMonthlyBreakdown = sumSaleRevenueBreakdowns(salesMonthly || []);
 
-    // 3. สัตว์เข้ารับบริการวันนี้ (แยกหมา/แมว)
+    const revenueToday = revenueTodayBreakdown.total;
+    const revenueTodayService = revenueTodayBreakdown.service;
+    const revenueTodayHotel = revenueTodayBreakdown.hotel;
+    const revenueTodayProduct = revenueTodayBreakdown.product;
+
+    const revenueMonthly = revenueMonthlyBreakdown.total;
+    const revenueMonthlyService = revenueMonthlyBreakdown.service;
+    const revenueMonthlyHotel = revenueMonthlyBreakdown.hotel;
+    const revenueMonthlyProduct = revenueMonthlyBreakdown.product;
+
     const { data: salesTodayItems, error: salesTodayItemsError } =
       await supabaseAdmin
         .from("sales")
         .select(
           `
-        id,
-        sale_items (
-          pet_id,
-          pets (id, type)
-        )
-      `,
+          id,
+          sale_items (
+            pet_id,
+            pets (id, type)
+          )
+        `,
         )
         .gte("created_at", startTodayUtc)
         .lt("created_at", startTomorrowUtc);
-
     if (salesTodayItemsError) throw salesTodayItemsError;
 
-    type PetType = "DOG" | "CAT";
-
-    interface Pet {
-      id: number;
-      type: PetType;
+    const uniquePets = new Map<number, "DOG" | "CAT">();
+    for (const sale of salesTodayItems || []) {
+      for (const item of sale.sale_items || []) {
+        const pet = Array.isArray(item?.pets) ? item.pets[0] : item?.pets;
+        const petId = pet?.id;
+        const petType = pet?.type;
+        if (!petId || (petType !== "DOG" && petType !== "CAT")) continue;
+        if (!uniquePets.has(petId)) uniquePets.set(petId, petType);
+      }
     }
 
-    const { dogsToday, catsToday } = salesTodayItems
-      .flatMap((sale: any) => sale.sale_items.map((i: any) => i.pets))
-      .filter(Boolean)
-      .reduce(
-        (acc, pet: Pet) => {
-          if (!acc.seen.has(pet.id)) {
-            acc.seen.add(pet.id);
-            if (pet.type === "DOG") acc.dogsToday++;
-            if (pet.type === "CAT") acc.catsToday++;
-          }
-          return acc;
-        },
-        { dogsToday: 0, catsToday: 0, seen: new Set<number>() },
-      );
+    const dogsToday = Array.from(uniquePets.values()).filter(
+      (type) => type === "DOG",
+    ).length;
+    const catsToday = Array.from(uniquePets.values()).filter(
+      (type) => type === "CAT",
+    ).length;
 
-    // 4. นัดหมายวันนี้ (ทุก status)
-    const todayDateStr = new Date().toLocaleDateString("sv-SE");
     const { data: bookingsTodayData, error: bookingsTodayError } =
       await supabaseAdmin
         .from("bookings")
         .select("id")
-        .eq("booking_date", todayDateStr);
-
+        .eq("booking_date", todayDateYmd);
     if (bookingsTodayError) throw bookingsTodayError;
 
     const bookingsToday = bookingsTodayData?.length || 0;
 
-    // 5. สินค้าใกล้หมด
-    const { data: lowStockData, error: lowStockError } = await supabaseAdmin
+    const { data: productsData, error: productsError } = await supabaseAdmin
       .from("products")
-      .select("id")
-      .eq("active", true)
-      .filter("stock_quantity", "lte", "min_stock")
-      .gt("min_stock", 0);
+      .select("stock_quantity, min_stock, active")
+      .eq("active", true);
+    if (productsError) throw productsError;
 
-    const lowStockCount = lowStockData?.length || 0;
+    const lowStockCount = (productsData || []).filter((product: any) => {
+      const stock = toNumber(product.stock_quantity);
+      const minStock = toNumber(product.min_stock);
+      return minStock > 0 && stock <= minStock;
+    }).length;
 
     return NextResponse.json({
       revenueToday,
@@ -147,7 +158,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "ไม่สามารถดึงข้อมูลสถิติได้" },
+      { error: "Failed to fetch dashboard stats" },
       { status: 500 },
     );
   }

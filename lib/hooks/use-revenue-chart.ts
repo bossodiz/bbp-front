@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from "react";
 
-interface Sale {
-  id: number;
-  totalAmount: number;
-  saleType: string;
-  createdAt: string;
+export interface RevenueChartPoint {
+  key: string;
+  date: string;
+  revenue: number;
+  service: number;
+  hotel: number;
+  product: number;
 }
 
 interface RevenueChartData {
-  sales: Sale[];
+  points: RevenueChartPoint[];
   period: string;
   dateRange: {
     start: string;
@@ -18,7 +20,9 @@ interface RevenueChartData {
   };
 }
 
-export function useRevenueChart(period: "weekly" | "monthly" | "yearly") {
+export function useRevenueChart(
+  period: "weekly" | "monthly" | "yearly" | "last12months",
+) {
   const [data, setData] = useState<RevenueChartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

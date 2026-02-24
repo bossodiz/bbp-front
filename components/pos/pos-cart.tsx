@@ -997,7 +997,7 @@ export function POSCart() {
                   <div className="flex justify-between font-bold border-t pt-1">
                     <span>ยอดชำระ:</span>
                     <span>
-                      {formatCurrency(totalAmount - (depositUsed || 0))}
+                      {formatCurrency(totalAmount)}
                     </span>
                   </div>
                 </div>
