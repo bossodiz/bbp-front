@@ -16,12 +16,19 @@ import {
   Cat,
   X,
   BedDouble,
+  CalendarClock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +89,8 @@ export function POSCart() {
   const [hotelBooking, setHotelBooking] = useState<HotelBooking | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
+  const [saleDate, setSaleDate] = useState<Date>(new Date());
+  const [saleDateOpen, setSaleDateOpen] = useState(false);
   const priceInputRef = useRef<HTMLInputElement>(null);
   const cashInputRef = useRef<HTMLInputElement>(null);
 
@@ -297,7 +306,9 @@ export function POSCart() {
             isPriceModified: item.isPriceModified,
           }));
 
-        const checkOutDate = new Date().toISOString().split("T")[0];
+        const checkOutDate = saleDate.toISOString().split("T")[0];
+        const isBackdated =
+          saleDate.toDateString() !== new Date().toDateString();
 
         const response = await fetch(
           `/api/hotel/${selectedHotelBookingId}/checkout`,
@@ -313,6 +324,7 @@ export function POSCart() {
               note: hotelBooking.note || undefined,
               promotionId: appliedPromotionId || undefined,
               customDiscount: customDiscountAmount || undefined,
+              saleDate: isBackdated ? saleDate.toISOString() : undefined,
             }),
           },
         );
@@ -380,11 +392,15 @@ export function POSCart() {
         : null;
 
       // Prepare sale data
+      const isBackdatedSale =
+        saleDate.toDateString() !== new Date().toDateString();
+
       const saleData = {
         bookingId: selectedBookingId,
         customerId:
           selectedCustomerId || customer?.id || booking?.customerId || null,
         saleType,
+        saleDate: isBackdatedSale ? saleDate.toISOString() : undefined,
         items: cart.map((item) => ({
           serviceId: item.serviceId,
           serviceName: item.serviceName,
@@ -433,6 +449,7 @@ export function POSCart() {
       resetPOS();
       setCashReceived("");
       setPaymentMethod("CASH");
+      setSaleDate(new Date());
     } catch (error: any) {
       console.error("Payment error:", error);
       toast.error(error.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
@@ -445,15 +462,122 @@ export function POSCart() {
     <>
       <Card className="sticky top-4">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
-            ตะกร้า
-            {cart.length > 0 && (
-              <Badge variant="secondary" className="ml-auto">
-                {cart.length} รายการ
-              </Badge>
-            )}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              ตะกร้า
+              {cart.length > 0 && (
+                <Badge variant="secondary">{cart.length} รายการ</Badge>
+              )}
+            </CardTitle>
+            <Popover open={saleDateOpen} onOpenChange={setSaleDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-7 px-2 text-xs gap-1 ${
+                    saleDate.toDateString() !== new Date().toDateString()
+                      ? "text-warning border border-warning/50 bg-warning/10"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  {saleDate.toDateString() !== new Date().toDateString()
+                    ? format(saleDate, "dd/MM/yy HH:mm", { locale: th })
+                    : "วันนี้"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <div className="p-2 border-b">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    ปรับวันที่และเวลาทำรายการ
+                  </p>
+                  <p className="text-xs font-semibold mt-0.5">
+                    {format(saleDate, "d MMM yyyy HH:mm", { locale: th })}
+                  </p>
+                </div>
+                <Calendar
+                  mode="single"
+                  selected={saleDate}
+                  onSelect={(d) => {
+                    if (d) {
+                      const updated = new Date(d);
+                      updated.setHours(
+                        saleDate.getHours(),
+                        saleDate.getMinutes(),
+                        0,
+                        0,
+                      );
+                      setSaleDate(updated);
+                    }
+                  }}
+                  initialFocus
+                />
+                <div className="p-3 border-t space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    เวลา
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={23}
+                        value={String(saleDate.getHours()).padStart(2, "0")}
+                        onChange={(e) => {
+                          const h = Math.max(
+                            0,
+                            Math.min(23, Number(e.target.value)),
+                          );
+                          const updated = new Date(saleDate);
+                          updated.setHours(h);
+                          setSaleDate(updated);
+                        }}
+                        className="h-8 w-14 text-center text-sm tabular-nums"
+                      />
+                      <span className="text-muted-foreground font-bold">:</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={String(saleDate.getMinutes()).padStart(2, "0")}
+                        onChange={(e) => {
+                          const m = Math.max(
+                            0,
+                            Math.min(59, Number(e.target.value)),
+                          );
+                          const updated = new Date(saleDate);
+                          updated.setMinutes(m);
+                          setSaleDate(updated);
+                        }}
+                        className="h-8 w-14 text-center text-sm tabular-nums"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs flex-1"
+                      onClick={() => setSaleDateOpen(false)}
+                    >
+                      ยืนยัน
+                    </Button>
+                  </div>
+                  {saleDate.toDateString() !== new Date().toDateString() && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs h-7"
+                      onClick={() => {
+                        setSaleDate(new Date());
+                        setSaleDateOpen(false);
+                      }}
+                    >
+                      กลับเป็นวันนี้
+                    </Button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {cart.length === 0 && !hotelBooking ? (
@@ -996,9 +1120,7 @@ export function POSCart() {
                   )}
                   <div className="flex justify-between font-bold border-t pt-1">
                     <span>ยอดชำระ:</span>
-                    <span>
-                      {formatCurrency(totalAmount)}
-                    </span>
+                    <span>{formatCurrency(totalAmount)}</span>
                   </div>
                 </div>
 

@@ -6,13 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import {
-  CalendarIcon,
-  Check,
-  ChevronsUpDown,
-  Dog,
-  Cat,
-} from "lucide-react";
+import { CalendarIcon, Check, ChevronsUpDown, Dog, Cat } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -115,7 +109,7 @@ export function HotelBookingDialog({
       customerId: undefined,
       petId: undefined,
       checkInDate: new Date(),
-      ratePerNight: 350,
+      ratePerNight: 300,
       hasDeposit: true,
       depositAmount: 200,
       note: "",
@@ -146,7 +140,7 @@ export function HotelBookingDialog({
           customerId: undefined,
           petId: undefined,
           checkInDate: new Date(),
-          ratePerNight: 350,
+          ratePerNight: 300,
           hasDeposit: true,
           depositAmount: 200,
           note: "",
@@ -294,7 +288,8 @@ export function HotelBookingDialog({
                                 <Cat className="h-4 w-4 text-cat" />
                               )}
                               <span>
-                                {pet.name} ({pet.breed || petTypeLabels[pet.type]}
+                                {pet.name} (
+                                {pet.breed || petTypeLabels[pet.type]}
                                 {pet.weight ? ` - ${pet.weight} kg` : ""})
                               </span>
                             </div>

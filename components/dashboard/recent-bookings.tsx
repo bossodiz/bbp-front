@@ -100,52 +100,34 @@ export function RecentBookings() {
             <div className="space-y-3">
               {todayBookings.map((booking) => {
                 const customerName = booking.customerName || "ลูกค้า";
-                const pet = booking.pets?.[0]; // เอา pet แรก
-                const petName = pet?.name || "สัตว์เลี้ยง";
-                const petType = pet?.type || "DOG";
-                const serviceName = pet?.service || "บริการ";
+                const pets = booking.pets || [];
                 const overdue = isOverdue(booking.bookingTime);
 
                 return (
                   <div
                     key={booking.id}
                     className={cn(
-                      "flex items-start gap-4 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors",
+                      "p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors",
                       overdue &&
                         "bg-muted/50 border-muted-foreground/20 opacity-75",
                     )}
                   >
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-lg shrink-0",
-                        petType === "DOG"
-                          ? "bg-dog/10 text-dog"
-                          : "bg-cat/10 text-cat",
-                        overdue &&
-                          "bg-muted-foreground/20 text-muted-foreground",
-                      )}
-                    >
-                      {petType === "DOG" ? (
-                        <Dog className="h-5 w-5" />
-                      ) : (
-                        <Cat className="h-5 w-5" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                    {/* Header row: customer + time */}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <p
                           className={cn(
                             "text-sm font-medium truncate",
                             overdue && "text-muted-foreground",
                           )}
                         >
-                          {petName}
+                          {customerName}
                         </p>
                         {booking.depositAmount > 0 && (
                           <Badge
                             variant="default"
                             className={cn(
-                              "text-xs",
+                              "text-xs shrink-0",
                               overdue &&
                                 "bg-muted-foreground/20 text-muted-foreground border-muted-foreground/30",
                             )}
@@ -154,36 +136,75 @@ export function RecentBookings() {
                           </Badge>
                         )}
                       </div>
-                      <p
+                      <div
                         className={cn(
-                          "text-xs text-muted-foreground",
+                          "flex items-center gap-1 text-sm text-muted-foreground shrink-0",
                           overdue && "text-muted-foreground/70",
                         )}
                       >
-                        {customerName} - {serviceName}
+                        <Clock className="h-4 w-4" />
+                        <span>{booking.bookingTime || "-"}</span>
+                      </div>
+                    </div>
+
+                    {/* Pets list */}
+                    {pets.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        ไม่มีข้อมูลสัตว์เลี้ยง
                       </p>
-                      {booking.note && (
-                        <div
-                          className={cn(
-                            "flex items-start gap-1 mt-1.5 text-xs text-warning bg-warning/10 px-2 py-1 rounded",
-                            overdue &&
-                              "bg-muted-foreground/10 text-muted-foreground",
-                          )}
-                        >
-                          <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
-                          <span className="line-clamp-2">{booking.note}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div
-                      className={cn(
-                        "flex items-center gap-1 text-sm text-muted-foreground shrink-0",
-                        overdue && "text-muted-foreground/70",
-                      )}
-                    >
-                      <Clock className="h-4 w-4" />
-                      <span>{booking.bookingTime || "-"}</span>
-                    </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {pets.map((pet, idx) => (
+                          <div
+                            key={idx}
+                            className={cn(
+                              "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs border",
+                              pet.type === "DOG"
+                                ? "bg-dog/5 border-dog/20 text-dog"
+                                : "bg-cat/5 border-cat/20 text-cat",
+                              overdue &&
+                                "bg-muted/30 border-muted-foreground/20 text-muted-foreground",
+                            )}
+                          >
+                            {pet.type === "DOG" ? (
+                              <Dog className="h-3 w-3 shrink-0" />
+                            ) : (
+                              <Cat className="h-3 w-3 shrink-0" />
+                            )}
+                            <span className="font-medium">{pet.name}</span>
+                            {pet.service && (
+                              <>
+                                <span className="text-muted-foreground/60">
+                                  ·
+                                </span>
+                                <span
+                                  className={cn(
+                                    "text-muted-foreground",
+                                    overdue && "text-muted-foreground/60",
+                                  )}
+                                >
+                                  {pet.service}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Note */}
+                    {booking.note && (
+                      <div
+                        className={cn(
+                          "flex items-start gap-1 mt-2 text-xs text-warning bg-warning/10 px-2 py-1 rounded",
+                          overdue &&
+                            "bg-muted-foreground/10 text-muted-foreground",
+                        )}
+                      >
+                        <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
+                        <span className="line-clamp-2">{booking.note}</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

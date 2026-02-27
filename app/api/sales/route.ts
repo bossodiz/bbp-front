@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
       change,
       saleType,
       hotelBookingId,
+      saleDate,
     } = body;
 
     if (!items || items.length === 0) {
@@ -52,6 +53,14 @@ export async function POST(request: NextRequest) {
     );
 
     if (error) throw error;
+
+    // Override created_at if saleDate provided (for backdating)
+    if (saleDate && saleId) {
+      await supabaseAdmin
+        .from("sales")
+        .update({ created_at: new Date(saleDate).toISOString() })
+        .eq("id", saleId);
+    }
 
     return NextResponse.json({
       success: true,

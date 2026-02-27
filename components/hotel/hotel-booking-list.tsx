@@ -108,9 +108,11 @@ export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
 
   const calculateStayingNights = (checkInDate: string) => {
     const checkIn = new Date(checkInDate);
-    const now = new Date();
-    const diff = now.getTime() - checkIn.getTime();
-    return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    checkIn.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = today.getTime() - checkIn.getTime();
+    return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
   };
 
   const handleCheckIn = async (booking: HotelBooking) => {
@@ -261,7 +263,7 @@ export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
                   </span>
                 </div>
               )}
-              {booking.status === "CHECKED_IN" && stayingNights && (
+              {booking.status === "CHECKED_IN" && stayingNights !== null && (
                 <div className="flex items-center gap-2 text-sm text-warning">
                   <Clock className="h-4 w-4" />
                   <span>เข้าพักมาแล้ว {stayingNights} คืน</span>

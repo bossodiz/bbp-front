@@ -131,6 +131,7 @@ export async function POST(
       note,
       promotionId,
       customDiscount,
+      saleDate,
     } = body;
 
     if (!checkOutDate) {
@@ -153,6 +154,24 @@ export async function POST(
     });
 
     if (error) throw error;
+
+    // Override created_at if saleDate provided (for backdating)
+    if (saleDate) {
+      const { data: saleRow } = await supabaseAdmin
+        .from("sales")
+        .select("id")
+        .eq("sale_type", "HOTEL")
+        .eq("hotel_booking_id", bookingId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      if (saleRow?.id) {
+        await supabaseAdmin
+          .from("sales")
+          .update({ created_at: new Date(saleDate).toISOString() })
+          .eq("id", saleRow.id);
+      }
+    }
 
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from("hotel_bookings")
