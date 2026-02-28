@@ -43,7 +43,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useCustomerStore } from "@/lib/store";
 import { useSales } from "@/lib/hooks/use-sales";
-import { formatPhoneDisplay, cn } from "@/lib/utils";
+import { formatPhoneDisplay, cn, toUtcIsoFromBangkokLocal } from "@/lib/utils";
 import {
   petTypeLabels,
   paymentMethodLabels,
@@ -53,6 +53,21 @@ import {
 import type { Sale, SaleType, ItemType } from "@/lib/types";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
+
+function getBangkokMidnightUtc(offsetDays = 0): string {
+  const now = new Date();
+  const bkk = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
+  );
+  return toUtcIsoFromBangkokLocal(
+    bkk.getFullYear(),
+    bkk.getMonth() + 1,
+    bkk.getDate() + offsetDays,
+    0,
+    0,
+    0,
+  );
+}
 
 export function ServiceHistoryList() {
   const customers = useCustomerStore((s) => s.customers);
@@ -68,56 +83,58 @@ export function ServiceHistoryList() {
   const [componentError, setComponentError] = useState<string | null>(null);
   const itemsPerPage = 10;
 
-  // Calculate date range for API
+  // Calculate date range for API using Bangkok timezone
   const dateRange = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     let start: string | undefined;
     let end: string | undefined;
 
     switch (dateFilter) {
       case "today":
-        start = today.toISOString();
-        end = tomorrow.toISOString();
+        start = getBangkokMidnightUtc(0);
+        end = getBangkokMidnightUtc(1);
         break;
 
       case "yesterday":
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        start = yesterday.toISOString();
-        end = today.toISOString();
+        start = getBangkokMidnightUtc(-1);
+        end = getBangkokMidnightUtc(0);
         break;
 
       case "week":
-        const sevenDaysAgo = new Date(today);
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        start = sevenDaysAgo.toISOString();
-        end = tomorrow.toISOString();
+        start = getBangkokMidnightUtc(-7);
+        end = getBangkokMidnightUtc(1);
         break;
 
       case "month":
-        const thirtyDaysAgo = new Date(today);
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        start = thirtyDaysAgo.toISOString();
-        end = tomorrow.toISOString();
+        start = getBangkokMidnightUtc(-30);
+        end = getBangkokMidnightUtc(1);
         break;
 
       case "custom":
         if (startDate) {
-          const customStart = new Date(startDate);
-          customStart.setHours(0, 0, 0, 0);
-          start = customStart.toISOString();
+          const bkk = new Date(
+            startDate.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
+          );
+          start = toUtcIsoFromBangkokLocal(
+            bkk.getFullYear(),
+            bkk.getMonth() + 1,
+            bkk.getDate(),
+            0,
+            0,
+            0,
+          );
         }
         if (endDate) {
-          const customEnd = new Date(endDate);
-          customEnd.setDate(customEnd.getDate() + 1);
-          customEnd.setHours(0, 0, 0, 0);
-          end = customEnd.toISOString();
+          const bkk = new Date(
+            endDate.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
+          );
+          end = toUtcIsoFromBangkokLocal(
+            bkk.getFullYear(),
+            bkk.getMonth() + 1,
+            bkk.getDate() + 1,
+            0,
+            0,
+            0,
+          );
         }
         break;
 
@@ -164,12 +181,14 @@ export function ServiceHistoryList() {
     if (isNaN(dateObj.getTime())) {
       return "ไม่ระบุวันที่";
     }
+    // DB stores Bangkok local time in UTC field, display as-is (UTC) = Bangkok time
     return new Intl.DateTimeFormat("th-TH", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "UTC",
     }).format(dateObj);
   };
 

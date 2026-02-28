@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { toUtcIsoFromBangkokLocal } from "@/lib/utils";
+
+function getBangkokDateParts() {
+  const now = new Date();
+  const bkk = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
+  );
+  return {
+    year: bkk.getFullYear(),
+    month: bkk.getMonth() + 1,
+    day: bkk.getDate(),
+  };
+}
+
+function formatYmd(y: number, m: number, d: number) {
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
 
 // GET /api/dashboard - ดึงข้อมูล dashboard ครบถ้วน
 export async function GET(request: NextRequest) {
@@ -7,31 +24,25 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const period = searchParams.get("period") || "weekly"; // weekly, monthly, yearly
 
-    // คำนวณ date range ตาม period (ข้อมูลใน DB เป็น UTC+7 อยู่แล้ว)
-    const now = new Date();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
+    // คำนวณ date range ตาม period โดยใช้ Bangkok timezone
+    const { year, month, day } = getBangkokDateParts();
+    const todayDateYmd = formatYmd(year, month, day);
+    const endDateUtc = toUtcIsoFromBangkokLocal(year, month, day + 1, 0, 0, 0);
 
-    let startDate: Date;
-    let endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 1); // tomorrow
+    let startDateUtc: string;
 
     switch (period) {
       case "weekly":
-        startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - 6);
+        startDateUtc = toUtcIsoFromBangkokLocal(year, month, day - 6, 0, 0, 0);
         break;
       case "monthly":
-        startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - 29);
+        startDateUtc = toUtcIsoFromBangkokLocal(year, month, day - 29, 0, 0, 0);
         break;
       case "yearly":
-        startDate = new Date(today);
-        startDate.setFullYear(startDate.getFullYear() - 1);
+        startDateUtc = toUtcIsoFromBangkokLocal(year - 1, month, day, 0, 0, 0);
         break;
       default:
-        startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - 6);
+        startDateUtc = toUtcIsoFromBangkokLocal(year, month, day - 6, 0, 0, 0);
     }
 
     // 1. ดึงข้อมูล sales
@@ -47,8 +58,8 @@ export async function GET(request: NextRequest) {
         )
       `,
       )
-      .gte("created_at", startDate.toISOString())
-      .lt("created_at", endDate.toISOString())
+      .gte("created_at", startDateUtc)
+      .lt("created_at", endDateUtc)
       .order("created_at", { ascending: false });
 
     if (salesError) throw salesError;
@@ -68,7 +79,14 @@ export async function GET(request: NextRequest) {
       `,
       )
       .eq("status", "PENDING")
-      .gte("booking_date", startDate.toISOString().split("T")[0])
+      .gte(
+        "booking_date",
+        formatYmd(
+          year,
+          month,
+          day - (period === "weekly" ? 6 : period === "monthly" ? 29 : 365),
+        ),
+      )
       .order("booking_date", { ascending: true })
       .order("booking_time", { ascending: true });
 
@@ -129,10 +147,8 @@ export async function GET(request: NextRequest) {
       updatedAt: booking.updated_at,
     }));
 
-    // 5. คำนวณ stats สำหรับวันนี้ (ข้อมูลใน DB เป็น UTC+7 อยู่แล้ว)
-    const todayStart = new Date(today);
-    const todayEnd = new Date(today);
-    todayEnd.setDate(todayEnd.getDate() + 1);
+    // คำนวณ stats สำหรับวันนี้ โดยใช้ Bangkok timezone
+    const todayStartUtc = toUtcIsoFromBangkokLocal(year, month, day, 0, 0, 0);
 
     const { data: todaySalesData } = await supabaseAdmin
       .from("sales")
@@ -145,14 +161,14 @@ export async function GET(request: NextRequest) {
         )
       `,
       )
-      .gte("created_at", todayStart.toISOString())
-      .lt("created_at", todayEnd.toISOString());
+      .gte("created_at", todayStartUtc)
+      .lt("created_at", endDateUtc);
 
     const { data: todayBookingsData } = await supabaseAdmin
       .from("bookings")
       .select("*")
       .eq("status", "PENDING")
-      .eq("booking_date", today.toISOString().split("T")[0]);
+      .eq("booking_date", todayDateYmd);
 
     // คำนวณ today stats
     const todayRevenue =
@@ -223,10 +239,7 @@ export async function GET(request: NextRequest) {
 
     // 7. กรอง recent bookings (วันนี้)
     const recentBookings = bookings
-      .filter((booking) => {
-        const bookingDate = new Date(booking.bookingDate);
-        return bookingDate >= today && bookingDate < todayEnd;
-      })
+      .filter((booking) => booking.bookingDate === todayDateYmd)
       .slice(0, 5); // แสดงแค่ 5 รายการล่าสุด
 
     return NextResponse.json({
@@ -249,10 +262,10 @@ export async function GET(request: NextRequest) {
       // Metadata
       period,
       dateRange: {
-        start: startDate.toISOString(),
-        end: endDate.toISOString(),
-        bkkStart: today.toISOString(),
-        bkkEnd: todayEnd.toISOString(),
+        start: startDateUtc,
+        end: endDateUtc,
+        bkkStart: todayStartUtc,
+        bkkEnd: endDateUtc,
       },
     });
   } catch (error) {

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { toUtcIsoFromBangkokLocal } from "@/lib/utils";
 
 // GET /api/dashboard/today-bookings - ดึงรายการนัดหมายวันนี้ (ทุก status)
 export async function GET(request: NextRequest) {
   try {
-    const todayDateStr = new Date().toLocaleDateString("sv-SE");
+    // ใช้ Bangkok timezone เพื่อหาวันที่ปัจจุบัน
+    const bkk = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
+    );
+    const todayDateStr = `${bkk.getFullYear()}-${String(bkk.getMonth() + 1).padStart(2, "0")}-${String(bkk.getDate()).padStart(2, "0")}`;
 
     // ดึงข้อมูล bookings วันนี้ (ทุก status)
     const { data: bookingsData, error: bookingsError } = await supabaseAdmin

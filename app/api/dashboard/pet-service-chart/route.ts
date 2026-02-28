@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { toUtcIsoFromBangkokLocal } from "@/lib/utils";
+
+function getBangkokDateParts() {
+  const now = new Date();
+  const bkk = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
+  );
+  return {
+    year: bkk.getFullYear(),
+    month: bkk.getMonth() + 1,
+    day: bkk.getDate(),
+  };
+}
 
 type Period = "weekly" | "monthly" | "yearly" | "last12months";
 type PetType = "DOG" | "CAT";
@@ -9,32 +22,26 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const period = (searchParams.get("period") as Period) || "weekly";
 
-    const now = new Date();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
+    const { year, month, day } = getBangkokDateParts();
+    const endUtc = toUtcIsoFromBangkokLocal(year, month, day + 1, 0, 0, 0);
 
-    let startDate: Date;
-    const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 1); // tomorrow
+    let startUtc: string;
 
     switch (period) {
       case "weekly":
-        startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - 6);
+        startUtc = toUtcIsoFromBangkokLocal(year, month, day - 6, 0, 0, 0);
         break;
       case "monthly":
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        startUtc = toUtcIsoFromBangkokLocal(year, month, 1, 0, 0, 0);
         break;
       case "yearly":
-        startDate = new Date(today.getFullYear(), 0, 1);
+        startUtc = toUtcIsoFromBangkokLocal(year, 1, 1, 0, 0, 0);
         break;
       case "last12months":
-        startDate = new Date(today);
-        startDate.setFullYear(startDate.getFullYear() - 1);
+        startUtc = toUtcIsoFromBangkokLocal(year - 1, month, day, 0, 0, 0);
         break;
       default:
-        startDate = new Date(today);
-        startDate.setDate(startDate.getDate() - 6);
+        startUtc = toUtcIsoFromBangkokLocal(year, month, day - 6, 0, 0, 0);
     }
 
     const { data: salesData, error: salesError } = await supabaseAdmin
@@ -49,8 +56,8 @@ export async function GET(request: NextRequest) {
         )
       `,
       )
-      .gte("created_at", startDate.toISOString())
-      .lt("created_at", endDate.toISOString())
+      .gte("created_at", startUtc)
+      .lt("created_at", endUtc)
       .order("created_at", { ascending: false });
 
     if (salesError) throw salesError;
@@ -89,8 +96,8 @@ export async function GET(request: NextRequest) {
       sales,
       period,
       dateRange: {
-        start: startDate.toISOString(),
-        end: endDate.toISOString(),
+        start: startUtc,
+        end: endUtc,
       },
     });
   } catch (error) {

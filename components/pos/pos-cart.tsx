@@ -306,9 +306,8 @@ export function POSCart() {
             isPriceModified: item.isPriceModified,
           }));
 
-        const checkOutDate = saleDate.toISOString().split("T")[0];
-        const isBackdated =
-          saleDate.toDateString() !== new Date().toDateString();
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const checkOutDate = `${saleDate.getFullYear()}-${pad(saleDate.getMonth() + 1)}-${pad(saleDate.getDate())}`;
 
         const response = await fetch(
           `/api/hotel/${selectedHotelBookingId}/checkout`,
@@ -324,7 +323,7 @@ export function POSCart() {
               note: hotelBooking.note || undefined,
               promotionId: appliedPromotionId || undefined,
               customDiscount: customDiscountAmount || undefined,
-              saleDate: isBackdated ? saleDate.toISOString() : undefined,
+              saleDate: saleDate.toISOString(),
             }),
           },
         );
@@ -392,15 +391,12 @@ export function POSCart() {
         : null;
 
       // Prepare sale data
-      const isBackdatedSale =
-        saleDate.toDateString() !== new Date().toDateString();
-
       const saleData = {
         bookingId: selectedBookingId,
         customerId:
           selectedCustomerId || customer?.id || booking?.customerId || null,
         saleType,
-        saleDate: isBackdatedSale ? saleDate.toISOString() : undefined,
+        saleDate: saleDate.toISOString(),
         items: cart.map((item) => ({
           serviceId: item.serviceId,
           serviceName: item.serviceName,
@@ -1058,12 +1054,12 @@ export function POSCart() {
                   <div className="flex justify-between text-sm">
                     <span>วันที่:</span>
                     <span>
-                      {format(new Date(), "dd/MM/yyyy", { locale: th })}
+                      {format(saleDate, "dd/MM/yyyy", { locale: th })}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>เวลา:</span>
-                    <span>{format(new Date(), "HH:mm", { locale: th })}</span>
+                    <span>{format(saleDate, "HH:mm", { locale: th })}</span>
                   </div>
                 </div>
 
