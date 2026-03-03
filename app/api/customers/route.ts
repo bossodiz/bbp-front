@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
 
     // ค้นหาตามชื่อหรือเบอร์โทร
     if (search) {
-      query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);
+      query = query.or(
+        `name.ilike.%${search}%,phone.ilike.%${search}%,pets.name.ilike.%${search}%`,
+      );
     }
 
     const { data, error } = await query.order("created_at", {
