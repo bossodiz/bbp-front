@@ -176,9 +176,9 @@ export function ServiceHistoryList() {
     }
   };
 
-  const formatDate = (date: Date | string) => {
+  const formatDateTime = (date: Date | string) => {
     const dateObj = typeof date === "string" ? new Date(date) : date;
-    if (isNaN(dateObj.getTime())) {
+    if (!dateObj || isNaN(dateObj.getTime())) {
       return "ไม่ระบุวันที่";
     }
     // DB stores Bangkok local time in UTC field, display as-is (UTC) = Bangkok time
@@ -188,6 +188,20 @@ export function ServiceHistoryList() {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "UTC",
+    }).format(dateObj);
+  };
+
+  const formatDate = (date: Date | string) => {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    if (!dateObj || isNaN(dateObj.getTime())) {
+      return "ไม่ระบุวันที่";
+    }
+    // DB stores Bangkok local time in UTC field, display as-is (UTC) = Bangkok time
+    return new Intl.DateTimeFormat("th-TH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
       timeZone: "UTC",
     }).format(dateObj);
   };
@@ -246,6 +260,7 @@ export function ServiceHistoryList() {
               ? new Date(sale.createdAt)
               : sale.createdAt;
           if (
+            saleDate &&
             !isNaN(saleDate.getTime()) &&
             (!stat.lastVisit || saleDate > stat.lastVisit)
           ) {
@@ -583,15 +598,7 @@ export function ServiceHistoryList() {
                               </TableCell>
                               <TableCell>
                                 {stat.lastVisit
-                                  ? (() => {
-                                      try {
-                                        return format(stat.lastVisit, "PPP", {
-                                          locale: th,
-                                        });
-                                      } catch {
-                                        return "ไม่ระบุวันที่";
-                                      }
-                                    })()
+                                  ? formatDate(stat.lastVisit)
                                   : "-"}
                               </TableCell>
                               <TableCell className="text-right font-semibold">
@@ -641,7 +648,9 @@ export function ServiceHistoryList() {
                                             <div>
                                               <div className="flex items-center gap-2">
                                                 <p className="text-sm font-medium">
-                                                  {formatDate(sale.createdAt)}
+                                                  {formatDateTime(
+                                                    sale.createdAt,
+                                                  )}
                                                 </p>
                                                 {(() => {
                                                   const itemTypes = new Set(
@@ -788,7 +797,7 @@ export function ServiceHistoryList() {
               {selectedBill &&
                 (() => {
                   try {
-                    return formatDate(selectedBill.createdAt);
+                    return formatDateTime(selectedBill.createdAt);
                   } catch {
                     return "ไม่ระบุวันที่";
                   }
