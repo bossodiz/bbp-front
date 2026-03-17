@@ -28,18 +28,23 @@ function mapHotelBooking(booking: any, checkoutSale: any | null) {
     ? toNumber(checkoutSale.total_amount) + toNumber(checkoutSale.deposit_used)
     : 0;
 
+  const pets = (booking.hotel_rooms || []).map((room: any) => ({
+    id: room.pets?.id,
+    name: room.pets?.name || "",
+    type: room.pets?.type || "",
+    breed:
+      room.pets?.is_mixed_breed && room.pets?.breed_2
+        ? `${room.pets.breed} - ${room.pets.breed_2}`
+        : room.pets?.breed || "",
+    weight: room.pets?.weight,
+  }));
+
   return {
     id: booking.id,
     customerId: booking.customer_id,
     customerName: booking.customers?.name || "",
     customerPhone: booking.customers?.phone || "",
-    petId: booking.pet_id,
-    petName: booking.pets?.name || "",
-    petType: booking.pets?.type || "",
-    petBreed:
-      booking.pets?.is_mixed_breed && booking.pets?.breed_2
-        ? `${booking.pets.breed} - ${booking.pets.breed_2}`
-        : booking.pets?.breed || "",
+    pets,
     checkInDate: booking.check_in_date,
     checkOutDate: booking.check_out_date,
     ratePerNight: toNumber(booking.rate_per_night),
@@ -155,9 +160,7 @@ export async function POST(
 
     if (error) throw error;
 
-    // Override created_at if saleDate provided
-    // DB convention: created_at stores Bangkok local time in UTC field (UTC+7 offset = 0)
-    // Browser sends ISO UTC, so we add 7 hours to convert UTC -> Bangkok local stored as UTC
+    // Override created_at if saleDate provided (browser sends ISO UTC)
     if (saleDate) {
       const { data: saleRow } = await supabaseAdmin
         .from("sales")
@@ -168,11 +171,9 @@ export async function POST(
         .limit(1)
         .single();
       if (saleRow?.id) {
-        const utcDate = new Date(saleDate);
-        const bangkokAsUtc = new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
         await supabaseAdmin
           .from("sales")
-          .update({ created_at: bangkokAsUtc.toISOString() })
+          .update({ created_at: new Date(saleDate).toISOString() })
           .eq("id", saleRow.id);
       }
     }
@@ -183,7 +184,11 @@ export async function POST(
         `
         *,
         customers (id, name, phone),
-        pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
+        hotel_rooms (
+          id,
+          pet_id,
+          pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
+        )
       `,
       )
       .eq("id", bookingId)

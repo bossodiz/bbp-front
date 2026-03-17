@@ -28,18 +28,23 @@ function mapHotelBooking(booking: any, checkoutSale: any | null) {
     ? toNumber(checkoutSale.total_amount) + toNumber(checkoutSale.deposit_used)
     : 0;
 
+  const pets = (booking.hotel_rooms || []).map((room: any) => ({
+    id: room.pets?.id,
+    name: room.pets?.name || "",
+    type: room.pets?.type || "",
+    breed:
+      room.pets?.is_mixed_breed && room.pets?.breed_2
+        ? `${room.pets.breed} - ${room.pets.breed_2}`
+        : room.pets?.breed || "",
+    weight: room.pets?.weight,
+  }));
+
   return {
     id: booking.id,
     customerId: booking.customer_id,
     customerName: booking.customers?.name || "",
     customerPhone: booking.customers?.phone || "",
-    petId: booking.pet_id,
-    petName: booking.pets?.name || "",
-    petType: booking.pets?.type || "",
-    petBreed:
-      booking.pets?.is_mixed_breed && booking.pets?.breed_2
-        ? `${booking.pets.breed} - ${booking.pets.breed_2}`
-        : booking.pets?.breed || "",
+    pets,
     checkInDate: booking.check_in_date,
     checkOutDate: booking.check_out_date,
     ratePerNight: toNumber(booking.rate_per_night),
@@ -127,7 +132,11 @@ export async function GET(
         `
         *,
         customers (id, name, phone),
-        pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
+        hotel_rooms (
+          id,
+          pet_id,
+          pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
+        )
       `,
       )
       .eq("id", bookingId)
@@ -173,7 +182,8 @@ export async function PUT(
 
     const updateData: any = {};
 
-    if (body.checkInDate !== undefined) updateData.check_in_date = body.checkInDate;
+    if (body.checkInDate !== undefined)
+      updateData.check_in_date = body.checkInDate;
     if (body.checkOutDate !== undefined)
       updateData.check_out_date = body.checkOutDate;
     if (body.ratePerNight !== undefined)
@@ -184,26 +194,57 @@ export async function PUT(
     }
     if (body.note !== undefined) updateData.note = body.note;
     if (body.status !== undefined) updateData.status = body.status;
-    if (body.petId !== undefined) updateData.pet_id = body.petId;
 
     const { data, error } = await supabaseAdmin
       .from("hotel_bookings")
       .update(updateData)
       .eq("id", bookingId)
-      .select(
-        `
-        *,
-        customers (id, name, phone),
-        pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
-      `,
-      )
+      .select("*")
       .single();
 
     if (error) throw error;
 
+    if (body.petIds !== undefined && Array.isArray(body.petIds)) {
+      await supabaseAdmin
+        .from("hotel_rooms")
+        .delete()
+        .eq("hotel_booking_id", bookingId);
+
+      if (body.petIds.length > 0) {
+        const roomInserts = body.petIds.map((petId: number) => ({
+          hotel_booking_id: bookingId,
+          pet_id: petId,
+        }));
+
+        const { error: roomsError } = await supabaseAdmin
+          .from("hotel_rooms")
+          .insert(roomInserts);
+
+        if (roomsError) throw roomsError;
+      }
+    }
+
+    const { data: fullBooking, error: fetchError } = await supabaseAdmin
+      .from("hotel_bookings")
+      .select(
+        `
+        *,
+        customers (id, name, phone),
+        hotel_rooms (
+          id,
+          pet_id,
+          pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
+        )
+      `,
+      )
+      .eq("id", bookingId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
     const checkoutSale = await fetchCheckoutSale(bookingId);
     return NextResponse.json({
-      data: mapHotelBooking(data, checkoutSale),
+      data: mapHotelBooking(fullBooking, checkoutSale),
       error: null,
     });
   } catch (error: any) {

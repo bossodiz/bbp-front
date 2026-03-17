@@ -60,9 +60,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
     const { error } = await supabaseAdmin
       .from("customers")
-      .delete()
+      .update({ is_active: false })
       .eq("id", id);
 
     if (error) throw error;

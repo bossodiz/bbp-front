@@ -54,15 +54,11 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    // Override created_at if saleDate provided
-    // DB convention: created_at stores Bangkok local time in UTC field (UTC+7 offset = 0)
-    // Browser sends ISO UTC, so we add 7 hours to convert UTC -> Bangkok local stored as UTC
+    // Override created_at if saleDate provided (browser sends ISO UTC)
     if (saleDate && saleId) {
-      const utcDate = new Date(saleDate);
-      const bangkokAsUtc = new Date(utcDate.getTime() + 7 * 60 * 60 * 1000);
       await supabaseAdmin
         .from("sales")
-        .update({ created_at: bangkokAsUtc.toISOString() })
+        .update({ created_at: new Date(saleDate).toISOString() })
         .eq("id", saleId);
     }
 

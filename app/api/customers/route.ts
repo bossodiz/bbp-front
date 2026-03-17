@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
     const phone = searchParams.get("phone");
     const search = searchParams.get("search");
 
-    let query = supabaseAdmin.from("customers").select("*, pets(*)");
+    let query = supabaseAdmin
+      .from("customers")
+      .select("*, pets(*)")
+      .eq("is_active", true);
 
     // ค้นหาตามเบอร์โทร
     if (phone) {
@@ -22,6 +25,7 @@ export async function GET(request: NextRequest) {
         await supabaseAdmin
           .from("customers")
           .select("*, pets(*)")
+          .eq("is_active", true)
           .or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
           .order("created_at", { ascending: false });
 

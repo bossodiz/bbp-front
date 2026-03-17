@@ -28,18 +28,23 @@ function mapHotelBooking(booking: any, checkoutSale: any | null) {
     ? toNumber(checkoutSale.total_amount) + toNumber(checkoutSale.deposit_used)
     : 0;
 
+  const pets = (booking.hotel_rooms || []).map((room: any) => ({
+    id: room.pets?.id,
+    name: room.pets?.name || "",
+    type: room.pets?.type || "",
+    breed:
+      room.pets?.is_mixed_breed && room.pets?.breed_2
+        ? `${room.pets.breed} - ${room.pets.breed_2}`
+        : room.pets?.breed || "",
+    weight: room.pets?.weight,
+  }));
+
   return {
     id: booking.id,
     customerId: booking.customer_id,
     customerName: booking.customers?.name || "",
     customerPhone: booking.customers?.phone || "",
-    petId: booking.pet_id,
-    petName: booking.pets?.name || "",
-    petType: booking.pets?.type || "",
-    petBreed:
-      booking.pets?.is_mixed_breed && booking.pets?.breed_2
-        ? `${booking.pets.breed} - ${booking.pets.breed_2}`
-        : booking.pets?.breed || "",
+    pets,
     checkInDate: booking.check_in_date,
     checkOutDate: booking.check_out_date,
     ratePerNight: toNumber(booking.rate_per_night),
@@ -80,7 +85,11 @@ export async function GET(request: NextRequest) {
         `
         *,
         customers (id, name, phone),
-        pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
+        hotel_rooms (
+          id,
+          pet_id,
+          pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
+        )
       `,
       )
       .order("created_at", { ascending: false });
@@ -157,7 +166,10 @@ export async function GET(request: NextRequest) {
     }
 
     const transformed = (data || []).map((booking: any) =>
-      mapHotelBooking(booking, salesByBookingId.get(Number(booking.id)) || null),
+      mapHotelBooking(
+        booking,
+        salesByBookingId.get(Number(booking.id)) || null,
+      ),
     );
 
     return NextResponse.json({ data: transformed, error: null });
@@ -173,12 +185,27 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { customerId, petId, checkInDate, ratePerNight, depositAmount, note } =
-      body;
+    const {
+      customerId,
+      petIds,
+      checkInDate,
+      ratePerNight,
+      depositAmount,
+      note,
+    } = body;
 
-    if (!customerId || !petId || !checkInDate) {
+    if (
+      !customerId ||
+      !petIds ||
+      !Array.isArray(petIds) ||
+      petIds.length === 0 ||
+      !checkInDate
+    ) {
       return NextResponse.json(
-        { data: null, error: "customerId, petId and checkInDate are required" },
+        {
+          data: null,
+          error: "customerId, petIds (array) and checkInDate are required",
+        },
         { status: 400 },
       );
     }
@@ -192,7 +219,6 @@ export async function POST(request: NextRequest) {
 
     const insertData: any = {
       customer_id: customerId,
-      pet_id: petId,
       check_in_date: checkInDate,
       rate_per_night: ratePerNight,
       deposit_amount: depositAmount || 0,
@@ -201,22 +227,45 @@ export async function POST(request: NextRequest) {
       status: "RESERVED",
     };
 
-    const { data, error } = await supabaseAdmin
+    const { data: booking, error: bookingError } = await supabaseAdmin
       .from("hotel_bookings")
       .insert(insertData)
+      .select("*")
+      .single();
+
+    if (bookingError) throw bookingError;
+
+    const roomInserts = petIds.map((petId: number) => ({
+      hotel_booking_id: booking.id,
+      pet_id: petId,
+    }));
+
+    const { error: roomsError } = await supabaseAdmin
+      .from("hotel_rooms")
+      .insert(roomInserts);
+
+    if (roomsError) throw roomsError;
+
+    const { data: fullBooking, error: fetchError } = await supabaseAdmin
+      .from("hotel_bookings")
       .select(
         `
         *,
         customers (id, name, phone),
-        pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
+        hotel_rooms (
+          id,
+          pet_id,
+          pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
+        )
       `,
       )
+      .eq("id", booking.id)
       .single();
 
-    if (error) throw error;
+    if (fetchError) throw fetchError;
 
     return NextResponse.json(
-      { data: mapHotelBooking(data, null), error: null },
+      { data: mapHotelBooking(fullBooking, null), error: null },
       { status: 201 },
     );
   } catch (error: any) {

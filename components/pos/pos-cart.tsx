@@ -190,9 +190,11 @@ export function POSCart() {
   const hotelTotalNights = useMemo(() => {
     if (!hotelBooking) return 0;
     const checkIn = new Date(hotelBooking.checkInDate);
-    const now = new Date();
-    const diffTime = now.getTime() - checkIn.getTime();
-    return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    checkIn.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = today.getTime() - checkIn.getTime();
+    return Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
   }, [hotelBooking]);
 
   const hotelRoomTotal = useMemo(() => {

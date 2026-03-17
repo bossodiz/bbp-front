@@ -118,7 +118,9 @@ export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
   const handleCheckIn = async (booking: HotelBooking) => {
     try {
       await checkIn(booking.id);
-      toast.success(`${booking.petName} เช็คอินเรียบร้อยแล้ว`);
+      const petNames =
+        booking.pets?.map((p) => p.name).join(", ") || "สัตว์เลี้ยง";
+      toast.success(`${petNames} เช็คอินเรียบร้อยแล้ว`);
     } catch (error: any) {
       toast.error(error.message || "เกิดข้อผิดพลาด");
     }
@@ -211,17 +213,35 @@ export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
           <div className="flex-1">
             {/* Header */}
             <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
-                {booking.petType === "DOG" ? (
-                  <Dog className="h-5 w-5 text-dog" />
-                ) : (
-                  <Cat className="h-5 w-5 text-cat" />
-                )}
-                <div>
-                  <p className="font-medium text-base">{booking.petName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {booking.petBreed}
-                  </p>
+              <div className="flex items-center gap-2 flex-1">
+                <BedDouble className="h-5 w-5 text-muted-foreground" />
+                <div className="flex-1">
+                  <p className="font-medium text-base">ห้องพัก #{booking.id}</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {booking.pets?.map((pet, idx) => (
+                      <Badge
+                        key={idx}
+                        variant="secondary"
+                        className={cn(
+                          "text-xs",
+                          pet.type === "DOG"
+                            ? "bg-dog/10 text-dog border-dog/30"
+                            : "bg-cat/10 text-cat border-cat/30",
+                        )}
+                      >
+                        {pet.type === "DOG" ? (
+                          <Dog className="h-3 w-3 mr-1" />
+                        ) : (
+                          <Cat className="h-3 w-3 mr-1" />
+                        )}
+                        {pet.name}
+                      </Badge>
+                    )) || (
+                      <span className="text-xs text-muted-foreground">
+                        ไม่มีสัตว์เลี้ยง
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <Badge
@@ -472,8 +492,10 @@ export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>ยืนยันการยกเลิกการจอง</AlertDialogTitle>
             <AlertDialogDescription>
-              คุณต้องการยกเลิกการจองโรงแรมของ &quot;{cancelingBooking?.petName}
-              &quot; ({cancelingBooking?.customerName}) ใช่หรือไม่?
+              คุณต้องการยกเลิกการจองโรงแรมของ{" "}
+              {cancelingBooking?.pets?.map((p) => p.name).join(", ") ||
+                "สัตว์เลี้ยง"}
+              ({cancelingBooking?.customerName}) ใช่หรือไม่?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

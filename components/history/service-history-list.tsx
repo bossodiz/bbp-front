@@ -181,14 +181,14 @@ export function ServiceHistoryList() {
     if (!dateObj || isNaN(dateObj.getTime())) {
       return "ไม่ระบุวันที่";
     }
-    // DB stores Bangkok local time in UTC field, display as-is (UTC) = Bangkok time
+    // DB stores real UTC → convert to Bangkok local time for display
     return new Intl.DateTimeFormat("th-TH", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      timeZone: "UTC",
+      timeZone: "Asia/Bangkok",
     }).format(dateObj);
   };
 
@@ -197,12 +197,12 @@ export function ServiceHistoryList() {
     if (!dateObj || isNaN(dateObj.getTime())) {
       return "ไม่ระบุวันที่";
     }
-    // DB stores Bangkok local time in UTC field, display as-is (UTC) = Bangkok time
+    // DB stores real UTC → convert to Bangkok local time for display
     return new Intl.DateTimeFormat("th-TH", {
       year: "numeric",
       month: "short",
       day: "numeric",
-      timeZone: "UTC",
+      timeZone: "Asia/Bangkok",
     }).format(dateObj);
   };
 

@@ -61,9 +61,7 @@ const hotelBookingSchema = z.object({
   customerId: z
     .number({ required_error: "กรุณาเลือกลูกค้า" })
     .min(1, "กรุณาเลือกลูกค้า"),
-  petId: z
-    .number({ required_error: "กรุณาเลือกสัตว์เลี้ยง" })
-    .min(1, "กรุณาเลือกสัตว์เลี้ยง"),
+  petIds: z.array(z.number()).min(1, "กรุณาเลือกสัตว์เลี้ยงอย่างน้อย 1 ตัว"),
   checkInDate: z.date({ required_error: "กรุณาเลือกวันเข้าพัก" }),
   ratePerNight: z.coerce
     .number({ required_error: "กรุณาระบุราคาต่อคืน" })
@@ -107,7 +105,7 @@ export function HotelBookingDialog({
     resolver: zodResolver(hotelBookingSchema),
     defaultValues: {
       customerId: undefined,
-      petId: undefined,
+      petIds: [],
       checkInDate: new Date(),
       ratePerNight: 300,
       hasDeposit: true,
@@ -127,7 +125,7 @@ export function HotelBookingDialog({
 
         form.reset({
           customerId: booking.customerId,
-          petId: booking.petId,
+          petIds: booking.pets?.map((p) => p.id).filter(Boolean) || [],
           checkInDate: new Date(booking.checkInDate),
           ratePerNight: booking.ratePerNight,
           hasDeposit: booking.depositAmount > 0,
@@ -138,7 +136,7 @@ export function HotelBookingDialog({
         setSelectedCustomer(null);
         form.reset({
           customerId: undefined,
-          petId: undefined,
+          petIds: [],
           checkInDate: new Date(),
           ratePerNight: 300,
           hasDeposit: true,
@@ -152,7 +150,7 @@ export function HotelBookingDialog({
   const handleCustomerSelect = (customer: Customer) => {
     setSelectedCustomer(customer);
     form.setValue("customerId", customer.id);
-    form.setValue("petId", undefined as any);
+    form.setValue("petIds", []);
     setCustomerSearchOpen(false);
   };
 
@@ -162,7 +160,7 @@ export function HotelBookingDialog({
 
       const payload = {
         customerId: data.customerId,
-        petId: data.petId,
+        petIds: data.petIds,
         checkInDate: formatDateForAPI(data.checkInDate),
         ratePerNight: data.ratePerNight,
         depositAmount: data.hasDeposit ? data.depositAmount || 0 : 0,
@@ -261,42 +259,80 @@ export function HotelBookingDialog({
               </Popover>
             </div>
 
-            {/* Pet Selection */}
+            {/* Pet Selection - Multiple */}
             {selectedCustomer && selectedCustomer.pets.length > 0 && (
               <FormField
                 control={form.control}
-                name="petId"
+                name="petIds"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>สัตว์เลี้ยงที่เข้าพัก</FormLabel>
-                    <Select
-                      onValueChange={(val) => field.onChange(parseInt(val))}
-                      value={field.value?.toString() || ""}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="เลือกสัตว์เลี้ยง" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {selectedCustomer.pets.map((pet) => (
-                          <SelectItem key={pet.id} value={pet.id.toString()}>
-                            <div className="flex items-center gap-2">
-                              {pet.type === "DOG" ? (
-                                <Dog className="h-4 w-4 text-dog" />
-                              ) : (
-                                <Cat className="h-4 w-4 text-cat" />
+                    <FormLabel>
+                      สัตว์เลี้ยงที่เข้าพัก (เลือกได้หลายตัว)
+                    </FormLabel>
+                    <FormDescription>
+                      เลือกสัตว์เลี้ยงที่จะเข้าพักห้องเดียวกัน
+                    </FormDescription>
+                    <div className="space-y-2">
+                      {selectedCustomer.pets.map((pet) => {
+                        const isSelected =
+                          field.value?.includes(pet.id) || false;
+                        return (
+                          <div
+                            key={pet.id}
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors",
+                              isSelected
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-primary/50",
+                            )}
+                            onClick={() => {
+                              const current = field.value || [];
+                              if (isSelected) {
+                                field.onChange(
+                                  current.filter((id) => id !== pet.id),
+                                );
+                              } else {
+                                field.onChange([...current, pet.id]);
+                              }
+                            }}
+                          >
+                            <div
+                              className={cn(
+                                "flex h-5 w-5 items-center justify-center rounded border-2",
+                                isSelected
+                                  ? "border-primary bg-primary"
+                                  : "border-muted-foreground",
                               )}
-                              <span>
-                                {pet.name} (
-                                {pet.breed || petTypeLabels[pet.type]}
-                                {pet.weight ? ` - ${pet.weight} kg` : ""})
-                              </span>
+                            >
+                              {isSelected && (
+                                <Check className="h-3 w-3 text-primary-foreground" />
+                              )}
                             </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                            <div
+                              className={cn(
+                                "flex h-9 w-9 items-center justify-center rounded-lg shrink-0",
+                                pet.type === "DOG"
+                                  ? "bg-dog/10 text-dog"
+                                  : "bg-cat/10 text-cat",
+                              )}
+                            >
+                              {pet.type === "DOG" ? (
+                                <Dog className="h-5 w-5" />
+                              ) : (
+                                <Cat className="h-5 w-5" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{pet.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {pet.breed || petTypeLabels[pet.type]}
+                                {pet.weight ? ` • ${pet.weight} kg` : ""}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

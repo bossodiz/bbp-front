@@ -59,8 +59,8 @@ export function getBangkokDateString(): string {
 }
 
 export function getBangkokDateTime(): string {
-  const bangkokDate = getBangkokDate();
-  return bangkokDate.toISOString();
+  // Return current time as ISO UTC string (for DB storage)
+  return new Date().toISOString();
 }
 
 export function formatDateToBangkok(date: Date | string): string {
