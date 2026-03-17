@@ -36,6 +36,15 @@ const nextConfig = {
         ],
       },
       {
+        source: "/(.*)\\.(html)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+        ],
+      },
+      {
         source:
           "/(.*)\\.(css|js|woff|woff2|eot|ttf|otf|svg|png|jpg|jpeg|gif|ico|webp)",
         headers: [
