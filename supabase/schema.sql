@@ -263,7 +263,7 @@ CREATE TABLE sales (
   payment_method TEXT NOT NULL CHECK (payment_method IN ('CASH', 'QR', 'CREDIT_CARD')),
   cash_received DECIMAL(10, 2),
   change DECIMAL(10, 2),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('Asia/Bangkok', NOW()),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
   CONSTRAINT check_sales_subtotal CHECK (subtotal >= 0),
   CONSTRAINT check_sales_discount CHECK (discount_amount >= 0),

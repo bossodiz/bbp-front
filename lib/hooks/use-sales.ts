@@ -43,7 +43,6 @@ export function useSales(options: UseSalesOptions = {}) {
       }
 
       const { data } = await response.json();
-      // ข้อมูลจาก DB เป็น UTC+7 อยู่แล้ว ไม่ต้องแปลง
       setSales(data || []);
     } catch (err: any) {
       setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");

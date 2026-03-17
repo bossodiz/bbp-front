@@ -240,10 +240,13 @@ export interface HotelBooking {
   customerId: number;
   customerName?: string;
   customerPhone?: string;
-  petId: number;
-  petName?: string;
-  petType?: "DOG" | "CAT";
-  petBreed?: string;
+  pets?: Array<{
+    id?: number;
+    name: string;
+    type: "DOG" | "CAT";
+    breed?: string;
+    weight?: number;
+  }>;
   checkInDate: string;
   checkOutDate?: string;
   ratePerNight: number;

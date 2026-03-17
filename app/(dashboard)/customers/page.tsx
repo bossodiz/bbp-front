@@ -16,12 +16,18 @@ export default function CustomersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const { customers, loading, error, fetchCustomers } = useCustomers();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRefSearch = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchCustomers(submittedQuery || undefined);
     setCurrentPage(1);
   }, [submittedQuery, fetchCustomers]);
+
+  useEffect(() => {
+    if (inputRefSearch.current) {
+      inputRefSearch.current.focus();
+    }
+  }, []);
 
   const handleSearch = () => {
     setSubmittedQuery(searchQuery);
@@ -59,7 +65,7 @@ export default function CustomersPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            ref={inputRef}
+            ref={inputRefSearch}
             placeholder="ค้นหาชื่อลูกค้า, เบอร์โทร, หรือชื่อสัตว์เลี้ยง..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

@@ -269,107 +269,102 @@ export function CustomerList({
                             <TableRow className="hover:bg-transparent">
                               <TableCell colSpan={5} className="p-0">
                                 <div className="border-t bg-muted/20 px-4 py-3">
-                                  <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center justify-between mb-2">
                                     <p className="text-sm font-medium text-muted-foreground">
                                       สัตว์เลี้ยง ({customer.pets.length} ตัว)
                                     </p>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
                                       onClick={() =>
                                         setEditingPet({
                                           customerId: customer.id,
                                           pet: null,
                                         })
                                       }
+                                      className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-lg border-2 border-dashed bg-card/50 hover:bg-muted/50 transition-colors h-19 w-24 shrink-0 text-muted-foreground hover:text-foreground"
                                     >
-                                      <Plus className="mr-1 h-3 w-3" />
-                                      เพิ่มสัตว์เลี้ยง
-                                    </Button>
-                                  </div>
-                                  {customer.pets.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground text-center py-4">
-                                      ยังไม่มีสัตว์เลี้ยง
-                                    </p>
-                                  ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                      {customer.pets.map((pet) => (
+                                      <Plus className="h-5 w-5" />
+                                      <span className="text-[11px] font-medium leading-none text-center">
+                                        เพิ่มสัตว์เลี้ยง
+                                      </span>
+                                    </button>
+                                    {customer.pets.map((pet) => (
+                                      <div
+                                        key={pet.id}
+                                        className="flex items-center gap-3 p-3 rounded-lg bg-card border h-19 flex-1 min-w-[260px] max-w-[350px]"
+                                      >
                                         <div
-                                          key={pet.id}
-                                          className="flex items-center gap-3 p-3 rounded-lg bg-card border"
+                                          className={cn(
+                                            "flex h-9 w-9 items-center justify-center rounded-lg shrink-0",
+                                            pet.type === "DOG"
+                                              ? "bg-dog/10 text-dog"
+                                              : "bg-cat/10 text-cat",
+                                          )}
                                         >
-                                          <div
-                                            className={cn(
-                                              "flex h-9 w-9 items-center justify-center rounded-lg shrink-0",
-                                              pet.type === "DOG"
-                                                ? "bg-dog/10 text-dog"
-                                                : "bg-cat/10 text-cat",
-                                            )}
-                                          >
-                                            {pet.type === "DOG" ? (
-                                              <Dog className="h-5 w-5" />
-                                            ) : (
-                                              <Cat className="h-5 w-5" />
-                                            )}
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                              <p className="text-sm font-medium">
-                                                {pet.name}
-                                              </p>
-                                              <Badge
-                                                variant="outline"
-                                                className="text-xs"
-                                              >
-                                                {petTypeLabels[pet.type]}
-                                              </Badge>
-                                              {pet.weight != null &&
-                                                pet.weight > 0 && (
-                                                  <Badge
-                                                    variant="outline"
-                                                    className="text-xs"
-                                                  >
-                                                    {pet.weight} kg
-                                                  </Badge>
-                                                )}
-                                            </div>
-                                            <p className="text-xs text-muted-foreground truncate">
-                                              {formatBreedDisplay(pet)}
-                                              {pet.note && ` · ${pet.note}`}
-                                            </p>
-                                          </div>
-                                          <div className="flex items-center gap-1 shrink-0">
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-7 w-7"
-                                              onClick={() =>
-                                                setEditingPet({
-                                                  customerId: customer.id,
-                                                  pet,
-                                                })
-                                              }
-                                            >
-                                              <Pencil className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-7 w-7"
-                                              onClick={() =>
-                                                setDeletingPet({
-                                                  customerId: customer.id,
-                                                  pet,
-                                                })
-                                              }
-                                            >
-                                              <Trash2 className="h-3 w-3 text-destructive" />
-                                            </Button>
-                                          </div>
+                                          {pet.type === "DOG" ? (
+                                            <Dog className="h-5 w-5" />
+                                          ) : (
+                                            <Cat className="h-5 w-5" />
+                                          )}
                                         </div>
-                                      ))}
-                                    </div>
-                                  )}
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <p className="text-sm font-medium">
+                                              {pet.name}
+                                            </p>
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs"
+                                            >
+                                              {petTypeLabels[pet.type]}
+                                            </Badge>
+                                            {pet.weight != null &&
+                                              pet.weight > 0 && (
+                                                <Badge
+                                                  variant="outline"
+                                                  className="text-xs"
+                                                >
+                                                  {pet.weight} kg
+                                                </Badge>
+                                              )}
+                                          </div>
+                                          <p className="text-xs text-muted-foreground truncate">
+                                            {formatBreedDisplay(pet)}
+                                            {pet.note && ` · ${pet.note}`}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() =>
+                                              setEditingPet({
+                                                customerId: customer.id,
+                                                pet,
+                                              })
+                                            }
+                                          >
+                                            <Pencil className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7"
+                                            onClick={() =>
+                                              setDeletingPet({
+                                                customerId: customer.id,
+                                                pet,
+                                              })
+                                            }
+                                          >
+                                            <Trash2 className="h-3 w-3 text-destructive" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               </TableCell>
                             </TableRow>
