@@ -60,21 +60,24 @@ export function POSServiceSelector() {
       // If weight is null, return null to indicate no filtering by weight
       if (weight === null || weight === undefined) return null;
 
-      const sizesForType = getSizesForPetType(petTypeId).filter(
-        (s) => s.active,
-      );
+      const sizesForType = getSizesForPetType(petTypeId)
+        .filter((s) => s.active)
+        .sort((a, b) => (a.minWeight ?? 0) - (b.minWeight ?? 0));
+
       // Try to match based on minWeight and maxWeight
       for (const size of sizesForType) {
         const min = size.minWeight ?? 0;
         const max = size.maxWeight ?? Infinity;
 
-        if (weight >= min && weight <= max) {
+        // Use >= for min and < for max to avoid gaps
+        // e.g., M: 4-4.9 means 4 <= weight < 5 (includes 4.95)
+        if (weight >= min && weight < max) {
           return size.id;
         }
       }
 
-      // Fallback: return first size if no match
-      return sizesForType[0]?.id || null;
+      // Fallback: return last size if weight exceeds all ranges
+      return sizesForType[sizesForType.length - 1]?.id || null;
     },
     [getSizesForPetType],
   );
