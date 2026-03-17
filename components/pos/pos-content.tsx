@@ -222,17 +222,24 @@ export function POSContent() {
                   // Estimate size based on weight
                   let estimatedSizeId: string | null = null;
                   if (pet.weight && sizesForType.length > 0) {
-                    for (const size of sizesForType) {
+                    // Sort sizes by minWeight
+                    const sortedSizes = [...sizesForType].sort(
+                      (a, b) => (a.minWeight ?? 0) - (b.minWeight ?? 0),
+                    );
+
+                    for (const size of sortedSizes) {
                       const min = size.minWeight ?? 0;
                       const max = size.maxWeight ?? Infinity;
-                      if (pet.weight >= min && pet.weight <= max) {
+                      // Use >= for min and < for max to avoid gaps
+                      if (pet.weight >= min && pet.weight < max) {
                         estimatedSizeId = size.id;
                         break;
                       }
                     }
-                    // Fallback to first size if no match
+                    // Fallback to last size if weight exceeds all ranges
                     if (!estimatedSizeId) {
-                      estimatedSizeId = sizesForType[0]?.id || null;
+                      estimatedSizeId =
+                        sortedSizes[sortedSizes.length - 1]?.id || null;
                     }
                   }
 
