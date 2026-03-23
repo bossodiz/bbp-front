@@ -37,6 +37,56 @@ export function formatPhoneInput(value: string): string {
   return limited;
 }
 
+export function handlePhoneInput(
+  e: React.ChangeEvent<HTMLInputElement>,
+  currentValue: string,
+): string {
+  const input = e.target;
+  const newValue = input.value;
+  const cursorPos = input.selectionStart || 0;
+
+  // Get only digits
+  const currentDigits = currentValue.replace(/\D/g, "");
+  const newDigits = newValue.replace(/\D/g, "");
+
+  // Format the new value
+  const formatted = formatPhoneInput(newDigits);
+
+  // Calculate new cursor position
+  // Count how many digits are before cursor in the new value
+  const digitsBeforeCursor = newValue
+    .slice(0, cursorPos)
+    .replace(/\D/g, "").length;
+
+  // Find position in formatted string where we have that many digits
+  let newCursorPos = 0;
+  let digitCount = 0;
+  for (let i = 0; i < formatted.length; i++) {
+    if (formatted[i] !== "-") {
+      digitCount++;
+      if (digitCount === digitsBeforeCursor) {
+        newCursorPos = i + 1;
+        break;
+      }
+    }
+  }
+
+  // If we're deleting and cursor is right after a dash, move it back
+  if (
+    newDigits.length < currentDigits.length &&
+    formatted[newCursorPos - 1] === "-"
+  ) {
+    newCursorPos--;
+  }
+
+  // Set cursor position after render
+  setTimeout(() => {
+    input.setSelectionRange(newCursorPos, newCursorPos);
+  }, 0);
+
+  return formatted;
+}
+
 export function getPhoneDigits(phone: string): string {
   return phone.replace(/\D/g, "").slice(0, 10);
 }
