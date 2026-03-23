@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Button } from "@/components/ui/button";
 import { useCustomers } from "@/lib/hooks/use-customers";
 import type { Customer } from "@/lib/types";
@@ -141,13 +142,10 @@ export function CustomerDialog({
                 <FormItem>
                   <FormLabel>เบอร์โทรศัพท์</FormLabel>
                   <FormControl>
-                    <Input
+                    <PhoneInput
                       placeholder="เช่น 081-234-5678"
                       value={field.value}
-                      onChange={(e) => {
-                        const formatted = formatPhoneInput(e.target.value);
-                        field.onChange(formatted);
-                      }}
+                      onChange={field.onChange}
                       onBlur={field.onBlur}
                       name={field.name}
                       ref={field.ref}
