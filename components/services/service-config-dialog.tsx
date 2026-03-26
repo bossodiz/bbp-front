@@ -119,6 +119,7 @@ export function ServiceConfigDialog({
           .filter((pt): pt is PetType & { id: number } => pt.id !== undefined)
           .map((pt, i) => ({ id: pt.id, order: i + 1 })),
       );
+      await toast.success("เรียงลำดับประเภทสัตว์เรียบร้อยแล้ว");
     } catch (error: any) {
       setLocalPetTypes(previousOrder);
       toast.error(error.message || "เกิดข้อผิดพลาดในการเรียงลำดับ");
@@ -204,6 +205,7 @@ export function ServiceConfigDialog({
         active: updates.active ?? current.active,
         icon: current.icon,
       });
+      await toast.success("อัพเดทประเภทสัตว์เรียบร้อยแล้ว");
     } catch (error: any) {
       // Rollback on failure
       setLocalPetTypes((prev) =>
