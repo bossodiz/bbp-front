@@ -123,9 +123,7 @@ export function useServiceConfig({
   ): Promise<void> => {
     await apiRequest("/master/pet-types/reorder", {
       method: "PUT",
-      body: JSON.stringify(
-        items.map((i) => ({ id: i.id, order_index: i.order })),
-      ),
+      body: JSON.stringify(items.map((i) => ({ id: i.id, order: i.order }))),
     });
     await fetchPetTypes();
   };
@@ -134,10 +132,11 @@ export function useServiceConfig({
     await apiRequest<any>("/master/pet-sizes", {
       method: "POST",
       body: JSON.stringify({
-        pet_type_id: data.petTypeId,
+        petTypeId: data.petTypeId,
+        key: data.key,
         name: data.name,
-        min_weight: data.minWeight,
-        max_weight: data.maxWeight,
+        minWeight: data.minWeight,
+        maxWeight: data.maxWeight,
         description: data.description,
       }),
     });
@@ -153,11 +152,11 @@ export function useServiceConfig({
       body: JSON.stringify({
         id,
         name: data.name,
-        min_weight: data.minWeight,
-        max_weight: data.maxWeight,
+        minWeight: data.minWeight,
+        maxWeight: data.maxWeight,
         description: data.description,
         active: data.active,
-        order_index: data.order,
+        order: data.order,
       }),
     });
     await fetchPetSizes();
@@ -173,9 +172,7 @@ export function useServiceConfig({
   ): Promise<void> => {
     await apiRequest("/master/pet-sizes/reorder", {
       method: "PUT",
-      body: JSON.stringify(
-        items.map((i) => ({ id: i.id, order_index: i.order })),
-      ),
+      body: JSON.stringify(items.map((i) => ({ id: i.id, order: i.order }))),
     });
     await fetchPetSizes();
   };

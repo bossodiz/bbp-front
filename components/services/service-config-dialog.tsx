@@ -66,6 +66,7 @@ export function ServiceConfigDialog({
   const [newPetType, setNewPetType] = useState({ key: "", name: "" });
   const [newSize, setNewSize] = useState({
     petTypeId: null,
+    key: null,
     name: "",
     minWeight: "",
     maxWeight: "",
@@ -226,7 +227,7 @@ export function ServiceConfigDialog({
     }, 1000);
   };
 
-  const handleAddSize = async () => {
+  const handleAddPetSize = async () => {
     if (!selectedPetTypeForSize) {
       toast.error("กรุณาเลือกประเภทสัตว์");
       return;
@@ -273,6 +274,7 @@ export function ServiceConfigDialog({
     try {
       await createPetSize({
         petTypeId: selectedPetTypeForSize,
+        key: `${petType.key}_${newSize.name.toUpperCase()}`,
         name: newSize.name,
         minWeight,
         maxWeight,
@@ -280,6 +282,7 @@ export function ServiceConfigDialog({
       });
       setNewSize({
         petTypeId: null,
+        key: null,
         name: "",
         minWeight: "",
         maxWeight: "",
@@ -645,7 +648,7 @@ export function ServiceConfigDialog({
                   />
                   <Button
                     size="icon"
-                    onClick={handleAddSize}
+                    onClick={handleAddPetSize}
                     disabled={isSubmitting}
                   >
                     <Plus className="h-4 w-4" />
