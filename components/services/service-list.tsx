@@ -2,19 +2,20 @@
 
 import { useState, useMemo } from "react";
 import { Pencil, Trash2, Dog, Cat, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+  Switch,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -23,29 +24,32 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui";
 import { ServiceDialog } from "./service-dialog";
 import { useServices } from "@/lib/hooks/use-services";
-import { useServiceConfigContext } from "@/lib/contexts/service-config-context";
-import type { Service } from "@/lib/types";
+import type { UseServiceConfigReturn } from "@/lib/hooks/use-service-config";
+import type { Service, PetType, PetSize } from "@/lib/types";
 import { toast } from "sonner";
 
 interface ServiceListProps {
   services: Service[];
   loading?: boolean;
   onRefresh?: () => void;
+  petTypes: PetType[];
+  getSizesForPetType: UseServiceConfigReturn["getSizesForPetType"];
 }
 
 export function ServiceList({
   services,
   loading,
   onRefresh,
+  petTypes,
+  getSizesForPetType,
 }: ServiceListProps) {
   const {
     deleteService: deleteServiceAPI,
     toggleServiceStatus: toggleServiceAPI,
   } = useServices({ autoFetch: false });
-  const { petTypes, getSizesForPetType } = useServiceConfigContext();
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deletingService, setDeletingService] = useState<Service | null>(null);
 

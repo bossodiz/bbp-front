@@ -7,15 +7,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dog, Cat, Clock, MessageSquare, Loader2 } from "lucide-react";
-import {
+  Badge,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/components/ui";
+import { Dog, Cat, Clock, MessageSquare, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTodayBookings } from "@/lib/hooks/use-today-bookings";
 

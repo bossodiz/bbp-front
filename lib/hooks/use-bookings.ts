@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { apiRequest } from "@/lib/api-client";
 import type { Booking } from "@/lib/types";
 
 interface UseBookingsOptions {
@@ -19,14 +20,40 @@ export function useBookings(options: UseBookingsOptions = {}) {
       setError(null);
 
       const params = new URLSearchParams();
-      if (options.status) params.append("status", options.status);
-      if (options.date) params.append("date", options.date);
-      if (options.fromDate) params.append("fromDate", options.fromDate);
+      const startDate = options.date || options.fromDate;
+      const endDate = options.date;
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      const result = await apiRequest(`/bookings${query}`);
+      const data = (result.data as any[]) || [];
 
-      const response = await fetch(`/api/bookings?${params.toString()}`);
-      if (!response.ok) throw new Error("ไม่สามารถดึงข้อมูลนัดหมายได้");
-      const data = await response.json();
-      setBookings(data);
+      const transformed: Booking[] = data.map((b: any) => ({
+        id: b.id,
+        customerId: b.customer_id || b.customerId,
+        customerName: b.customer_name || b.customerName,
+        phone: b.phone,
+        pets: b.pets || [],
+        petIds: b.pet_ids || b.petIds || [],
+        bookingDate: new Date(b.booking_date || b.bookingDate),
+        bookingTime: b.booking_time || b.bookingTime,
+        note: b.note || "",
+        depositAmount: b.deposit_amount || b.depositAmount || 0,
+        depositStatus: b.deposit_status || b.depositStatus || "NONE",
+        depositForfeitedDate: b.deposit_forfeited_date
+          ? new Date(b.deposit_forfeited_date)
+          : undefined,
+        status: b.status || "PENDING",
+        createdAt: new Date(b.created_at || b.createdAt),
+        updatedAt: new Date(b.updated_at || b.updatedAt),
+      }));
+
+      // Client-side filter by status if needed
+      const filtered = options.status
+        ? transformed.filter((b) => b.status === options.status)
+        : transformed;
+
+      setBookings(filtered);
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
@@ -35,114 +62,72 @@ export function useBookings(options: UseBookingsOptions = {}) {
   }, [options.status, options.date, options.fromDate]);
 
   // สร้างนัดหมายใหม่
-  const addBooking = async (
-    bookingData: Omit<Booking, "id" | "createdAt" | "updatedAt">,
-  ) => {
-    try {
-      const response = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookingData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถสร้างนัดหมายได้");
-      }
-
-      const newBooking = await response.json();
-      await fetchBookings();
-      return newBooking;
-    } catch (err) {
-      throw err;
-    }
+  const addBooking = async (bookingData: Record<string, any>) => {
+    const result = await apiRequest("/bookings", {
+      method: "POST",
+      body: JSON.stringify(bookingData),
+    });
+    await fetchBookings();
+    return result.data;
   };
 
   // อัพเดทนัดหมาย
   const updateBooking = async (id: number, data: Partial<Booking>) => {
-    try {
-      const response = await fetch(`/api/bookings/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถอัพเดทนัดหมายได้");
-      }
-
-      const updatedBooking = await response.json();
-      await fetchBookings();
-      return updatedBooking;
-    } catch (err) {
-      throw err;
+    const payload: Record<string, any> = {};
+    if (data.status) payload.status = data.status;
+    if (data.customerName) payload.customer_name = data.customerName;
+    if (data.phone) payload.phone = data.phone;
+    if (data.bookingDate) {
+      payload.booking_date =
+        data.bookingDate instanceof Date
+          ? data.bookingDate.toISOString().split("T")[0]
+          : String(data.bookingDate);
     }
+    if (data.bookingTime) payload.booking_time = data.bookingTime;
+    if (data.note !== undefined) payload.note = data.note;
+    if (data.depositStatus) payload.deposit_status = data.depositStatus;
+    if (data.depositAmount !== undefined)
+      payload.deposit_amount = data.depositAmount;
+
+    const result = await apiRequest(`/bookings/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    await fetchBookings();
+    return result.data;
   };
 
   // ลบนัดหมาย
   const deleteBooking = async (id: number) => {
-    try {
-      const response = await fetch(`/api/bookings/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถลบนัดหมายได้");
-      }
-
-      await fetchBookings();
-    } catch (err) {
-      throw err;
-    }
+    await apiRequest(`/bookings/${id}`, { method: "DELETE" });
+    await fetchBookings();
   };
 
   // ยกเลิกนัดหมาย
   const cancelBooking = async (id: number) => {
-    try {
-      await updateBooking(id, {
-        status: "CANCELLED",
-      });
-    } catch (err) {
-      throw err;
-    }
+    await updateBooking(id, { status: "CANCELLED" });
   };
 
   // ยึดมัดจำ
   const forfeitDeposit = async (id: number) => {
-    try {
-      await updateBooking(id, {
-        depositStatus: "FORFEITED",
-        depositForfeitedDate: new Date(),
-      });
-    } catch (err) {
-      throw err;
-    }
+    await updateBooking(id, {
+      depositStatus: "FORFEITED",
+      depositForfeitedDate: new Date(),
+    });
   };
 
   // คืนมัดจำ
   const refundDeposit = async (id: number) => {
-    try {
-      await updateBooking(id, {
-        depositStatus: "NONE",
-        depositAmount: 0,
-        depositForfeitedDate: undefined,
-      });
-    } catch (err) {
-      throw err;
-    }
+    await updateBooking(id, {
+      depositStatus: "NONE",
+      depositAmount: 0,
+      depositForfeitedDate: undefined,
+    });
   };
 
   // ใช้มัดจำ
   const useDeposit = async (id: number) => {
-    try {
-      await updateBooking(id, {
-        depositStatus: "USED",
-      });
-    } catch (err) {
-      throw err;
-    }
+    await updateBooking(id, { depositStatus: "USED" });
   };
 
   useEffect(() => {

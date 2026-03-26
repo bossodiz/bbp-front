@@ -8,53 +8,18 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/components/ui/chart";
+} from "@/components/ui";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { usePetServiceChart } from "@/lib/hooks/use-pet-service-chart";
-
-const bangkokDateFormatter = new Intl.DateTimeFormat("en-US", {
-  timeZone: "Asia/Bangkok",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function getBangkokDateKey(date: Date): string {
-  const parts = bangkokDateFormatter.formatToParts(date);
-  const y = parts.find((p) => p.type === "year")?.value || "";
-  const m = parts.find((p) => p.type === "month")?.value || "";
-  const d = parts.find((p) => p.type === "day")?.value || "";
-  return `${y}-${m}-${d}`;
-}
-
-function getBangkokMonth(date: Date): number {
-  return (
-    Number(
-      bangkokDateFormatter.formatToParts(date).find((p) => p.type === "month")
-        ?.value || 0,
-    ) - 1
-  ); // 0-indexed
-}
-
-function getBangkokYear(date: Date): number {
-  return Number(
-    bangkokDateFormatter.formatToParts(date).find((p) => p.type === "year")
-      ?.value || 0,
-  );
-}
 
 const chartConfig = {
   dogs: {
@@ -70,164 +35,11 @@ const chartConfig = {
 type PeriodType = "weekly" | "monthly" | "yearly" | "last12months";
 
 export function PetServiceChart() {
-  const today = new Date();
   const [period, setPeriod] = useState<PeriodType>("weekly");
 
   const { data, loading } = usePetServiceChart(period);
 
-  const chartData = useMemo(() => {
-    const sales = data?.sales || [];
-    // Use Bangkok timezone for grouping
-    const bkkNow = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }),
-    );
-    if (period === "weekly") {
-      const days = ["อา.", "จ.", "อ.", "พ.", "ศ.", "ส."];
-      const weekdays = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
-      const buckets = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date(bkkNow);
-        date.setDate(date.getDate() - (6 - i));
-        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-        return {
-          date: weekdays[date.getDay()],
-          dogs: 0,
-          cats: 0,
-          key,
-        };
-      });
-
-      const bucketMap = new Map(buckets.map((b) => [b.key, b]));
-      sales.forEach((sale) => {
-        const key = getBangkokDateKey(new Date(sale.createdAt));
-        const bucket = bucketMap.get(key);
-        if (bucket) {
-          sale.items.forEach((item) => {
-            if (item.petType === "DOG") bucket.dogs++;
-            else if (item.petType === "CAT") bucket.cats++;
-          });
-        }
-      });
-
-      return buckets;
-    } else if (period === "monthly") {
-      const daysInMonth = new Date(
-        bkkNow.getFullYear(),
-        bkkNow.getMonth() + 1,
-        0,
-      ).getDate();
-      const y = bkkNow.getFullYear();
-      const m = bkkNow.getMonth();
-
-      const buckets = Array.from({ length: daysInMonth }, (_, i) => {
-        const d = i + 1;
-        const key = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-        return { date: `${d}`, dogs: 0, cats: 0, key };
-      });
-
-      const bucketMap = new Map(buckets.map((b) => [b.key, b]));
-      sales.forEach((sale) => {
-        const key = getBangkokDateKey(new Date(sale.createdAt));
-        const bucket = bucketMap.get(key);
-        if (bucket) {
-          sale.items.forEach((item) => {
-            if (item.petType === "DOG") bucket.dogs++;
-            else if (item.petType === "CAT") bucket.cats++;
-          });
-        }
-      });
-
-      return buckets;
-    } else if (period === "yearly") {
-      const months = [
-        "ม.ค.",
-        "ก.พ.",
-        "มี.ค.",
-        "เม.ย.",
-        "พ.ค.",
-        "มิ.ย.",
-        "ก.ค.",
-        "ส.ค.",
-        "ก.ย.",
-        "ต.ค.",
-        "พ.ย.",
-        "ธ.ค.",
-      ];
-
-      const currentYear = bkkNow.getFullYear();
-      const buckets = Array.from({ length: 12 }, (_, i) => ({
-        date: months[i],
-        dogs: 0,
-        cats: 0,
-        monthIndex: i,
-        year: currentYear,
-      }));
-
-      sales.forEach((sale) => {
-        const d = new Date(sale.createdAt);
-        const saleMonth = getBangkokMonth(d);
-        const saleYear = getBangkokYear(d);
-        const bucket = buckets.find(
-          (b) => b.year === saleYear && b.monthIndex === saleMonth,
-        );
-        if (bucket) {
-          sale.items.forEach((item) => {
-            if (item.petType === "DOG") bucket.dogs++;
-            else if (item.petType === "CAT") bucket.cats++;
-          });
-        }
-      });
-
-      return buckets;
-    } else {
-      const months = [
-        "ม.ค.",
-        "ก.พ.",
-        "มี.ค.",
-        "เม.ย.",
-        "พ.ค.",
-        "มิ.ย.",
-        "ก.ค.",
-        "ส.ค.",
-        "ก.ย.",
-        "ต.ค.",
-        "พ.ย.",
-        "ธ.ค.",
-      ];
-
-      const buckets = Array.from({ length: 12 }, (_, i) => {
-        const monthsAgo = 11 - i;
-        const targetDate = new Date(
-          bkkNow.getFullYear(),
-          bkkNow.getMonth() - monthsAgo,
-          1,
-        );
-        return {
-          date: months[targetDate.getMonth()],
-          dogs: 0,
-          cats: 0,
-          monthIndex: targetDate.getMonth(),
-          year: targetDate.getFullYear(),
-        };
-      });
-
-      sales.forEach((sale) => {
-        const d = new Date(sale.createdAt);
-        const saleMonth = getBangkokMonth(d);
-        const saleYear = getBangkokYear(d);
-        const bucket = buckets.find(
-          (b) => b.year === saleYear && b.monthIndex === saleMonth,
-        );
-        if (bucket) {
-          sale.items.forEach((item) => {
-            if (item.petType === "DOG") bucket.dogs++;
-            else if (item.petType === "CAT") bucket.cats++;
-          });
-        }
-      });
-
-      return buckets;
-    }
-  }, [data?.sales, period, today]);
+  const chartData = data?.points || [];
 
   const totalDogs = chartData.reduce((sum, item) => sum + item.dogs, 0);
   const totalCats = chartData.reduce((sum, item) => sum + item.cats, 0);
@@ -235,6 +47,7 @@ export function PetServiceChart() {
   // สร้าง label สำหรับเดือน
   const monthLabel = useMemo(() => {
     if (period !== "monthly") return "";
+    const today = new Date();
     const months = [
       "มกราคม",
       "กุมภาพันธ์",
@@ -250,7 +63,7 @@ export function PetServiceChart() {
       "ธันวาคม",
     ];
     return `${months[today.getMonth()]} ${today.getFullYear()}`;
-  }, [period, today]);
+  }, [period]);
 
   // คำนวณ max value และ tick formatter สำหรับ YAxis
   const maxCount = Math.max(

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useServiceStore } from "@/lib/store";
+import { apiRequest } from "@/lib/api-client";
 import type { Service } from "@/lib/types";
 
 interface UseServicesOptions {
@@ -19,6 +20,29 @@ interface UseServicesReturn {
   toggleServiceStatus: (id: number) => Promise<Service>;
 }
 
+function transformService(service: any): Service {
+  return {
+    id: service.id,
+    name: service.name,
+    description: service.description,
+    isSpecial: service.is_special || service.isSpecial || false,
+    specialPrice: service.special_price || service.specialPrice,
+    active: service.active,
+    order: service.order_index || service.orderIndex || service.order || 0,
+    createdAt: service.created_at || service.createdAt,
+    updatedAt: service.updated_at || service.updatedAt,
+    prices: (service.service_prices || service.prices || []).map(
+      (price: any) => ({
+        id: price.id,
+        serviceId: service.id,
+        petTypeId: price.pet_type_id || price.petTypeId,
+        sizeId: price.size_id || price.sizeId,
+        price: price.price,
+      }),
+    ),
+  };
+}
+
 export function useServices(
   options: UseServicesOptions = {},
 ): UseServicesReturn {
@@ -32,42 +56,16 @@ export function useServices(
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams();
-      if (petTypeId) params.append("petTypeId", petTypeId);
-      if (active !== undefined) params.append("active", String(active));
+      const result = await apiRequest("/services");
+      let transformed = ((result.data as any[]) || []).map(transformService);
 
-      const response = await fetch(`/api/services?${params.toString()}`);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch services");
+      // Client-side filters
+      if (active !== undefined) {
+        transformed = transformed.filter((s) => s.active === active);
       }
 
-      const data = await response.json();
-
-      // Transform snake_case to camelCase
-      const transformedServices = (data.data || []).map((service: any) => ({
-        id: service.id,
-        name: service.name,
-        description: service.description,
-        isSpecial: service.is_special || false,
-        specialPrice: service.special_price,
-        active: service.active,
-        order: service.order_index || 0,
-        createdAt: service.created_at,
-        updatedAt: service.updated_at,
-        prices: (service.service_prices || []).map((price: any) => ({
-          id: price.id,
-          serviceId: service.id,
-          petTypeId: price.pet_type_id,
-          sizeId: price.size_id,
-          price: price.price,
-        })),
-      }));
-
-      setServices(transformedServices);
-      // Sync to Zustand store
-      useServiceStore.setState({ services: transformedServices });
+      setServices(transformed);
+      useServiceStore.setState({ services: transformed });
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -76,53 +74,45 @@ export function useServices(
   }, [petTypeId, active]);
 
   const createService = async (data: Omit<Service, "id">): Promise<Service> => {
-    const response = await fetch("/api/services", {
+    const result = await apiRequest("/services", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        name: data.name,
+        description: data.description,
+        is_special: data.isSpecial,
+        special_price: data.specialPrice,
+        active: data.active,
+        order_index: data.order,
+      }),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to create service");
-    }
-
-    const result = await response.json();
-    await fetchServices(); // Refresh list
-    return result.data;
+    await fetchServices();
+    return transformService(result.data);
   };
 
   const updateService = async (
     id: number,
     data: Partial<Service>,
   ): Promise<Service> => {
-    const response = await fetch(`/api/services/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+    const payload: Record<string, any> = {};
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.description !== undefined) payload.description = data.description;
+    if (data.isSpecial !== undefined) payload.is_special = data.isSpecial;
+    if (data.specialPrice !== undefined)
+      payload.special_price = data.specialPrice;
+    if (data.active !== undefined) payload.active = data.active;
+    if (data.order !== undefined) payload.order_index = data.order;
+
+    const result = await apiRequest(`/services/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to update service");
-    }
-
-    const result = await response.json();
-    await fetchServices(); // Refresh list
-    return result.data;
+    await fetchServices();
+    return transformService(result.data);
   };
 
   const deleteService = async (id: number): Promise<void> => {
-    const response = await fetch(`/api/services/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to delete service");
-    }
-
-    await fetchServices(); // Refresh list
+    await apiRequest(`/services/${id}`, { method: "DELETE" });
+    await fetchServices();
   };
 
   const toggleServiceStatus = async (id: number): Promise<Service> => {

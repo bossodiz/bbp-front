@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { apiRequest } from "@/lib/api-client";
 import type { Sale } from "@/lib/types";
 
 interface UseSalesOptions {
@@ -15,7 +16,6 @@ export function useSales(options: UseSalesOptions = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Memoize options string to detect real changes
   const optionsKey = useMemo(() => {
     return JSON.stringify({
       startDate: options.startDate || "",
@@ -32,18 +32,19 @@ export function useSales(options: UseSalesOptions = {}) {
       const params = new URLSearchParams();
       if (options.startDate) params.append("startDate", options.startDate);
       if (options.endDate) params.append("endDate", options.endDate);
-      if (options.customerId)
-        params.append("customerId", options.customerId.toString());
+      const query = params.toString() ? `?${params.toString()}` : "";
+      const result = await apiRequest(`/sales${query}`);
 
-      const url = `/api/sales${params.toString() ? `?${params.toString()}` : ""}`;
-      const response = await fetch(url);
+      let data = (result.data as any[]) || [];
 
-      if (!response.ok) {
-        throw new Error("ไม่สามารถดึงข้อมูลการขายได้");
+      // Client-side filter by customerId if needed
+      if (options.customerId) {
+        data = data.filter(
+          (s: any) => (s.customer_id || s.customerId) === options.customerId,
+        );
       }
 
-      const { data } = await response.json();
-      setSales(data || []);
+      setSales(data);
     } catch (err: any) {
       setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
       setSales([]);

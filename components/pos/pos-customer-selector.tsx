@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import { Search, User, Dog, Cat, X } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  Button,
+  Badge,
+} from "@/components/ui";
 import { useCustomerStore, usePOSStore, useBookingStore } from "@/lib/store";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
 

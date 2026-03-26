@@ -5,45 +5,37 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Check, ChevronsUpDown, Dog, Cat, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+  Input,
+  Textarea,
+} from "@/components/ui";
 import { useBreeds } from "@/lib/hooks/use-breeds";
 import type { NewPetData } from "@/lib/types";
 import { petTypeLabels } from "@/lib/types";

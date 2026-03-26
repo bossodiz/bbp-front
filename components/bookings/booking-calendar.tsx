@@ -3,9 +3,14 @@
 import { format, isSameDay } from "date-fns";
 import { th } from "date-fns/locale";
 import { Dog, Cat, Clock, Loader2 } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  Calendar,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
+} from "@/components/ui";
 import { useBookings } from "@/lib/hooks/use-bookings";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
 

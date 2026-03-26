@@ -26,7 +26,7 @@ import {
   SidebarMenuItem,
   SidebarFooter,
   useSidebar,
-} from "@/components/ui/sidebar";
+} from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 const menuItems = [
@@ -111,7 +111,7 @@ export function AppSidebar() {
             <span className="text-base font-semibold text-sidebar-foreground">
               Pet Grooming
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground truncate max-w-[140px]">
               ระบบจัดการร้าน
             </span>
           </div>

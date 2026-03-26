@@ -14,17 +14,16 @@ import {
   BedDouble,
   Package,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
+  Card,
+  CardContent,
+  Input,
+  Badge,
+  Button,
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import {
+  Calendar,
   Table,
   TableBody,
   TableCell,
@@ -32,15 +31,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
+  Separator,
+} from "@/components/ui";
 import { useCustomerStore } from "@/lib/store";
 import { useSales } from "@/lib/hooks/use-sales";
 import { formatPhoneDisplay, cn, toUtcIsoFromBangkokLocal } from "@/lib/utils";

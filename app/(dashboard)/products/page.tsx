@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui";
 import { ProductList } from "@/components/products/product-list";
 
 export default function ProductsPage() {

@@ -10,7 +10,7 @@ import {
   Package,
   TrendingUp,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats";
 

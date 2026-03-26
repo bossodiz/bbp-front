@@ -2,18 +2,24 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { Scissors, Plus, Dog, Cat, Package } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Button,
+  Badge,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui";
 import {
   useServiceStore,
   usePOSStore,

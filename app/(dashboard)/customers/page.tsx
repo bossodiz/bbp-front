@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { Plus, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button, Input } from "@/components/ui";
 import { CustomerList } from "@/components/customers/customer-list";
 import { CustomerDialog } from "@/components/customers/customer-dialog";
 import { useCustomers } from "@/lib/hooks/use-customers";

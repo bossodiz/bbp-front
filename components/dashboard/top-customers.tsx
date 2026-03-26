@@ -7,15 +7,14 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
+  Avatar,
+  AvatarFallback,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui";
 import { Loader2 } from "lucide-react";
 import { formatPhoneDisplay } from "@/lib/utils";
 import {

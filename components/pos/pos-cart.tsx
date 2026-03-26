@@ -18,32 +18,31 @@ import {
   BedDouble,
   CalendarClock,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Input,
+  Badge,
+  Separator,
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import {
+  Calendar,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui";
 import {
   usePOSStore,
   usePromotionStore,
@@ -57,10 +56,12 @@ import { cn, formatPhoneDisplay } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
+import { usePOSCart } from "@/lib/hooks/use-pos-cart";
 
 export function POSCart() {
   const removeFromCart = usePOSStore.getState().removeFromCart;
   const updateCartItemPrice = usePOSStore.getState().updateCartItemPrice;
+  const { createSale } = usePOSCart();
 
   const incrementCartItemQuantity = usePOSStore(
     (s) => s.incrementCartItemQuantity,
@@ -372,11 +373,7 @@ export function POSCart() {
             change: null,
           };
 
-          await fetch("/api/sales", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(productSaleData),
-          });
+          await createSale(productSaleData);
         }
 
         toast.success("Checkout สำเร็จ!");
@@ -423,16 +420,7 @@ export function POSCart() {
       };
 
       // Save to database
-      const response = await fetch("/api/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(saleData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "ไม่สามารถบันทึกข้อมูลได้");
-      }
+      await createSale(saleData);
 
       // Use deposit if applicable
       const bookingToUse = selectedBookingId

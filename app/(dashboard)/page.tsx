@@ -4,7 +4,7 @@ import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { PetServiceChart } from "@/components/dashboard/pet-service-chart";
 import { TopCustomers } from "@/components/dashboard/top-customers";
 import { RecentBookings } from "@/components/dashboard/recent-bookings";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui";
 
 export default function DashboardPage() {
   return (

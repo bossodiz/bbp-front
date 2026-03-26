@@ -15,10 +15,13 @@ import {
   Calendar,
   Loader2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Badge,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -27,14 +30,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui";
 import { BookingDialog } from "./booking-dialog";
 import { useBookings } from "@/lib/hooks/use-bookings";
 import type { Booking, DepositStatus } from "@/lib/types";

@@ -4,83 +4,77 @@ import {
   usePromotionStore,
   useServiceConfigStore,
 } from "@/lib/store";
+import { apiRequest } from "@/lib/api-client";
 import type { Customer, Service, Promotion } from "@/lib/types";
 
 /** Fetch customers from API and sync to Zustand store (no React state) */
 export async function fetchCustomersToStore(search?: string): Promise<void> {
-  const url = search
-    ? `/api/customers?search=${encodeURIComponent(search)}`
-    : "/api/customers";
+  const params = search ? `?search=${encodeURIComponent(search)}` : "";
+  const result = await apiRequest(`/customers${params}`);
 
-  const response = await fetch(url);
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.error || "Failed to fetch customers");
-  }
-
-  const customers: Customer[] = result.data.map((customer: any) => ({
-    id: customer.id,
-    name: customer.name,
-    phone: customer.phone,
-    createdAt: new Date(customer.created_at),
-    updatedAt: new Date(customer.updated_at),
-    pets: (customer.pets || []).map((pet: any) => ({
-      id: pet.id,
-      customerId: pet.customer_id,
-      name: pet.name,
-      type: pet.type,
-      breed: pet.breed || "",
-      breed2: pet.breed_2 || undefined,
-      isMixedBreed: pet.is_mixed_breed || false,
-      weight: parseFloat(pet.weight),
-      note: pet.note || "",
-      createdAt: new Date(pet.created_at),
-      updatedAt: new Date(pet.updated_at),
-    })),
-  }));
+  const customers: Customer[] = ((result.data as any[]) || []).map(
+    (customer: any) => ({
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+      createdAt: new Date(customer.created_at || customer.createdAt),
+      updatedAt: new Date(customer.updated_at || customer.updatedAt),
+      pets: (customer.pets || []).map((pet: any) => ({
+        id: pet.id,
+        customerId: pet.customer_id || pet.customerId,
+        name: pet.name,
+        type: pet.type,
+        breed: pet.breed || "",
+        breed2: pet.breed_2 || pet.breed2 || undefined,
+        isMixedBreed: pet.is_mixed_breed || pet.isMixedBreed || false,
+        weight:
+          pet.weight !== null && pet.weight !== undefined
+            ? parseFloat(pet.weight)
+            : null,
+        note: pet.note || "",
+        createdAt: new Date(pet.created_at || pet.createdAt),
+        updatedAt: new Date(pet.updated_at || pet.updatedAt),
+      })),
+    }),
+  );
 
   useCustomerStore.setState({ customers });
 }
 
 /** Fetch services from API and sync to Zustand store (no React state) */
 export async function fetchServicesToStore(): Promise<void> {
-  const response = await fetch("/api/services");
+  const result = await apiRequest("/services");
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || "Failed to fetch services");
-  }
-
-  const data = await response.json();
-
-  const services: Service[] = (data.data || []).map((service: any) => ({
-    id: service.id,
-    name: service.name,
-    description: service.description,
-    isSpecial: service.is_special || false,
-    specialPrice: service.special_price,
-    active: service.active,
-    order: service.order_index || 0,
-    createdAt: service.created_at,
-    updatedAt: service.updated_at,
-    prices: (service.service_prices || []).map((price: any) => ({
-      id: price.id,
-      serviceId: service.id,
-      petTypeId: price.pet_type_id,
-      sizeId: price.size_id,
-      price: price.price,
-    })),
-  }));
+  const services: Service[] = ((result.data as any[]) || []).map(
+    (service: any) => ({
+      id: service.id,
+      name: service.name,
+      description: service.description,
+      isSpecial: service.is_special || service.isSpecial || false,
+      specialPrice: service.special_price || service.specialPrice,
+      active: service.active,
+      order: service.order_index || service.orderIndex || service.order || 0,
+      createdAt: service.created_at || service.createdAt,
+      updatedAt: service.updated_at || service.updatedAt,
+      prices: (service.service_prices || service.prices || []).map(
+        (price: any) => ({
+          id: price.id,
+          serviceId: service.id,
+          petTypeId: price.pet_type_id || price.petTypeId,
+          sizeId: price.size_id || price.sizeId,
+          price: price.price,
+        }),
+      ),
+    }),
+  );
 
   useServiceStore.setState({ services });
 }
 
 /** Fetch promotions from API and sync to Zustand store (no React state) */
 export async function fetchPromotionsToStore(): Promise<void> {
-  const response = await fetch("/api/promotions");
-  if (!response.ok) throw new Error("ไม่สามารถดึงข้อมูลโปรโมชั่นได้");
-  const promotions: Promotion[] = await response.json();
+  const result = await apiRequest("/promotions");
+  const promotions = (result.data as Promotion[]) || [];
   usePromotionStore.setState({ promotions });
 }
 

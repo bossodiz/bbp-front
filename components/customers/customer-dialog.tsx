@@ -11,18 +11,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { PhoneInput } from "@/components/ui/phone-input";
-import { Button } from "@/components/ui/button";
+  Input,
+  PhoneInput,
+  Button,
+} from "@/components/ui";
 import { useCustomers } from "@/lib/hooks/use-customers";
 import type { Customer } from "@/lib/types";
 import { formatPhoneInput, getPhoneDigits } from "@/lib/utils";

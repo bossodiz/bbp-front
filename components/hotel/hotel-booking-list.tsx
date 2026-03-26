@@ -18,10 +18,11 @@ import {
   Clock,
   BedDouble,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
+  Button,
+  Card,
+  CardContent,
+  Badge,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -30,14 +31,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui";
 import { HotelBookingDialog } from "./hotel-booking-dialog";
 import { useHotel } from "@/lib/hooks/use-hotel";
 import type {

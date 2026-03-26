@@ -22,29 +22,25 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import {
+  Calendar,
+  Button,
+  Input,
+  Badge,
+  Separator,
+  Textarea,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui";
 import { useHotel } from "@/lib/hooks/use-hotel";
 import { useServices } from "@/lib/hooks/use-services";
 import { usePromotions } from "@/lib/hooks/use-promotions";
-import { useServiceConfigContext } from "@/lib/contexts/service-config-context";
+import { useServiceConfig } from "@/lib/hooks/use-service-config";
 import type {
   HotelBooking,
   PaymentMethod,
@@ -93,15 +89,7 @@ export function HotelCheckoutDialog({
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingPrice, setEditingPrice] = useState("");
 
-  let petTypes: any[] = [];
-  let getSizesForPetType: any = () => [];
-  try {
-    const ctx = useServiceConfigContext();
-    petTypes = ctx.petTypes;
-    getSizesForPetType = ctx.getSizesForPetType;
-  } catch {
-    // Context not available, proceed without it
-  }
+  const { petTypes, getSizesForPetType } = useServiceConfig();
 
   useEffect(() => {
     if (open) {

@@ -2,8 +2,9 @@ import React from "react";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Prompt } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui";
 import { PWARegister } from "@/components/pwa-register";
+import { AuthProvider } from "@/lib/auth-context";
 import "./globals.css";
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -47,10 +48,12 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className="font-sans antialiased">
-        <PWARegister />
-        {children}
-        <Toaster position="top-right" richColors />
-        <Analytics />
+        <AuthProvider>
+          <PWARegister />
+          {children}
+          <Toaster position="top-right" richColors />
+          <Analytics />
+        </AuthProvider>
       </body>
     </html>
   );

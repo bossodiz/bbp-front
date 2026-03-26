@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useCustomerStore } from "@/lib/store";
+import { apiRequest } from "@/lib/api-client";
 import type { Customer, Pet } from "@/lib/types";
 
 interface UseCustomersReturn {
@@ -40,6 +41,36 @@ interface UseCustomersReturn {
   deletePet: (petId: number) => Promise<void>;
 }
 
+function transformCustomer(customer: any): Customer {
+  return {
+    id: customer.id,
+    name: customer.name,
+    phone: customer.phone,
+    createdAt: new Date(customer.created_at || customer.createdAt),
+    updatedAt: new Date(customer.updated_at || customer.updatedAt),
+    pets: (customer.pets || []).map((pet: any) => transformPet(pet)),
+  };
+}
+
+function transformPet(pet: any): Pet {
+  return {
+    id: pet.id,
+    customerId: pet.customer_id || pet.customerId,
+    name: pet.name,
+    type: pet.type,
+    breed: pet.breed || "",
+    breed2: pet.breed_2 || pet.breed2 || undefined,
+    isMixedBreed: pet.is_mixed_breed || pet.isMixedBreed || false,
+    weight:
+      pet.weight !== null && pet.weight !== undefined
+        ? parseFloat(pet.weight)
+        : null,
+    note: pet.note || "",
+    createdAt: new Date(pet.created_at || pet.createdAt),
+    updatedAt: new Date(pet.updated_at || pet.updatedAt),
+  };
+}
+
 export function useCustomers(): UseCustomersReturn {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,41 +81,13 @@ export function useCustomers(): UseCustomersReturn {
       setLoading(true);
       setError(null);
 
-      const url = search
-        ? `/api/customers?search=${encodeURIComponent(search)}`
-        : "/api/customers";
-
-      const response = await fetch(url);
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to fetch customers");
-      }
-
-      // Transform data to match frontend types
-      const transformedCustomers = result.data.map((customer: any) => ({
-        id: customer.id,
-        name: customer.name,
-        phone: customer.phone,
-        createdAt: new Date(customer.created_at),
-        updatedAt: new Date(customer.updated_at),
-        pets: (customer.pets || []).map((pet: any) => ({
-          id: pet.id,
-          customerId: pet.customer_id,
-          name: pet.name,
-          type: pet.type,
-          breed: pet.breed || "",
-          breed2: pet.breed_2 || undefined,
-          isMixedBreed: pet.is_mixed_breed || false,
-          weight: parseFloat(pet.weight),
-          note: pet.note || "",
-          createdAt: new Date(pet.created_at),
-          updatedAt: new Date(pet.updated_at),
-        })),
-      }));
+      const params = search ? `?search=${encodeURIComponent(search)}` : "";
+      const result = await apiRequest(`/customers${params}`);
+      const transformedCustomers = ((result.data as any[]) || []).map(
+        transformCustomer,
+      );
 
       setCustomers(transformedCustomers);
-      // Sync to Zustand store
       useCustomerStore.setState({ customers: transformedCustomers });
     } catch (err: any) {
       setError(err.message);
@@ -95,24 +98,18 @@ export function useCustomers(): UseCustomersReturn {
 
   const createCustomer = useCallback(
     async (data: { name: string; phone: string }) => {
-      const response = await fetch("/api/customers", {
+      const result = await apiRequest("/customers", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create customer");
-      }
+      const d = result.data as any;
 
       const newCustomer: Customer = {
-        id: result.data.id,
-        name: result.data.name,
-        phone: result.data.phone,
-        createdAt: new Date(result.data.created_at),
-        updatedAt: new Date(result.data.updated_at),
+        id: d.id,
+        name: d.name,
+        phone: d.phone,
+        createdAt: new Date(d.created_at || d.createdAt),
+        updatedAt: new Date(d.updated_at || d.updatedAt),
         pets: [],
       };
 
@@ -124,24 +121,18 @@ export function useCustomers(): UseCustomersReturn {
 
   const updateCustomer = useCallback(
     async (id: number, data: { name: string; phone: string }) => {
-      const response = await fetch(`/api/customers/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+      const result = await apiRequest(`/customers/${id}`, {
+        method: "PUT",
         body: JSON.stringify(data),
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update customer");
-      }
+      const d = result.data as any;
 
       const updatedCustomer: Customer = {
-        id: result.data.id,
-        name: result.data.name,
-        phone: result.data.phone,
-        createdAt: new Date(result.data.created_at),
-        updatedAt: new Date(result.data.updated_at),
+        id: d.id,
+        name: d.name,
+        phone: d.phone,
+        createdAt: new Date(d.created_at || d.createdAt),
+        updatedAt: new Date(d.updated_at || d.updatedAt),
         pets: customers.find((c) => c.id === id)?.pets || [],
       };
 
@@ -155,15 +146,7 @@ export function useCustomers(): UseCustomersReturn {
   );
 
   const deleteCustomer = useCallback(async (id: number) => {
-    const response = await fetch(`/api/customers/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const result = await response.json();
-      throw new Error(result.error || "Failed to delete customer");
-    }
-
+    await apiRequest(`/customers/${id}`, { method: "DELETE" });
     setCustomers((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
@@ -180,41 +163,19 @@ export function useCustomers(): UseCustomersReturn {
         note?: string;
       },
     ) => {
-      const response = await fetch("/api/pets", {
+      const result = await apiRequest("/pets", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customer_id: customerId,
           name: data.name,
           type: data.type,
           breed: data.breed,
-          breed_2: data.breed2 || null,
-          is_mixed_breed: data.isMixedBreed,
-          weight: data.weight,
-          note: data.note || null,
+          weight: data.weight || undefined,
+          note: data.note || undefined,
         }),
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create pet");
-      }
-
-      const newPet: Pet = {
-        id: result.data.id,
-        customerId: result.data.customer_id,
-        name: result.data.name,
-        type: result.data.type,
-        breed: result.data.breed || "",
-        breed2: result.data.breed_2 || undefined,
-        isMixedBreed: result.data.is_mixed_breed || false,
-        weight:
-          result.data.weight !== null ? parseFloat(result.data.weight) : null,
-        note: result.data.note || "",
-        createdAt: new Date(result.data.created_at),
-        updatedAt: new Date(result.data.updated_at),
-      };
+      const newPet = transformPet(result.data);
 
       setCustomers((prev) =>
         prev.map((c) =>
@@ -240,40 +201,18 @@ export function useCustomers(): UseCustomersReturn {
         note?: string;
       },
     ) => {
-      const response = await fetch(`/api/pets/${petId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+      const result = await apiRequest(`/pets/${petId}`, {
+        method: "PUT",
         body: JSON.stringify({
           name: data.name,
           type: data.type,
           breed: data.breed,
-          breed_2: data.breed2 || null,
-          is_mixed_breed: data.isMixedBreed,
-          weight: data.weight,
-          note: data.note || null,
+          weight: data.weight || undefined,
+          note: data.note || undefined,
         }),
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update pet");
-      }
-
-      const updatedPet: Pet = {
-        id: result.data.id,
-        customerId: result.data.customer_id,
-        name: result.data.name,
-        type: result.data.type,
-        breed: result.data.breed || "",
-        breed2: result.data.breed_2 || undefined,
-        isMixedBreed: result.data.is_mixed_breed || false,
-        weight:
-          result.data.weight !== null ? parseFloat(result.data.weight) : null,
-        note: result.data.note || "",
-        createdAt: new Date(result.data.created_at),
-        updatedAt: new Date(result.data.updated_at),
-      };
+      const updatedPet = transformPet(result.data);
 
       setCustomers((prev) =>
         prev.map((c) => ({
@@ -288,14 +227,7 @@ export function useCustomers(): UseCustomersReturn {
   );
 
   const deletePet = useCallback(async (petId: number) => {
-    const response = await fetch(`/api/pets/${petId}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const result = await response.json();
-      throw new Error(result.error || "Failed to delete pet");
-    }
+    await apiRequest(`/pets/${petId}`, { method: "DELETE" });
 
     setCustomers((prev) =>
       prev.map((c) => ({

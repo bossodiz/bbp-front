@@ -28,13 +28,9 @@ export function useDashboardStats() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("/api/dashboard/stats");
-        if (!response.ok) {
-          throw new Error("Failed to fetch dashboard stats");
-        }
-
-        const stats = await response.json();
-        setData(stats);
+        const { apiRequest } = await import("@/lib/api-client");
+        const result = await apiRequest<DashboardStats>("/dashboard/stats");
+        setData((result.data as DashboardStats) || null);
       } catch (err: any) {
         setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
       } finally {

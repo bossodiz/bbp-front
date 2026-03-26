@@ -5,7 +5,7 @@ import type {
   Service,
   Promotion,
   Booking,
-  PetTypeConfig,
+  PetType,
   SizeConfig,
 } from "./types";
 
@@ -122,17 +122,17 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
 
 // Service Configuration Store (Pet Types & Sizes)
 interface ServiceConfigStore {
-  petTypes: PetTypeConfig[];
+  petTypes: PetType[];
   sizes: SizeConfig[];
   loading: boolean;
   error: string | null;
   fetchPetTypes: () => Promise<void>;
   fetchSizes: (petTypeId?: string) => Promise<void>;
-  addPetType: (petType: Omit<PetTypeConfig, "order" | "active">) => void;
-  updatePetType: (id: string, data: Partial<PetTypeConfig>) => void;
+  addPetType: (petType: Omit<PetType, "order" | "active">) => void;
+  updatePetType: (id: string, data: Partial<PetType>) => void;
   deletePetType: (id: string) => void;
   togglePetTypeStatus: (id: string) => void;
-  reorderPetTypes: (petTypes: PetTypeConfig[]) => void;
+  reorderPetTypes: (petTypes: PetType[]) => void;
   getSizesForPetType: (petTypeId: string) => SizeConfig[];
   addSize: (size: Omit<SizeConfig, "order" | "active">) => void;
   updateSize: (id: string, data: Partial<SizeConfig>) => void;
@@ -151,20 +151,14 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
     try {
       set({ loading: true, error: null });
 
-      const response = await fetch("/api/config/pet-types");
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch pet types");
-      }
-
-      const data = await response.json();
-      const formattedData = (data.data || []).map((item: any) => ({
+      const { apiRequest } = await import("@/lib/api-client");
+      const result = await apiRequest<any[]>("/config/pet-types");
+      const formattedData = ((result.data as any[]) || []).map((item: any) => ({
         id: item.id,
         name: item.name,
         icon: item.icon,
         active: item.active,
-        order: item.order_index,
+        order: item.order_index || item.orderIndex || 0,
       }));
 
       set({ petTypes: formattedData, loading: false });
@@ -178,27 +172,21 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
     try {
       set({ loading: true, error: null });
 
-      const url = petTypeId
-        ? `/api/config/pet-sizes?petTypeId=${petTypeId}`
-        : "/api/config/pet-sizes";
+      const endpoint = petTypeId
+        ? `/config/pet-sizes?petTypeId=${petTypeId}`
+        : "/config/pet-sizes";
 
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch pet sizes");
-      }
-
-      const data = await response.json();
-      const formattedData = (data.data || []).map((item: any) => ({
+      const { apiRequest } = await import("@/lib/api-client");
+      const result = await apiRequest<any[]>(endpoint);
+      const formattedData = ((result.data as any[]) || []).map((item: any) => ({
         id: item.id,
-        petTypeId: item.pet_type_id,
+        petTypeId: item.pet_type_id || item.petTypeId,
         name: item.name,
-        minWeight: item.min_weight,
-        maxWeight: item.max_weight,
+        minWeight: item.min_weight || item.minWeight,
+        maxWeight: item.max_weight || item.maxWeight,
         description: item.description,
         active: item.active,
-        order: item.order_index,
+        order: item.order_index || item.orderIndex || 0,
       }));
 
       set({ sizes: formattedData, loading: false });

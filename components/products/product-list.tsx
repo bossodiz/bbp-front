@@ -9,20 +9,19 @@ import {
   AlertTriangle,
   Search,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 import {
+  Button,
+  Card,
+  CardContent,
+  Badge,
+  Switch,
+  Input,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -31,7 +30,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui";
 import { ProductDialog } from "./product-dialog";
 import { useProducts } from "@/lib/hooks/use-products";
 import type { Product } from "@/lib/types";

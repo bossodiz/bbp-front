@@ -7,20 +7,16 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/components/ui/chart";
+} from "@/components/ui";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Loader2 } from "lucide-react";
 import { useRevenueChart } from "@/lib/hooks/use-revenue-chart";

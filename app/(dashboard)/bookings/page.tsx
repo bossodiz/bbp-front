@@ -2,10 +2,15 @@
 
 import { useState, useCallback } from "react";
 import { Plus, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import {
+  Button,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Switch,
+  Label,
+} from "@/components/ui";
 import { BookingList } from "@/components/bookings/booking-list";
 import { BookingCalendar } from "@/components/bookings/booking-calendar";
 import { BookingDialog } from "@/components/bookings/booking-dialog";

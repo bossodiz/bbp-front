@@ -2,10 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Pencil, Percent, Banknote, Gift, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Button, Card, CardContent, Badge, Switch } from "@/components/ui";
 import { PromotionDialog } from "./promotion-dialog";
 import { usePromotions } from "@/lib/hooks/use-promotions";
 import { usePromotionStore } from "@/lib/store";

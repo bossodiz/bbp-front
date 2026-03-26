@@ -23,15 +23,11 @@ export function useTopCustomers(type: CustomerViewType = "frequent_visits") {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
-          `/api/dashboard/top-customers?type=${type}`,
+        const { apiRequest } = await import("@/lib/api-client");
+        const result = await apiRequest<TopCustomer[]>(
+          `/dashboard/top-customers?type=${type}`,
         );
-        if (!response.ok) {
-          throw new Error("Failed to fetch top customers");
-        }
-
-        const customers = await response.json();
-        setData(customers);
+        setData((result.data as TopCustomer[]) || []);
       } catch (err: any) {
         setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
       } finally {

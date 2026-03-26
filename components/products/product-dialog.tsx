@@ -11,26 +11,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+  Input,
+  Textarea,
+  Button,
+  Switch,
+} from "@/components/ui";
 import { useProducts } from "@/lib/hooks/use-products";
 import type { Product } from "@/lib/types";
 import { productCategoryOptions } from "@/lib/types";
@@ -43,8 +39,14 @@ const productSchema = z.object({
   category: z.string().optional(),
   price: z.coerce.number().min(0, "ราคาต้องมากกว่าหรือเท่ากับ 0"),
   cost: z.coerce.number().min(0, "ราคาทุนต้องมากกว่าหรือเท่ากับ 0"),
-  stockQuantity: z.coerce.number().int().min(0, "จำนวนต้องมากกว่าหรือเท่ากับ 0"),
-  minStock: z.coerce.number().int().min(0, "จำนวนขั้นต่ำต้องมากกว่าหรือเท่ากับ 0"),
+  stockQuantity: z.coerce
+    .number()
+    .int()
+    .min(0, "จำนวนต้องมากกว่าหรือเท่ากับ 0"),
+  minStock: z.coerce
+    .number()
+    .int()
+    .min(0, "จำนวนขั้นต่ำต้องมากกว่าหรือเท่ากับ 0"),
   unit: z.string().min(1, "กรุณาระบุหน่วยนับ"),
   active: z.boolean(),
 });
@@ -170,7 +172,10 @@ export function ProductDialog({
                 <FormItem>
                   <FormLabel>ชื่อสินค้า *</FormLabel>
                   <FormControl>
-                    <Input placeholder="เช่น อาหารสุนัข Royal Canin" {...field} />
+                    <Input
+                      placeholder="เช่น อาหารสุนัข Royal Canin"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

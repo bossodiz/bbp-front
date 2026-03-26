@@ -12,51 +12,41 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+  Input,
+  Textarea,
+  Button,
+} from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useCustomers } from "@/lib/hooks/use-customers";
-import { useBreeds } from "@/lib/hooks/use-breeds";
+import { useMasterPetType } from "@/lib/hooks/use-master-pet-type";
+import { useMasterBreeds } from "@/lib/hooks/use-master-breeds";
 import type { Pet } from "@/lib/types";
-import { petTypeLabels } from "@/lib/types";
 import { toast } from "sonner";
 
 const petSchema = z
   .object({
     name: z.string().min(1, "กรุณากรอกชื่อสัตว์เลี้ยง"),
-    type: z.enum(["DOG", "CAT"], {
-      required_error: "กรุณาเลือกประเภทสัตว์",
-    }),
+    type: z.string().min(1, "กรุณาเลือกประเภทสัตว์"),
     isMixedBreed: z.boolean().default(false),
     breed: z.string().min(1, "กรุณากรอกสายพันธุ์"),
     breed2: z.string().optional(),
@@ -100,6 +90,7 @@ export function PetDialog({
   onSuccess,
 }: PetDialogProps) {
   const { createPet, updatePet } = useCustomers();
+  const { petTypes } = useMasterPetType();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = pet !== null && pet !== undefined;
   const [breedOpen, setBreedOpen] = useState(false);
@@ -127,18 +118,13 @@ export function PetDialog({
   const selectedType = form.watch("type");
   const isMixedBreed = form.watch("isMixedBreed");
 
-  // Fetch breeds from API based on selected pet type (exclude mixed breeds for selection)
-  const {
-    breeds,
-    loading: breedsLoading,
-    createBreed,
-  } = useBreeds({
-    petTypeId: selectedType,
-    active: true,
-    autoFetch: !!selectedType,
-  });
+  // Map selected type key → master petType object to get numeric id for breeds API
+  const selectedPetTypeObj = petTypes.find((pt) => pt.key === selectedType);
+  const { breeds, loading: breedsLoading } = useMasterBreeds(
+    selectedPetTypeObj?.id,
+  );
 
-  // Get breed list based on selected pet type
+  // Get breed name list for combobox
   const breedList = useMemo(() => {
     return breeds.map((breed) => breed.name);
   }, [breeds]);
@@ -221,54 +207,10 @@ export function PetDialog({
     try {
       setIsSubmitting(true);
 
-      // Check if breed exists in the list, if not create it
-      const breedExists = breedList.includes(data.breed);
-      if (!breedExists && data.type) {
-        try {
-          const maxOrder =
-            breeds.length > 0
-              ? Math.max(...breeds.map((b) => b.order_index))
-              : 0;
-          await createBreed({
-            pet_type_id: data.type,
-            name: data.breed,
-            is_mixed: false,
-            order_index: maxOrder + 1,
-            active: true,
-          });
-          toast.success(`เพิ่มสายพันธุ์ "${data.breed}" เรียบร้อยแล้ว`);
-        } catch (error: any) {
-          // Continue even if breed creation fails
-        }
-      }
-
-      // Check breed2 if mixed breed
-      if (data.isMixedBreed && data.breed2) {
-        const breed2Exists = breedList.includes(data.breed2);
-        if (!breed2Exists && data.type) {
-          try {
-            const maxOrder =
-              breeds.length > 0
-                ? Math.max(...breeds.map((b) => b.order_index))
-                : 0;
-            await createBreed({
-              pet_type_id: data.type,
-              name: data.breed2,
-              is_mixed: false,
-              order_index: maxOrder + 2,
-              active: true,
-            });
-            toast.success(`เพิ่มสายพันธุ์ "${data.breed2}" เรียบร้อยแล้ว`);
-          } catch (error: any) {
-            // Continue even if breed creation fails
-          }
-        }
-      }
-
       if (isEditing && pet) {
         await updatePet(pet.id, {
           name: data.name,
-          type: data.type,
+          type: data.type as "DOG" | "CAT",
           breed: data.breed,
           breed2: data.isMixedBreed ? data.breed2 : undefined,
           isMixedBreed: data.isMixedBreed,
@@ -279,7 +221,7 @@ export function PetDialog({
       } else {
         await createPet(customerId, {
           name: data.name,
-          type: data.type,
+          type: data.type as "DOG" | "CAT",
           breed: data.breed,
           breed2: data.isMixedBreed ? data.breed2 : undefined,
           isMixedBreed: data.isMixedBreed,
@@ -340,19 +282,19 @@ export function PetDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {(
-                          Object.keys(petTypeLabels) as Array<
-                            keyof typeof petTypeLabels
-                          >
-                        ).map((key) => (
-                          <SelectItem key={key} value={key}>
+                        {petTypes.map((pt) => (
+                          <SelectItem key={pt.id} value={pt.key}>
                             <div className="flex items-center gap-2">
-                              {key === "DOG" ? (
+                              {pt.icon ? (
+                                <span className="text-base leading-none">
+                                  {pt.icon}
+                                </span>
+                              ) : pt.key === "DOG" ? (
                                 <Dog className="h-4 w-4" />
-                              ) : (
+                              ) : pt.key === "CAT" ? (
                                 <Cat className="h-4 w-4" />
-                              )}
-                              {petTypeLabels[key]}
+                              ) : null}
+                              {pt.name}
                             </div>
                           </SelectItem>
                         ))}

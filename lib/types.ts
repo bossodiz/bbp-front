@@ -23,12 +23,25 @@ export interface Pet {
 }
 
 // Pet Type Configuration (customizable)
-export interface PetTypeConfig {
-  id: string;
-  name: string;
+export interface PetType {
+  id?: number;
+  key?: string;
+  name?: string;
   icon?: string;
-  order: number;
-  active: boolean; // สถานะเปิด/ปิดชั่วคราว
+  order?: number;
+  active?: boolean;
+}
+
+export interface PetSize {
+  id?: number;
+  key?: string;
+  petTypeId?: number;
+  name?: string;
+  minWeight?: number;
+  maxWeight?: number;
+  description?: string;
+  active?: boolean;
+  order?: number;
 }
 
 // Size Configuration (customizable) - แยกตามประเภทสัตว์
@@ -185,39 +198,6 @@ export interface SaleItem {
   isPriceModified: boolean;
 }
 
-// POS Types (kept for backward compatibility)
-export interface POSOrder {
-  id: number;
-  customerId?: number;
-  petId?: number;
-  bookingId?: number;
-  subtotal: number;
-  discountAmount: number;
-  depositUsed: number;
-  totalAmount: number;
-  createdAt: Date;
-  items: POSOrderItem[];
-  payments: Payment[];
-}
-
-export interface POSOrderItem {
-  id: number;
-  posOrderId: number;
-  serviceId: number;
-  serviceName: string;
-  originalPrice: number;
-  finalPrice: number;
-  isPriceModified: boolean;
-}
-
-export interface Payment {
-  id: number;
-  posOrderId: number;
-  method: "CASH" | "QR" | "CREDIT_CARD";
-  amount: number;
-  createdAt: Date;
-}
-
 // Hotel Types
 export type HotelBookingStatus =
   | "RESERVED"
@@ -275,7 +255,6 @@ export const hotelStatusLabels: Record<HotelBookingStatus, string> = {
 };
 
 // Utility types
-export type PetType = "DOG" | "CAT"; // For pet registration (still fixed)
 export type DepositStatus = "NONE" | "HELD" | "USED" | "FORFEITED";
 export type PaymentMethod = "CASH" | "QR" | "CREDIT_CARD";
 export type PromotionType = "PERCENT" | "AMOUNT";
@@ -284,7 +263,7 @@ export type ItemType = "SERVICE" | "HOTEL_ROOM" | "PRODUCT";
 export type ApplicableTo = "ALL" | "SERVICE" | "HOTEL" | "PRODUCT";
 
 // Label maps for display (for pet registration)
-export const petTypeLabels: Record<PetType, string> = {
+export const petTypeLabels: Record<"DOG" | "CAT", string> = {
   DOG: "หมา",
   CAT: "แมว",
 };

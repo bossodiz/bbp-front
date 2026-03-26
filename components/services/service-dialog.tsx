@@ -12,22 +12,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+  Input,
+  Textarea,
+  Button,
+  Label,
+  Switch,
+} from "@/components/ui";
 import { useServices } from "@/lib/hooks/use-services";
-import { useServiceConfigContext } from "@/lib/contexts/service-config-context";
+import { useServiceConfig } from "@/lib/hooks/use-service-config";
 import type { Service, ServicePrice } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -52,9 +50,17 @@ export function ServiceDialog({
   onSuccess,
 }: ServiceDialogProps) {
   const { createService, updateService } = useServices({ autoFetch: false });
-  const { petTypes, getSizesForPetType } = useServiceConfigContext();
+  const { petTypes, getSizesForPetType, fetchPetTypes, fetchPetSizes } =
+    useServiceConfig({ autoFetch: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = service !== null && service !== undefined;
+
+  useEffect(() => {
+    if (open) {
+      fetchPetTypes();
+      fetchPetSizes();
+    }
+  }, [open]);
 
   const activePetTypes = [...petTypes]
     .filter((pt) => pt.active)

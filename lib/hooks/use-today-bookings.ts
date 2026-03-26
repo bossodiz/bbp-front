@@ -34,13 +34,11 @@ export function useTodayBookings() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("/api/dashboard/today-bookings");
-        if (!response.ok) {
-          throw new Error("Failed to fetch today bookings");
-        }
-
-        const bookings = await response.json();
-        setData(bookings);
+        const { apiRequest } = await import("@/lib/api-client");
+        const result = await apiRequest<TodayBooking[]>(
+          "/dashboard/today-bookings",
+        );
+        setData((result.data as TodayBooking[]) || []);
       } catch (err: any) {
         setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
       } finally {

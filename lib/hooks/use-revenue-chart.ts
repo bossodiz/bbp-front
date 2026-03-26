@@ -33,15 +33,11 @@ export function useRevenueChart(
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
-          `/api/dashboard/revenue-chart?period=${period}`,
+        const { apiRequest } = await import("@/lib/api-client");
+        const result = await apiRequest<RevenueChartData>(
+          `/dashboard/revenue-chart?period=${period}`,
         );
-        if (!response.ok) {
-          throw new Error("Failed to fetch revenue chart data");
-        }
-
-        const chartData = await response.json();
-        setData(chartData);
+        setData((result.data as RevenueChartData) || null);
       } catch (err: any) {
         setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
       } finally {

@@ -26,8 +26,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Form,
   FormControl,
   FormDescription,
@@ -35,20 +33,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -56,14 +48,15 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "@/components/ui/command";
-import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+  Calendar,
+  Input,
+  Textarea,
+  Button,
+  Switch,
+} from "@/components/ui";
 import { useBookings } from "@/lib/hooks/use-bookings";
 import { useCustomers } from "@/lib/hooks/use-customers";
+import { useBookingDialog } from "@/lib/hooks/use-booking-dialog";
 import { AddPetDialog } from "./add-pet-dialog";
 import type { Booking, Customer, Pet, NewPetData } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -132,6 +125,8 @@ export function BookingDialog({
   onSuccess,
 }: BookingDialogProps) {
   const { customers, fetchCustomers } = useCustomers();
+  const { createBooking, updateBooking: updateBookingData } =
+    useBookingDialog();
   const [submitting, setSubmitting] = useState(false);
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
@@ -320,30 +315,10 @@ export function BookingDialog({
       };
 
       if (isEditing && booking) {
-        const response = await fetch(`/api/bookings/${booking.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(bookingData),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "ไม่สามารถแก้ไขนัดหมายได้");
-        }
-
+        await updateBookingData(booking.id, bookingData);
         toast.success("แก้ไขนัดหมายเรียบร้อยแล้ว");
       } else {
-        const response = await fetch("/api/bookings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(bookingData),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "ไม่สามารถเพิ่มนัดหมายได้");
-        }
-
+        await createBooking(bookingData);
         toast.success("เพิ่มนัดหมายใหม่เรียบร้อยแล้ว");
       }
       onSuccess?.();

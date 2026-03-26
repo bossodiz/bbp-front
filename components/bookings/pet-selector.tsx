@@ -2,38 +2,32 @@
 
 import { useState } from "react";
 import { Plus, X, Check, ChevronsUpDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
+  Button,
+  Badge,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  Input,
+  Label,
+} from "@/components/ui";
 import { useBreeds } from "@/lib/hooks/use-breeds";
 import type { Pet, NewPetData } from "@/lib/types";
 import { petTypeLabels } from "@/lib/types";

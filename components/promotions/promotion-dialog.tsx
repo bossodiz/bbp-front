@@ -11,25 +11,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+  Input,
+  Button,
+  Switch,
+} from "@/components/ui";
 import { usePromotions } from "@/lib/hooks/use-promotions";
 import type { Promotion, PromotionType, ApplicableTo } from "@/lib/types";
 import { promotionTypeLabels, applicableToLabels } from "@/lib/types";

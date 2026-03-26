@@ -1,21 +1,18 @@
 import { useState } from "react";
 import { usePromotionStore } from "@/lib/store";
+import { apiRequest } from "@/lib/api-client";
 import type { Promotion } from "@/lib/types";
 
 export function usePromotions() {
-  // ใช้ข้อมูลจาก Zustand store โดยตรง - ไม่ trigger re-render
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ดึงข้อมูลโปรโมชั่นทั้งหมด - sync เข้า store เท่านั้น
   const fetchPromotions = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/promotions");
-      if (!response.ok) throw new Error("ไม่สามารถดึงข้อมูลโปรโมชั่นได้");
-      const data = await response.json();
-      // อัพเดทเข้า Zustand store อย่างเดียว
+      const result = await apiRequest("/promotions");
+      const data = (result.data as any[]) || [];
       usePromotionStore.setState({ promotions: data });
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
@@ -24,86 +21,61 @@ export function usePromotions() {
     }
   };
 
-  // สร้างโปรโมชั่นใหม่
   const addPromotion = async (
     promotionData: Omit<Promotion, "id" | "createdAt" | "updatedAt">,
   ) => {
-    try {
-      const response = await fetch("/api/promotions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(promotionData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถสร้างโปรโมชั่นได้");
-      }
-
-      const newPromotion = await response.json();
-      // ดึงข้อมูลใหม่จาก database หลังจากเพิ่มสำเร็จ
-      await fetchPromotions();
-      return newPromotion;
-    } catch (err) {
-      throw err;
-    }
+    const result = await apiRequest("/promotions", {
+      method: "POST",
+      body: JSON.stringify({
+        name: promotionData.name,
+        type: promotionData.type,
+        value: promotionData.value,
+        applicable_to: promotionData.applicableTo,
+        active: promotionData.active,
+        start_date: promotionData.startDate
+          ? String(promotionData.startDate)
+          : undefined,
+        end_date: promotionData.endDate
+          ? String(promotionData.endDate)
+          : undefined,
+      }),
+    });
+    await fetchPromotions();
+    return result.data;
   };
 
-  // อัพเดทโปรโมชั่น
   const updatePromotion = async (id: number, data: Partial<Promotion>) => {
-    try {
-      const response = await fetch(`/api/promotions/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+    const payload: Record<string, any> = {};
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.type !== undefined) payload.type = data.type;
+    if (data.value !== undefined) payload.value = data.value;
+    if (data.applicableTo !== undefined)
+      payload.applicable_to = data.applicableTo;
+    if (data.active !== undefined) payload.active = data.active;
+    if (data.startDate !== undefined)
+      payload.start_date = data.startDate ? String(data.startDate) : null;
+    if (data.endDate !== undefined)
+      payload.end_date = data.endDate ? String(data.endDate) : null;
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถอัพเดทโปรโมชั่นได้");
-      }
-
-      const updatedPromotion = await response.json();
-      // ดึงข้อมูลใหม่จาก database หลังจากแก้ไขสำเร็จ
-      await fetchPromotions();
-      return updatedPromotion;
-    } catch (err) {
-      throw err;
-    }
+    const result = await apiRequest(`/promotions/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    await fetchPromotions();
+    return result.data;
   };
 
-  // ลบโปรโมชั่น
   const deletePromotion = async (id: number) => {
-    try {
-      const response = await fetch(`/api/promotions/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถลบโปรโมชั่นได้");
-      }
-
-      // ดึงข้อมูลใหม่จาก database หลังจากลบสำเร็จ
-      await fetchPromotions();
-    } catch (err) {
-      throw err;
-    }
+    await apiRequest(`/promotions/${id}`, { method: "DELETE" });
+    await fetchPromotions();
   };
 
-  // เปิด/ปิดโปรโมชั่น
   const togglePromotion = async (id: number, active: boolean) => {
-    try {
-      await updatePromotion(id, { active });
-    } catch (err) {
-      throw err;
-    }
+    await updatePromotion(id, { active });
   };
-
-  // ไม่มี auto-fetch - ให้ component เรียก fetchPromotions() เอง
 
   return {
-    promotions: usePromotionStore.getState().promotions, // อ่านจาก store
+    promotions: usePromotionStore.getState().promotions,
     loading,
     error,
     fetchPromotions,
