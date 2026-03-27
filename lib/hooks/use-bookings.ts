@@ -30,22 +30,22 @@ export function useBookings(options: UseBookingsOptions = {}) {
 
       const transformed: Booking[] = data.map((b: any) => ({
         id: b.id,
-        customerId: b.customer_id || b.customerId,
-        customerName: b.customer_name || b.customerName,
+        customerId: b.customerId,
+        customerName: b.customerName,
         phone: b.phone,
         pets: b.pets || [],
-        petIds: b.pet_ids || b.petIds || [],
-        bookingDate: new Date(b.booking_date || b.bookingDate),
-        bookingTime: b.booking_time || b.bookingTime,
+        petIds: b.petIds || [],
+        bookingDate: new Date(b.bookingDate),
+        bookingTime: b.bookingTime,
         note: b.note || "",
-        depositAmount: b.deposit_amount || b.depositAmount || 0,
-        depositStatus: b.deposit_status || b.depositStatus || "NONE",
-        depositForfeitedDate: b.deposit_forfeited_date
-          ? new Date(b.deposit_forfeited_date)
+        depositAmount: b.depositAmount || 0,
+        depositStatus: b.depositStatus || "NONE",
+        depositForfeitedDate: b.depositForfeitedDate
+          ? new Date(b.depositForfeitedDate)
           : undefined,
         status: b.status || "PENDING",
-        createdAt: new Date(b.created_at || b.createdAt),
-        updatedAt: new Date(b.updated_at || b.updatedAt),
+        createdAt: new Date(b.createdAt),
+        updatedAt: new Date(b.updatedAt),
       }));
 
       // Client-side filter by status if needed

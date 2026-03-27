@@ -24,17 +24,17 @@ export interface Pet {
 
 // Pet Type Configuration (customizable)
 export interface PetType {
-  id?: number;
-  key?: string;
-  name?: string;
+  id: number;
+  key: string;
+  name: string;
   icon?: string;
-  order?: number;
-  active?: boolean;
+  order: number;
+  active: boolean;
 }
 
 export interface PetSize {
-  id?: number;
-  key?: string;
+  id: number;
+  key: string;
   petTypeId?: number;
   name?: string;
   minWeight?: number;
@@ -64,17 +64,14 @@ export interface Service {
   isSpecial: boolean; // บริการพิเศษไม่เกี่ยวกับประเภทสัตว์/ขนาด
   specialPrice?: number; // ราคาเดียวสำหรับบริการพิเศษ
   active: boolean; // สถานะเปิด/ปิดชั่วคราว
-  order: number; // ลำดับการแสดงผล
-  createdAt: Date;
-  updatedAt: Date;
+  orderIndex: number; // ลำดับการแสดงผล
   prices: ServicePrice[];
 }
 
 export interface ServicePrice {
   id: number;
-  serviceId: number;
-  petTypeId?: string; // Optional for special services
-  sizeId?: string; // Optional for special services
+  petTypeId?: number; // Optional for special services
+  sizeId?: number; // Optional for special services
   price: number;
 }
 

@@ -248,9 +248,9 @@ export function ServiceList({
             <Card
               key={petType.id}
               className={`overflow-hidden py-0 ${
-                petType.id === "DOG"
+                petType.key === "DOG"
                   ? "border-orange-200"
-                  : petType.id === "CAT"
+                  : petType.key === "CAT"
                     ? "border-sky-200"
                     : ""
               }`}
@@ -258,15 +258,15 @@ export function ServiceList({
               {/* Header ประเภทสัตว์ */}
               <CardHeader
                 className={`border-b py-6 px-4 flex items-center ${
-                  petType.id === "DOG"
+                  petType.key === "DOG"
                     ? "bg-orange-50"
-                    : petType.id === "CAT"
+                    : petType.key === "CAT"
                       ? "bg-sky-50"
                       : "bg-muted/30"
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{getPetTypeIcon(petType.id)}</span>
+                  <span className="text-lg">{getPetTypeIcon(petType.key)}</span>
                   <div className="space-y-0">
                     <CardTitle className="text-sm font-semibold uppercase leading-none">
                       {petType.name} SERVICE

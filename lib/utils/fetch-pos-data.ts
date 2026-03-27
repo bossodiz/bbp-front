@@ -21,19 +21,19 @@ export async function fetchCustomersToStore(search?: string): Promise<void> {
       updatedAt: new Date(customer.updated_at || customer.updatedAt),
       pets: (customer.pets || []).map((pet: any) => ({
         id: pet.id,
-        customerId: pet.customer_id || pet.customerId,
+        customerId: pet.customerId,
         name: pet.name,
         type: pet.type,
         breed: pet.breed || "",
-        breed2: pet.breed_2 || pet.breed2 || undefined,
-        isMixedBreed: pet.is_mixed_breed || pet.isMixedBreed || false,
+        breed2: pet.breed2 || undefined,
+        isMixedBreed: pet.isMixedBreed || false,
         weight:
           pet.weight !== null && pet.weight !== undefined
             ? parseFloat(pet.weight)
             : null,
         note: pet.note || "",
-        createdAt: new Date(pet.created_at || pet.createdAt),
-        updatedAt: new Date(pet.updated_at || pet.updatedAt),
+        createdAt: new Date(pet.createdAt),
+        updatedAt: new Date(pet.updatedAt),
       })),
     }),
   );
@@ -50,21 +50,19 @@ export async function fetchServicesToStore(): Promise<void> {
       id: service.id,
       name: service.name,
       description: service.description,
-      isSpecial: service.is_special || service.isSpecial || false,
-      specialPrice: service.special_price || service.specialPrice,
+      isSpecial: service.isSpecial || false,
+      specialPrice: service.specialPrice,
       active: service.active,
-      order: service.order_index || service.orderIndex || service.order || 0,
-      createdAt: service.created_at || service.createdAt,
-      updatedAt: service.updated_at || service.updatedAt,
-      prices: (service.service_prices || service.prices || []).map(
-        (price: any) => ({
-          id: price.id,
-          serviceId: service.id,
-          petTypeId: price.pet_type_id || price.petTypeId,
-          sizeId: price.size_id || price.sizeId,
-          price: price.price,
-        }),
-      ),
+      order: service.orderIndex || 0,
+      createdAt: new Date(service.createdAt),
+      updatedAt: new Date(service.updatedAt),
+      prices: (service.servicePrices || []).map((price: any) => ({
+        id: price.id,
+        serviceId: service.id,
+        petTypeId: price.petTypeId,
+        sizeId: price.sizeId,
+        price: price.price,
+      })),
     }),
   );
 

@@ -39,9 +39,7 @@ export function useSales(options: UseSalesOptions = {}) {
 
       // Client-side filter by customerId if needed
       if (options.customerId) {
-        data = data.filter(
-          (s: any) => (s.customer_id || s.customerId) === options.customerId,
-        );
+        data = data.filter((s: any) => s.customerId === options.customerId);
       }
 
       setSales(data);

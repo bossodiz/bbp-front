@@ -29,13 +29,6 @@ import { useServiceConfig } from "@/lib/hooks/use-service-config";
 import type { Service, ServicePrice } from "@/lib/types";
 import { toast } from "sonner";
 
-const serviceSchema = z.object({
-  name: z.string().min(1, "กรุณากรอกชื่อบริการ"),
-  description: z.string().optional(),
-});
-
-type ServiceFormData = z.infer<typeof serviceSchema>;
-
 interface ServiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -71,13 +64,14 @@ export function ServiceDialog({
   const [specialPrice, setSpecialPrice] = useState<string>("");
 
   // State for selected pet type (เลือกประเภทสัตว์เดียว)
-  const [selectedPetTypeId, setSelectedPetTypeId] = useState<string>("");
+  const [selectedPetTypeId, setSelectedPetTypeId] = useState<number | null>(
+    null,
+  );
 
   // State for prices - key format: "petTypeId_sizeId"
   const [prices, setPrices] = useState<Record<string, number>>({});
 
-  const form = useForm<ServiceFormData>({
-    resolver: zodResolver(serviceSchema),
+  const form = useForm<any>({
     defaultValues: {
       name: "",
       description: "",
@@ -97,7 +91,7 @@ export function ServiceDialog({
         if (service.isSpecial) {
           setSpecialPrice(service.specialPrice?.toString() || "");
         } else {
-          // Build prices map from existing service
+          // Build prices map from existing serviceเพิ่มบริการใหม่
           const priceMap: Record<string, number> = {};
           service.prices?.forEach((p) => {
             if (p.petTypeId && p.sizeId) {
@@ -133,8 +127,8 @@ export function ServiceDialog({
   }, [open, service]);
 
   const handlePriceChange = (
-    petTypeId: string,
-    sizeId: string,
+    petTypeId: number,
+    sizeId: number,
     value: string,
   ) => {
     const numValue = parseFloat(value) || 0;
@@ -144,7 +138,7 @@ export function ServiceDialog({
     }));
   };
 
-  const onSubmit = async (data: ServiceFormData) => {
+  const onSubmit = async (data: any) => {
     // Validation
     if (isSpecial) {
       if (!specialPrice || parseFloat(specialPrice) <= 0) {
@@ -157,6 +151,8 @@ export function ServiceDialog({
         return;
       }
     }
+
+    console.log(data);
 
     try {
       setIsSubmitting(true);
@@ -173,35 +169,25 @@ export function ServiceDialog({
           });
           toast.success("แก้ไขบริการเรียบร้อยแล้ว");
         } else {
-          await createService({
-            name: data.name,
-            description: data.description,
-            isSpecial: true,
-            specialPrice: parseFloat(specialPrice),
-            active: true,
-            order: 0,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            prices: [],
-          });
+          await createService(data);
           toast.success("เพิ่มบริการใหม่เรียบร้อยแล้ว");
         }
       } else {
         // บริการปกติ - มี prices ตามประเภทสัตว์และขนาด
         const servicePrices: {
-          petTypeId: string;
-          sizeId: string;
+          petTypeId: number;
+          sizeId: number;
           price: number;
         }[] = [];
 
         // บันทึกราคาเฉพาะประเภทสัตว์ที่เลือก
-        const sizes = getSizesForPetType(selectedPetTypeId).filter(
+        const sizes = getSizesForPetType(selectedPetTypeId!).filter(
           (s) => s.active,
         );
         sizes.forEach((size) => {
           const key = `${selectedPetTypeId}_${size.id}`;
           servicePrices.push({
-            petTypeId: selectedPetTypeId,
+            petTypeId: selectedPetTypeId!,
             sizeId: size.id,
             price: prices[key] || 0,
           });
@@ -216,20 +202,7 @@ export function ServiceDialog({
           });
           toast.success("แก้ไขบริการเรียบร้อยแล้ว");
         } else {
-          await createService({
-            name: data.name,
-            description: data.description,
-            isSpecial: false,
-            active: true,
-            order: 0,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            prices: servicePrices.map((p) => ({
-              ...p,
-              id: 0,
-              serviceId: 0,
-            })),
-          });
+          await createService(data);
           toast.success("เพิ่มบริการใหม่เรียบร้อยแล้ว");
         }
       }
@@ -243,16 +216,10 @@ export function ServiceDialog({
     }
   };
 
-  const getPetTypeIcon = (petTypeId: string) => {
-    if (petTypeId === "DOG") return <Dog className="h-4 w-4" />;
-    if (petTypeId === "CAT") return <Cat className="h-4 w-4" />;
+  const getPetTypeIcon = (petTypeId: number) => {
+    if (petTypeId === 1) return <Dog className="h-4 w-4" />;
+    if (petTypeId === 2) return <Cat className="h-4 w-4" />;
     return null;
-  };
-
-  const getPetTypeColor = (petTypeId: string) => {
-    if (petTypeId === "DOG") return "text-dog";
-    if (petTypeId === "CAT") return "text-cat";
-    return "";
   };
 
   return (
@@ -402,7 +369,7 @@ export function ServiceDialog({
                             }
                             onChange={(e) =>
                               handlePriceChange(
-                                selectedPetTypeId,
+                                selectedPetTypeId!,
                                 size.id,
                                 e.target.value,
                               )

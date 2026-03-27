@@ -14,7 +14,7 @@ interface UseServicesReturn {
   loading: boolean;
   error: string | null;
   fetchServices: () => Promise<void>;
-  createService: (data: Omit<Service, "id">) => Promise<Service>;
+  createService: (data: Service) => Promise<Service>;
   updateService: (id: number, data: Partial<Service>) => Promise<Service>;
   deleteService: (id: number) => Promise<void>;
   toggleServiceStatus: (id: number) => Promise<Service>;
@@ -25,21 +25,17 @@ function transformService(service: any): Service {
     id: service.id,
     name: service.name,
     description: service.description,
-    isSpecial: service.is_special || service.isSpecial || false,
-    specialPrice: service.special_price || service.specialPrice,
+    isSpecial: service.isSpecial || false,
+    specialPrice: service.specialPrice,
     active: service.active,
-    order: service.order_index || service.orderIndex || service.order || 0,
-    createdAt: service.created_at || service.createdAt,
-    updatedAt: service.updated_at || service.updatedAt,
-    prices: (service.service_prices || service.prices || []).map(
-      (price: any) => ({
-        id: price.id,
-        serviceId: service.id,
-        petTypeId: price.pet_type_id || price.petTypeId,
-        sizeId: price.size_id || price.sizeId,
-        price: price.price,
-      }),
-    ),
+    orderIndex: service.orderIndex || 0,
+    prices: (service.servicePrices || []).map((price: any) => ({
+      id: price.id,
+      serviceId: service.id,
+      petTypeId: price.petTypeId,
+      sizeId: price.sizeId,
+      price: price.price,
+    })),
   };
 }
 
@@ -73,16 +69,16 @@ export function useServices(
     }
   }, [petTypeId, active]);
 
-  const createService = async (data: Omit<Service, "id">): Promise<Service> => {
+  const createService = async (data: Service): Promise<Service> => {
     const result = await apiRequest("/services", {
       method: "POST",
       body: JSON.stringify({
         name: data.name,
         description: data.description,
-        is_special: data.isSpecial,
-        special_price: data.specialPrice,
+        isSpecial: data.isSpecial,
+        specialPrice: data.specialPrice,
         active: data.active,
-        order_index: data.order,
+        orderIndex: data.orderIndex,
       }),
     });
     await fetchServices();
@@ -96,11 +92,11 @@ export function useServices(
     const payload: Record<string, any> = {};
     if (data.name !== undefined) payload.name = data.name;
     if (data.description !== undefined) payload.description = data.description;
-    if (data.isSpecial !== undefined) payload.is_special = data.isSpecial;
+    if (data.isSpecial !== undefined) payload.isSpecial = data.isSpecial;
     if (data.specialPrice !== undefined)
-      payload.special_price = data.specialPrice;
+      payload.specialPrice = data.specialPrice;
     if (data.active !== undefined) payload.active = data.active;
-    if (data.order !== undefined) payload.order_index = data.order;
+    if (data.orderIndex !== undefined) payload.orderIndex = data.orderIndex;
 
     const result = await apiRequest(`/services/${id}`, {
       method: "PUT",

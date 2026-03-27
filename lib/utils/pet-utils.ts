@@ -6,7 +6,7 @@ import type { Pet } from "@/lib/types";
  */
 export function formatBreedDisplay(pet: Pet): string {
   if (pet.isMixedBreed && pet.breed2) {
-    return `${pet.breed} - ${pet.breed2}`;
+    return `${pet.breed} & ${pet.breed2}`;
   }
   return pet.breed;
 }

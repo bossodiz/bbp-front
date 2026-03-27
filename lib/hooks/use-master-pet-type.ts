@@ -15,7 +15,7 @@ export function useMasterPetType() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiRequest<MasterPetType[]>("/master/pet-type")
+    apiRequest<MasterPetType[]>("/master/pet-types")
       .then((res) => setPetTypes((res.data as MasterPetType[]) || []))
       .catch(() => {})
       .finally(() => setLoading(false));

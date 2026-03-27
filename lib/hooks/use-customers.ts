@@ -55,7 +55,7 @@ function transformCustomer(customer: any): Customer {
 function transformPet(pet: any): Pet {
   return {
     id: pet.id,
-    customerId: pet.customer_id || pet.customerId,
+    customerId: pet.customerId,
     name: pet.name,
     type: pet.type,
     breed: pet.breed || "",
@@ -166,10 +166,12 @@ export function useCustomers(): UseCustomersReturn {
       const result = await apiRequest("/pets", {
         method: "POST",
         body: JSON.stringify({
-          customer_id: customerId,
+          customerId: customerId,
           name: data.name,
           type: data.type,
           breed: data.breed,
+          breed2: data.breed2,
+          isMixedBreed: data.isMixedBreed,
           weight: data.weight || undefined,
           note: data.note || undefined,
         }),
@@ -207,6 +209,8 @@ export function useCustomers(): UseCustomersReturn {
           name: data.name,
           type: data.type,
           breed: data.breed,
+          breed2: data.breed2,
+          isMixedBreed: data.isMixedBreed,
           weight: data.weight || undefined,
           note: data.note || undefined,
         }),
