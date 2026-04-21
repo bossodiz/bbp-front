@@ -229,7 +229,7 @@ export function HotelBookingDialog({
                         {customers.map((customer) => (
                           <CommandItem
                             key={customer.id}
-                            value={`${customer.name} ${customer.phone}`}
+                            value={`${customer.name} ${customer.phone} ${customer.pets.map((p) => p.name).join(" ")}`}
                             onSelect={() => handleCustomerSelect(customer)}
                           >
                             <Check
