@@ -8,14 +8,18 @@ function toNumber(value: any): number {
 
 function mapHotelBooking(booking: any, checkoutSale: any | null) {
   const saleItems = checkoutSale?.sale_items || [];
-  const roomItem =
-    saleItems.find((item: any) => item.item_type === "HOTEL_ROOM") || null;
   const additionalServiceItems = saleItems.filter(
     (item: any) => item.item_type === "SERVICE",
   );
 
-  const roomTotal = roomItem ? toNumber(roomItem.final_price) : 0;
-  const totalNights = roomItem ? Number(roomItem.quantity || 0) || null : null;
+  const totalNights =
+    booking.check_out_date && booking.check_in_date
+      ? Math.ceil(
+          (new Date(booking.check_out_date).getTime() -
+            new Date(booking.check_in_date).getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
+      : null;
   const additionalServicesTotal = additionalServiceItems.reduce(
     (sum: number, item: any) => sum + toNumber(item.final_price),
     0,
@@ -28,15 +32,15 @@ function mapHotelBooking(booking: any, checkoutSale: any | null) {
     ? toNumber(checkoutSale.total_amount) + toNumber(checkoutSale.deposit_used)
     : 0;
 
-  const pets = (booking.hotel_rooms || []).map((room: any) => ({
-    id: room.pets?.id,
-    name: room.pets?.name || "",
-    type: room.pets?.type || "",
+  const pets = (booking.hotel_bookings_pet || []).map((item: any) => ({
+    id: item.pets?.id,
+    name: item.pets?.name || "",
+    type: item.pets?.type || "",
     breed:
-      room.pets?.is_mixed_breed && room.pets?.breed_2
-        ? `${room.pets.breed} - ${room.pets.breed_2}`
-        : room.pets?.breed || "",
-    weight: room.pets?.weight,
+      item.pets?.is_mixed_breed && item.pets?.breed_2
+        ? `${item.pets.breed} - ${item.pets.breed_2}`
+        : item.pets?.breed || "",
+    weight: item.pets?.weight,
   }));
 
   return {
@@ -49,7 +53,6 @@ function mapHotelBooking(booking: any, checkoutSale: any | null) {
     checkOutDate: booking.check_out_date,
     ratePerNight: toNumber(booking.rate_per_night),
     totalNights,
-    roomTotal,
     depositAmount: toNumber(booking.deposit_amount),
     depositStatus: booking.deposit_status,
     additionalServicesTotal,
@@ -184,7 +187,7 @@ export async function POST(
         `
         *,
         customers (id, name, phone),
-        hotel_rooms (
+        hotel_bookings_pet (
           id,
           pet_id,
           pets (id, name, type, breed, breed_2, is_mixed_breed, weight)
