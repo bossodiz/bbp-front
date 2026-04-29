@@ -58,7 +58,7 @@ function getBangkokYear(date: Date): number {
 
 const chartConfig = {
   dogs: {
-    label: "หมา",
+    label: "สุนัข",
     color: "oklch(0.7 0.14 55)",
   },
   cats: {
@@ -355,7 +355,7 @@ export function PetServiceChart() {
               <div className="flex items-center gap-2">
                 <Dog className="h-3 w-3 sm:h-4 sm:w-4 text-dog" />
                 <span className="text-xs sm:text-sm text-muted-foreground">
-                  หมา:{" "}
+                  สุนัข:{" "}
                   <span className="font-medium text-foreground">
                     {totalDogs}
                   </span>

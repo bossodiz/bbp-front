@@ -1,11 +1,11 @@
 // Service Worker for PWA
-const CACHE_NAME = "pet-grooming-v1";
-const urlsToCache = ["/", "/manifest.json"];
+const CACHE_NAME = "pet-grooming-v2";
+const PRECACHE_URLS = ["/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 // Install event - cache resources
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache)),
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)),
   );
   self.skipWaiting();
 });
@@ -26,15 +26,29 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - never cache HTML navigations so deploys don't serve stale shells.
 self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") {
+    return;
+  }
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+  const isPrecachedAsset =
+    requestUrl.origin === self.location.origin &&
+    PRECACHE_URLS.includes(requestUrl.pathname);
+
+  if (!isPrecachedAsset) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Cache hit - return response
-      if (response) {
-        return response;
-      }
-      return fetch(event.request);
-    }),
+    caches
+      .match(event.request)
+      .then((response) => response || fetch(event.request)),
   );
 });

@@ -84,8 +84,18 @@ export function RevenueChart() {
     return {
       domain: [0, maxTick],
       tickFormatter: (value: number) => {
-        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-        if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+        if (value >= 1000000) {
+          const millions = value / 1000000;
+          return Number.isInteger(millions)
+            ? `${millions}M`
+            : `${millions.toFixed(1)}M`;
+        }
+        if (value >= 1000) {
+          const thousands = value / 1000;
+          return Number.isInteger(thousands)
+            ? `${thousands}k`
+            : `${thousands.toFixed(1)}k`;
+        }
         return `${value}`;
       },
     };

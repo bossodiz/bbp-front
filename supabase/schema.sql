@@ -357,7 +357,7 @@ CREATE TRIGGER set_service_order BEFORE INSERT ON services
 -- Pet Type Configs
 INSERT INTO pet_type_configs (id, name, icon, order_index, active, created_at, updated_at) VALUES 
 ('CAT', 'แมว', 'cat', 2, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00'), 
-('DOG', 'หมา', 'dog', 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00');
+('DOG', 'สุนัข', 'dog', 1, true, '2026-01-28 13:40:33.228744+00', '2026-01-28 13:40:33.228744+00');
 
 -- Size Configs
 INSERT INTO size_configs (id, pet_type_id, name, min_weight, max_weight, description, order_index, active, created_at, updated_at) VALUES 

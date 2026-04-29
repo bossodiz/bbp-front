@@ -285,7 +285,7 @@ export type ApplicableTo = "ALL" | "SERVICE" | "HOTEL" | "PRODUCT";
 
 // Label maps for display (for pet registration)
 export const petTypeLabels: Record<PetType, string> = {
-  DOG: "หมา",
+  DOG: "สุนัข",
   CAT: "แมว",
 };
 
