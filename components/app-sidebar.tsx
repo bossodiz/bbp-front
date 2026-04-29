@@ -13,6 +13,7 @@ import {
   History,
   BedDouble,
   Package,
+  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
@@ -89,6 +90,13 @@ const reportItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+    });
+    window.location.href = "/login";
+  };
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -243,8 +251,18 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-4">
-        <div className="text-xs text-muted-foreground text-center">
-          Pet Grooming Management v1.0
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-sidebar-border bg-sidebar-accent/40 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+          >
+            <LogOut className="h-4 w-4" />
+            ออกจากระบบ
+          </button>
+          <div className="text-center text-xs text-muted-foreground">
+            Pet Grooming Management v1.0
+          </div>
         </div>
       </SidebarFooter>
     </Sidebar>
