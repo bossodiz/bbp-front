@@ -113,7 +113,7 @@ export function BookingCalendar({
                             {booking.customerName}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {formatPhoneDisplay(booking.phone)}
+                            {booking.phone ? formatPhoneDisplay(booking.phone) : "—"}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 text-base font-medium">
