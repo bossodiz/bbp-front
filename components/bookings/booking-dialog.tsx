@@ -421,7 +421,9 @@ export function BookingDialog({
                                     {customer.name}
                                   </span>
                                   <span className="text-xs text-muted-foreground">
-                                    {formatPhoneDisplay(customer.phone)}
+                                    {customer.phone
+                                      ? formatPhoneDisplay(customer.phone)
+                                      : "-"}
                                     {customer.pets.length > 0 &&
                                       ` • ${customer.pets.length} สัตว์เลี้ยง`}
                                   </span>

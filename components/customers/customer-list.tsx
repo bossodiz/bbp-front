@@ -206,7 +206,9 @@ export function CustomerList({
                             <TableCell className="py-3 text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <Phone className="h-3 w-3" />
-                                {formatPhoneDisplay(customer.phone)}
+                                {customer.phone
+                                  ? formatPhoneDisplay(customer.phone)
+                                  : "-"}
                               </div>
                             </TableCell>
                             <TableCell className="py-3">

@@ -160,7 +160,9 @@ export function POSCustomerSelector() {
                   <div>
                     <p className="font-medium">{customer.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatPhoneDisplay(customer.phone)}
+                      {customer.phone
+                        ? formatPhoneDisplay(customer.phone)
+                        : "-"}
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
