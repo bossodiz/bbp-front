@@ -232,7 +232,6 @@ export function PetDialog({
           await createBreed({
             pet_type_id: data.type,
             name: data.breed,
-            is_mixed: false,
             order_index: maxOrder + 1,
             active: true,
           });
@@ -254,7 +253,6 @@ export function PetDialog({
             await createBreed({
               pet_type_id: data.type,
               name: data.breed2,
-              is_mixed: false,
               order_index: maxOrder + 2,
               active: true,
             });
