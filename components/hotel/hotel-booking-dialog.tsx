@@ -160,7 +160,7 @@ export function HotelBookingDialog({
 
       const payload = {
         customerId: data.customerId,
-        petIds: data.petIds,
+        petId: data.petIds[0],
         checkInDate: formatDateForAPI(data.checkInDate),
         ratePerNight: data.ratePerNight,
         depositAmount: data.hasDeposit ? data.depositAmount || 0 : 0,

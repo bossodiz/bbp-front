@@ -211,7 +211,7 @@ export function HotelCheckoutDialog({
 
   // Get available services for this pet
   const availableServices = useMemo(() => {
-    const petType = booking.petType;
+    const petType = booking.pets?.[0]?.type;
     if (!petType) return [];
 
     return services
@@ -237,7 +237,7 @@ export function HotelCheckoutDialog({
         };
       })
       .filter(Boolean) as (Service & { displayPrice: number })[];
-  }, [services, booking.petType, estimateSizeFromWeight]);
+  }, [services, booking.pets, estimateSizeFromWeight]);
 
   const addServiceToCart = (service: Service & { displayPrice: number }) => {
     const isInCart = cart.some((item) => item.serviceId === service.id);
@@ -332,7 +332,7 @@ export function HotelCheckoutDialog({
         <DialogHeader>
           <DialogTitle>Checkout - รับสัตว์เลี้ยงกลับ</DialogTitle>
           <DialogDescription>
-            {booking.petName} ({booking.petBreed}) ของ {booking.customerName}
+            {booking.pets?.[0]?.name} ({booking.pets?.[0]?.breed}) ของ {booking.customerName}
           </DialogDescription>
         </DialogHeader>
 
@@ -342,12 +342,12 @@ export function HotelCheckoutDialog({
             <div>
               <p className="text-sm text-muted-foreground">สัตว์เลี้ยง</p>
               <div className="flex items-center gap-2 font-medium">
-                {booking.petType === "DOG" ? (
+                {booking.pets?.[0]?.type === "DOG" ? (
                   <Dog className="h-4 w-4 text-dog" />
                 ) : (
                   <Cat className="h-4 w-4 text-cat" />
                 )}
-                {booking.petName}
+                {booking.pets?.[0]?.name}
               </div>
             </div>
             <div>

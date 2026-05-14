@@ -590,7 +590,7 @@ export function POSCart() {
                 <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-primary">
                     <BedDouble className="h-4 w-4" />
-                    <span>โรงแรม - {hotelBooking.petName}</span>
+                    <span>โรงแรม - {hotelBooking.pets?.[0]?.name}</span>
                   </div>
                   <div className="text-xs text-muted-foreground space-y-1">
                     <div className="flex justify-between">

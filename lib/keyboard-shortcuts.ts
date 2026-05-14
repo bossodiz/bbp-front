@@ -81,7 +81,9 @@ export function getShortcutText(config: ShortcutConfig): string {
 export function useKeyboardShortcut(config: ShortcutConfig) {
   useEffect(() => {
     const unregister = registerShortcut(config);
-    return unregister;
+    return () => {
+      unregister();
+    };
   }, [config]);
 }
 
