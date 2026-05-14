@@ -257,7 +257,11 @@ export function HotelBookingList({ showAll = false }: HotelBookingListProps) {
               <p className="text-sm font-medium">{booking.customerName}</p>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Phone className="h-3 w-3" />
-                <span>{formatPhoneDisplay(booking.customerPhone || "")}</span>
+                <span>
+                  {booking.customerPhone
+                    ? formatPhoneDisplay(booking.customerPhone || "")
+                    : "-"}
+                </span>
               </div>
             </div>
 

@@ -241,7 +241,9 @@ export function BookingList({
                                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                   <Phone className="h-3 w-3" />
                                   <span>
-                                    {formatPhoneDisplay(booking.phone)}
+                                    {booking.phone
+                                      ? formatPhoneDisplay(booking.phone)
+                                      : "-"}
                                   </span>
                                 </div>
                               </div>
