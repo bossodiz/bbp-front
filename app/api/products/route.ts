@@ -1,37 +1,82 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import {
+  errorResponse,
+  successResponse,
+  DatabaseError,
+  RateLimitError,
+} from "@/lib/error-handler";
+import { CreateProductSchema } from "@/lib/schemas";
+import { validateCsrfFromRequest } from "@/lib/csrf";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitConfigs,
+} from "@/lib/rate-limit";
+import {
+  PaginationParamsSchema,
+  getOffset,
+  createPaginationMeta,
+  createPaginatedResponse,
+} from "@/lib/pagination";
+import { RawProduct } from "@/lib/api-types";
 
-// GET /api/products - ดึงรายการสินค้าทั้งหมด
+// GET /api/products - ดึงรายการสินค้าทั้งหมด (with pagination)
 export async function GET(request: NextRequest) {
   try {
+    console.log("Received request to GET /api/products");
+    const ip = getClientIp(request);
+    const rateLimitResult = checkRateLimit(
+      `products:get:${ip}`,
+      rateLimitConfigs.standard,
+    );
+    if (!rateLimitResult.success) {
+      throw new RateLimitError(rateLimitResult.retryAfter || 60);
+    }
+
     const { searchParams } = new URL(request.url);
+    const paginationParams = PaginationParamsSchema.parse({
+      page: searchParams.get("page") ?? undefined,
+      limit: searchParams.get("limit") ?? undefined,
+    });
     const activeOnly = searchParams.get("active") === "true";
     const category = searchParams.get("category");
 
-    let query = supabaseAdmin
+    const offset = getOffset(paginationParams.page, paginationParams.limit);
+
+    let countQuery = supabaseAdmin
+      .from("products")
+      .select("id", { count: "exact", head: true });
+    let dataQuery = supabaseAdmin
       .from("products")
       .select("*")
-      .order("name", { ascending: true });
+      .order("name", { ascending: true })
+      .range(offset, offset + paginationParams.limit - 1);
 
     if (activeOnly) {
-      query = query.eq("active", true);
+      countQuery = countQuery.eq("active", true);
+      dataQuery = dataQuery.eq("active", true);
     }
     if (category) {
-      query = query.eq("category", category);
+      countQuery = countQuery.eq("category", category);
+      dataQuery = dataQuery.eq("category", category);
     }
 
-    const { data, error } = await query;
+    const [{ count }, { data, error }] = await Promise.all([
+      countQuery,
+      dataQuery,
+    ]);
 
-    if (error) throw error;
+    if (error) throw new DatabaseError(error.message);
 
-    const products = (data || []).map((p: any) => ({
+    const products = ((data as RawProduct[]) || []).map((p) => ({
       id: p.id,
       name: p.name,
       sku: p.sku,
       description: p.description,
       category: p.category,
-      price: parseFloat(p.price || 0),
-      cost: parseFloat(p.cost || 0),
+      price: parseFloat(String(p.price)),
+      cost: parseFloat(String(p.cost)),
       stockQuantity: p.stock_quantity,
       minStock: p.min_stock,
       unit: p.unit,
@@ -40,12 +85,18 @@ export async function GET(request: NextRequest) {
       updatedAt: p.updated_at,
     }));
 
-    return NextResponse.json({ data: products });
-  } catch (error: any) {
-    console.error("Error fetching products:", error);
-    return NextResponse.json(
-      { error: error?.message || "ไม่สามารถดึงข้อมูลสินค้าได้" },
-      { status: 500 },
+    const pagination = createPaginationMeta(
+      paginationParams.page,
+      paginationParams.limit,
+      count || 0,
+    );
+
+    return successResponse(createPaginatedResponse(products, pagination));
+  } catch (error) {
+    return errorResponse(
+      error,
+      "products_fetch",
+      "ไม่สามารถดึงข้อมูลสินค้าได้",
     );
   }
 }
@@ -53,44 +104,40 @@ export async function GET(request: NextRequest) {
 // POST /api/products - สร้างสินค้าใหม่
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rateLimitResult = checkRateLimit(
+      `products:post:${ip}`,
+      rateLimitConfigs.standard,
+    );
+    if (!rateLimitResult.success) {
+      throw new RateLimitError(rateLimitResult.retryAfter || 60);
+    }
+
+    validateCsrfFromRequest(request);
     const body = await request.json();
-    const { name, sku, description, category, price, cost, stockQuantity, minStock, unit, active } = body;
-
-    if (!name || name.trim() === "") {
-      return NextResponse.json(
-        { error: "กรุณาระบุชื่อสินค้า" },
-        { status: 400 },
-      );
-    }
-
-    if (price === undefined || price < 0) {
-      return NextResponse.json(
-        { error: "กรุณาระบุราคาขาย" },
-        { status: 400 },
-      );
-    }
+    const validated = CreateProductSchema.parse(body);
 
     const { data, error } = await supabaseAdmin
       .from("products")
       .insert({
-        name: name.trim(),
-        sku: sku?.trim() || null,
-        description: description?.trim() || null,
-        category: category || null,
-        price,
-        cost: cost || 0,
-        stock_quantity: stockQuantity || 0,
-        min_stock: minStock || 0,
-        unit: unit || "ชิ้น",
-        active: active !== false,
+        name: validated.name,
+        sku: validated.sku || null,
+        description: validated.description || null,
+        category: validated.category || null,
+        price: validated.price,
+        cost: validated.cost,
+        stock_quantity: validated.stockQuantity,
+        min_stock: validated.minStock,
+        unit: validated.unit,
+        active: validated.active,
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw new DatabaseError(error.message);
 
-    return NextResponse.json({
-      data: {
+    return successResponse(
+      {
         id: data.id,
         name: data.name,
         sku: data.sku,
@@ -105,12 +152,9 @@ export async function POST(request: NextRequest) {
         createdAt: data.created_at,
         updatedAt: data.updated_at,
       },
-    });
-  } catch (error: any) {
-    console.error("Error creating product:", error);
-    return NextResponse.json(
-      { error: error?.message || "ไม่สามารถสร้างสินค้าได้" },
-      { status: 500 },
+      201,
     );
+  } catch (error) {
+    return errorResponse(error, "products_create", "ไม่สามารถสร้างสินค้าได้");
   }
 }

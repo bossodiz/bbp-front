@@ -25,7 +25,8 @@ import {
 
 export function TopCustomers() {
   const [viewType, setViewType] = useState<CustomerViewType>("frequent_visits");
-  const { data: topCustomers, loading } = useTopCustomers(viewType);
+  const { data, loading } = useTopCustomers(viewType);
+  const topCustomers = Array.isArray(data) ? data : [];
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("th-TH", {

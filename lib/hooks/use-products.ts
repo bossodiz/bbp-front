@@ -29,9 +29,16 @@ export function useProducts(options: UseProductsOptions = {}) {
       }
 
       const result = await response.json();
-      setProducts(result.data || []);
+      // API ส่งคืน { success, data: { data: [...], pagination }, timestamp }
+      // ดึง products array ออกมา รองรับทั้งแบบ paginated และ flat array
+      const productsList = Array.isArray(result?.data?.data)
+        ? result.data.data
+        : Array.isArray(result?.data)
+          ? result.data
+          : [];
+      setProducts(productsList);
     } catch (err: any) {
-      setError(err.message || "เกิดข้อผิดพลาด");
+      setError(err?.message || "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
     }
@@ -43,7 +50,9 @@ export function useProducts(options: UseProductsOptions = {}) {
     }
   }, [autoFetch, fetchProducts]);
 
-  const addProduct = async (productData: Omit<Product, "id" | "createdAt" | "updatedAt">) => {
+  const addProduct = async (
+    productData: Omit<Product, "id" | "createdAt" | "updatedAt">,
+  ) => {
     const response = await fetch("/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

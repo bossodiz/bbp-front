@@ -138,8 +138,7 @@ export function ProductList({
 
       {filteredProducts.length === 0 ? (
         <Card className="py-0">
-          <CardContent className="flex flex-col items-center justify-center">
-            <Package className="h-12 w-12 text-muted-foreground mb-4" />
+          <CardContent className="flex flex-col items-center justify-center py-12">
             <p className="text-muted-foreground">
               {searchQuery.trim()
                 ? "ไม่พบสินค้าที่ค้นหา"

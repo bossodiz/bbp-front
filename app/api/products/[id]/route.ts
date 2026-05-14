@@ -1,5 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import {
+  errorResponse,
+  successResponse,
+  ValidationError,
+  NotFoundError,
+  DatabaseError,
+  RateLimitError,
+} from "@/lib/error-handler";
+import { UpdateProductSchema } from "@/lib/schemas";
+import { validateCsrfFromRequest } from "@/lib/csrf";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitConfigs,
+} from "@/lib/rate-limit";
+import { RawProduct } from "@/lib/api-types";
 
 // GET /api/products/[id] - ดึงข้อมูลสินค้าตาม ID
 export async function GET(
@@ -7,14 +23,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const ip = getClientIp(request);
+    const rateLimitResult = checkRateLimit(`products:get:${ip}`, rateLimitConfigs.standard);
+    if (!rateLimitResult.success) {
+      throw new RateLimitError(rateLimitResult.retryAfter || 60);
+    }
+
     const { id } = await params;
     const productId = parseInt(id);
 
     if (isNaN(productId)) {
-      return NextResponse.json(
-        { error: "รหัสสินค้าไม่ถูกต้อง" },
-        { status: 400 },
-      );
+      throw new ValidationError("รหัสสินค้าไม่ถูกต้อง");
     }
 
     const { data, error } = await supabaseAdmin
@@ -23,31 +42,26 @@ export async function GET(
       .eq("id", productId)
       .single();
 
-    if (error) throw error;
+    if (error) throw new DatabaseError(error.message);
+    if (!data) throw new NotFoundError("ไม่พบสินค้าที่ระบุ");
 
-    return NextResponse.json({
-      data: {
-        id: data.id,
-        name: data.name,
-        sku: data.sku,
-        description: data.description,
-        category: data.category,
-        price: parseFloat(data.price as any),
-        cost: parseFloat(data.cost as any),
-        stockQuantity: data.stock_quantity,
-        minStock: data.min_stock,
-        unit: data.unit,
-        active: data.active,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      },
+    return successResponse({
+      id: data.id,
+      name: data.name,
+      sku: data.sku,
+      description: data.description,
+      category: data.category,
+      price: parseFloat(String(data.price)),
+      cost: parseFloat(String(data.cost)),
+      stockQuantity: data.stock_quantity,
+      minStock: data.min_stock,
+      unit: data.unit,
+      active: data.active,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
     });
-  } catch (error: any) {
-    console.error("Error fetching product:", error);
-    return NextResponse.json(
-      { error: error?.message || "ไม่สามารถดึงข้อมูลสินค้าได้" },
-      { status: 500 },
-    );
+  } catch (error) {
+    return errorResponse(error, "products_get_by_id", "ไม่สามารถดึงข้อมูลสินค้าได้");
   }
 }
 
@@ -57,29 +71,34 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const ip = getClientIp(request);
+    const rateLimitResult = checkRateLimit(`products:put:${ip}`, rateLimitConfigs.standard);
+    if (!rateLimitResult.success) {
+      throw new RateLimitError(rateLimitResult.retryAfter || 60);
+    }
+
+    validateCsrfFromRequest(request);
     const { id } = await params;
     const productId = parseInt(id);
 
     if (isNaN(productId)) {
-      return NextResponse.json(
-        { error: "รหัสสินค้าไม่ถูกต้อง" },
-        { status: 400 },
-      );
+      throw new ValidationError("รหัสสินค้าไม่ถูกต้อง");
     }
 
     const body = await request.json();
-    const updateData: any = {};
+    const validated = UpdateProductSchema.parse(body);
 
-    if (body.name !== undefined) updateData.name = body.name.trim();
-    if (body.sku !== undefined) updateData.sku = body.sku?.trim() || null;
-    if (body.description !== undefined) updateData.description = body.description?.trim() || null;
-    if (body.category !== undefined) updateData.category = body.category || null;
-    if (body.price !== undefined) updateData.price = body.price;
-    if (body.cost !== undefined) updateData.cost = body.cost;
-    if (body.stockQuantity !== undefined) updateData.stock_quantity = body.stockQuantity;
-    if (body.minStock !== undefined) updateData.min_stock = body.minStock;
-    if (body.unit !== undefined) updateData.unit = body.unit;
-    if (body.active !== undefined) updateData.active = body.active;
+    const updateData: any = {};
+    if (validated.name !== undefined) updateData.name = validated.name;
+    if (validated.sku !== undefined) updateData.sku = validated.sku;
+    if (validated.description !== undefined) updateData.description = validated.description;
+    if (validated.category !== undefined) updateData.category = validated.category;
+    if (validated.price !== undefined) updateData.price = validated.price;
+    if (validated.cost !== undefined) updateData.cost = validated.cost;
+    if (validated.stockQuantity !== undefined) updateData.stock_quantity = validated.stockQuantity;
+    if (validated.minStock !== undefined) updateData.min_stock = validated.minStock;
+    if (validated.unit !== undefined) updateData.unit = validated.unit;
+    if (validated.active !== undefined) updateData.active = validated.active;
 
     const { data, error } = await supabaseAdmin
       .from("products")
@@ -88,31 +107,25 @@ export async function PUT(
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) throw new DatabaseError(error.message);
 
-    return NextResponse.json({
-      data: {
-        id: data.id,
-        name: data.name,
-        sku: data.sku,
-        description: data.description,
-        category: data.category,
-        price: parseFloat(data.price as any),
-        cost: parseFloat(data.cost as any),
-        stockQuantity: data.stock_quantity,
-        minStock: data.min_stock,
-        unit: data.unit,
-        active: data.active,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      },
+    return successResponse({
+      id: data.id,
+      name: data.name,
+      sku: data.sku,
+      description: data.description,
+      category: data.category,
+      price: parseFloat(String(data.price)),
+      cost: parseFloat(String(data.cost)),
+      stockQuantity: data.stock_quantity,
+      minStock: data.min_stock,
+      unit: data.unit,
+      active: data.active,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
     });
-  } catch (error: any) {
-    console.error("Error updating product:", error);
-    return NextResponse.json(
-      { error: error?.message || "ไม่สามารถแก้ไขสินค้าได้" },
-      { status: 500 },
-    );
+  } catch (error) {
+    return errorResponse(error, "products_update", "ไม่สามารถแก้ไขสินค้าได้");
   }
 }
 
@@ -122,14 +135,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const ip = getClientIp(request);
+    const rateLimitResult = checkRateLimit(`products:delete:${ip}`, rateLimitConfigs.standard);
+    if (!rateLimitResult.success) {
+      throw new RateLimitError(rateLimitResult.retryAfter || 60);
+    }
+
+    validateCsrfFromRequest(request);
     const { id } = await params;
     const productId = parseInt(id);
 
     if (isNaN(productId)) {
-      return NextResponse.json(
-        { error: "รหัสสินค้าไม่ถูกต้อง" },
-        { status: 400 },
-      );
+      throw new ValidationError("รหัสสินค้าไม่ถูกต้อง");
     }
 
     const { error } = await supabaseAdmin
@@ -137,14 +154,10 @@ export async function DELETE(
       .delete()
       .eq("id", productId);
 
-    if (error) throw error;
+    if (error) throw new DatabaseError(error.message);
 
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("Error deleting product:", error);
-    return NextResponse.json(
-      { error: error?.message || "ไม่สามารถลบสินค้าได้" },
-      { status: 500 },
-    );
+    return successResponse({ success: true });
+  } catch (error) {
+    return errorResponse(error, "products_delete", "ไม่สามารถลบสินค้าได้");
   }
 }

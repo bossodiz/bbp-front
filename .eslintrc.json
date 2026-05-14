@@ -1,0 +1,53 @@
+{
+  "extends": [
+    "next/core-web-vitals",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:jsx-a11y/recommended"
+  ],
+  "rules": {
+    // React Best Practices
+    "react/react-in-jsx-scope": "off",
+    "react/prop-types": "off",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+
+    // Accessibility
+    "jsx-a11y/alt-text": "warn",
+    "jsx-a11y/label-has-associated-control": "warn",
+    "jsx-a11y/anchor-is-valid": "warn",
+
+    // Security
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-new-func": "error",
+    "no-script-url": "error",
+
+    // Code Quality
+    "no-console": [
+      "warn",
+      {
+        "allow": ["warn", "error"]
+      }
+    ],
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-arrow-callback": "warn",
+    "no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+
+    // Performance
+    "no-inline-styles": "off",
+
+    // Best Practices
+    "eqeqeq": ["error", "always"],
+    "no-param-reassign": "warn",
+    "no-return-assign": "error"
+  },
+  "ignorePatterns": ["node_modules", ".next", "dist", "build"]
+}

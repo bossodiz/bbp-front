@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type {
   Customer,
   Pet,
@@ -9,7 +10,89 @@ import type {
   SizeConfig,
 } from "./types";
 
-// Customer Store
+// ============================================================================
+// ID COUNTER PERSISTENCE - เก็บ counters ใน localStorage
+// ============================================================================
+
+interface CounterState {
+  customerIdCounter: number;
+  petIdCounter: number;
+  serviceIdCounter: number;
+  promotionIdCounter: number;
+  bookingIdCounter: number;
+  incrementCustomerId: () => number;
+  incrementPetId: () => number;
+  incrementServiceId: () => number;
+  incrementPromotionId: () => number;
+  incrementBookingId: () => number;
+  syncWithDatabase: (maxIds: {
+    customerId?: number;
+    petId?: number;
+    serviceId?: number;
+    promotionId?: number;
+    bookingId?: number;
+  }) => void;
+}
+
+const useCounterStore = create<CounterState>()(
+  persist(
+    (set, get) => ({
+      customerIdCounter: 1,
+      petIdCounter: 1,
+      serviceIdCounter: 1,
+      promotionIdCounter: 1,
+      bookingIdCounter: 1,
+
+      incrementCustomerId: () => {
+        const current = get().customerIdCounter;
+        set({ customerIdCounter: current + 1 });
+        return current;
+      },
+
+      incrementPetId: () => {
+        const current = get().petIdCounter;
+        set({ petIdCounter: current + 1 });
+        return current;
+      },
+
+      incrementServiceId: () => {
+        const current = get().serviceIdCounter;
+        set({ serviceIdCounter: current + 1 });
+        return current;
+      },
+
+      incrementPromotionId: () => {
+        const current = get().promotionIdCounter;
+        set({ promotionIdCounter: current + 1 });
+        return current;
+      },
+
+      incrementBookingId: () => {
+        const current = get().bookingIdCounter;
+        set({ bookingIdCounter: current + 1 });
+        return current;
+      },
+
+      syncWithDatabase: (maxIds) => {
+        set((state) => ({
+          customerIdCounter: Math.max(state.customerIdCounter, (maxIds.customerId ?? 0) + 1),
+          petIdCounter: Math.max(state.petIdCounter, (maxIds.petId ?? 0) + 1),
+          serviceIdCounter: Math.max(state.serviceIdCounter, (maxIds.serviceId ?? 0) + 1),
+          promotionIdCounter: Math.max(state.promotionIdCounter, (maxIds.promotionId ?? 0) + 1),
+          bookingIdCounter: Math.max(state.bookingIdCounter, (maxIds.bookingId ?? 0) + 1),
+        }));
+      },
+    }),
+    {
+      name: "id-counters-storage",
+    },
+  ),
+);
+
+// ============================================================================
+// CUSTOMER STORE
+// ============================================================================
+
 interface CustomerStore {
   customers: Customer[];
   addCustomer: (
@@ -26,16 +109,13 @@ interface CustomerStore {
   searchCustomers: (query: string) => Customer[];
 }
 
-let customerIdCounter = 1;
-let petIdCounter = 1;
-
 export const useCustomerStore = create<CustomerStore>((set, get) => ({
   customers: [],
 
   addCustomer: (customerData) => {
     const newCustomer: Customer = {
       ...customerData,
-      id: customerIdCounter++,
+      id: useCounterStore.getState().incrementCustomerId(),
       createdAt: new Date(),
       updatedAt: new Date(),
       pets: [],
@@ -61,7 +141,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
   addPet: (customerId, petData) => {
     const newPet: Pet = {
       ...petData,
-      id: petIdCounter++,
+      id: useCounterStore.getState().incrementPetId(),
       customerId,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -292,7 +372,10 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
   },
 }));
 
-// Service Store
+// ============================================================================
+// SERVICE STORE
+// ============================================================================
+
 interface ServiceStore {
   services: Service[];
   addService: (
@@ -303,15 +386,13 @@ interface ServiceStore {
   toggleServiceStatus: (id: number) => void;
 }
 
-let serviceIdCounter = 1;
-
 export const useServiceStore = create<ServiceStore>((set) => ({
   services: [],
 
   addService: (serviceData) => {
     const newService: Service = {
       ...serviceData,
-      id: serviceIdCounter++,
+      id: useCounterStore.getState().incrementServiceId(),
       active: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -343,7 +424,10 @@ export const useServiceStore = create<ServiceStore>((set) => ({
   },
 }));
 
-// Promotion Store
+// ============================================================================
+// PROMOTION STORE
+// ============================================================================
+
 interface PromotionStore {
   promotions: Promotion[];
   addPromotion: (promotion: Omit<Promotion, "id" | "createdAt">) => Promotion;
@@ -352,15 +436,13 @@ interface PromotionStore {
   togglePromotion: (id: number) => void;
 }
 
-let promotionIdCounter = 1;
-
 export const usePromotionStore = create<PromotionStore>((set) => ({
   promotions: [],
 
   addPromotion: (promotionData) => {
     const newPromotion: Promotion = {
       ...promotionData,
-      id: promotionIdCounter++,
+      id: useCounterStore.getState().incrementPromotionId(),
       createdAt: new Date(),
     };
     set((state) => ({ promotions: [...state.promotions, newPromotion] }));
@@ -390,7 +472,10 @@ export const usePromotionStore = create<PromotionStore>((set) => ({
   },
 }));
 
-// Booking Store
+// ============================================================================
+// BOOKING STORE
+// ============================================================================
+
 interface BookingStore {
   bookings: Booking[];
   addBooking: (booking: Omit<Booking, "id" | "createdAt">) => Booking;
@@ -402,15 +487,13 @@ interface BookingStore {
   getBookingById: (id: number) => Booking | undefined;
 }
 
-let bookingIdCounter = 1;
-
 export const useBookingStore = create<BookingStore>((set, get) => ({
   bookings: [],
 
   addBooking: (bookingData) => {
     const newBooking: Booking = {
       ...bookingData,
-      id: bookingIdCounter++,
+      id: useCounterStore.getState().incrementBookingId(),
       createdAt: new Date(),
     };
     set((state) => ({ bookings: [...state.bookings, newBooking] }));
@@ -691,3 +774,8 @@ export const usePOSStore = create<POSStore>((set, get) => ({
     });
   },
 }));
+
+// ============================================================================
+// EXPORT COUNTER STORE - ใช้ใน API responses เพื่อ sync IDs
+// ============================================================================
+export { useCounterStore };

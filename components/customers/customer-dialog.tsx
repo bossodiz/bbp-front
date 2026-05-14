@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Button } from "@/components/ui/button";
+import { Phone } from "lucide-react";
 import { useCustomers } from "@/lib/hooks/use-customers";
 import type { Customer } from "@/lib/types";
 import { formatPhoneInput, getPhoneDigits } from "@/lib/utils";
@@ -30,13 +31,12 @@ import { toast } from "sonner";
 
 const customerSchema = z.object({
   name: z.string().min(1, "กรุณากรอกชื่อลูกค้า"),
-  phone: z
-    .string()
-    .min(1, "กรุณากรอกเบอร์โทรศัพท์")
-    .refine(
-      (val) => getPhoneDigits(val).length === 10,
-      "เบอร์โทรศัพท์ต้องมี 10 หลัก",
-    ),
+  phone: z.string().refine((val) => {
+    // ถ้าไม่ใส่ค่า (empty string) ให้ pass
+    if (val === "") return true;
+    // ถ้าใส่ค่ามา ต้อง === 10 หลัก
+    return getPhoneDigits(val).length === 10;
+  }, "เบอร์โทรศัพท์ต้องมี 10 หลัก"),
 });
 
 type CustomerFormData = z.infer<typeof customerSchema>;
@@ -85,9 +85,20 @@ export function CustomerDialog({
   const onSubmit = async (data: CustomerFormData) => {
     try {
       setIsSubmitting(true);
+      const addHonorific = (name: string): string => {
+        if (!name) return name;
+
+        const trimmedName = name.trim();
+        if (trimmedName.startsWith("คุณ")) {
+          return trimmedName;
+        }
+
+        return `คุณ${trimmedName}`;
+      };
+
       const customerData = {
-        name: data.name,
-        phone: getPhoneDigits(data.phone), // Store only digits
+        name: addHonorific(data.name),
+        phone: data.phone === "" ? "0000000000" : getPhoneDigits(data.phone),
       };
 
       if (isEditing && customer) {
@@ -129,7 +140,16 @@ export function CustomerDialog({
                 <FormItem>
                   <FormLabel>ชื่อลูกค้า</FormLabel>
                   <FormControl>
-                    <Input placeholder="เช่น คุณสมชาย ใจดี" {...field} />
+                    <div className="flex rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                      <span className="flex items-center px-3 text-sm text-muted-foreground bg-muted border-r border-input rounded-l-md select-none">
+                        คุณ
+                      </span>
+                      <Input
+                        placeholder="ชื่อ นามสกุล"
+                        className="border-0 rounded-l-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                        {...field}
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -142,14 +162,18 @@ export function CustomerDialog({
                 <FormItem>
                   <FormLabel>เบอร์โทรศัพท์</FormLabel>
                   <FormControl>
-                    <PhoneInput
-                      placeholder="เช่น 081-234-5678"
-                      value={field.value}
-                      onChange={field.onChange}
-                      onBlur={field.onBlur}
-                      name={field.name}
-                      ref={field.ref}
-                    />
+                    <div className="flex rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                      <span className="flex items-center px-3 text-muted-foreground bg-muted border-r border-input rounded-l-md">
+                        <Phone className="h-4 w-4" />
+                      </span>
+                      <PhoneInput
+                        placeholder="000-000-0000"
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        className="border-0 rounded-l-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
