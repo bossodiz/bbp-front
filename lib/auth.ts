@@ -3,15 +3,24 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 export const AUTH_COOKIE_NAME = "bbp_auth";
 export const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24;
 
-const FALLBACK_AUTH_PASSWORD = "bbp1234";
-const FALLBACK_AUTH_SECRET = "bbp-front-auth-secret";
-
 export function getAuthPassword() {
-  return process.env.AUTH_PASSWORD || FALLBACK_AUTH_PASSWORD;
+  const password = process.env.AUTH_PASSWORD;
+  if (!password) {
+    throw new Error(
+      "AUTH_PASSWORD environment variable is required but not set. Please set it in your .env.local file.",
+    );
+  }
+  return password;
 }
 
 function getAuthSecret() {
-  return process.env.AUTH_SECRET || FALLBACK_AUTH_SECRET;
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error(
+      "AUTH_SECRET environment variable is required but not set. Please set it in your .env.local file.",
+    );
+  }
+  return secret;
 }
 
 function signAuthPayload(payload: string) {
@@ -26,7 +35,11 @@ export function createAuthCookieValue() {
   return `${encodedPayload}.${signature}`;
 }
 
-export function isAuthenticatedCookie(value?: string) {
+interface AuthPayload {
+  exp?: number;
+}
+
+export function isAuthenticatedCookie(value?: string): boolean {
   if (!value) {
     return false;
   }
@@ -52,7 +65,7 @@ export function isAuthenticatedCookie(value?: string) {
   try {
     const payload = JSON.parse(
       Buffer.from(encodedPayload, "base64url").toString("utf8"),
-    ) as { exp?: number };
+    ) as AuthPayload;
 
     return typeof payload.exp === "number" && payload.exp > Date.now() / 1000;
   } catch {

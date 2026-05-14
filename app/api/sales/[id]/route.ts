@@ -1,39 +1,42 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import {
+  errorResponse,
+  successResponse,
+  ValidationError,
+  DatabaseError,
+  RateLimitError,
+} from "@/lib/error-handler";
+import { UpdateSalesDateSchema } from "@/lib/schemas";
+import { validateCsrfFromRequest } from "@/lib/csrf";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitConfigs,
+} from "@/lib/rate-limit";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const ip = getClientIp(request);
+    const rateLimitResult = checkRateLimit(`sales:put:${ip}`, rateLimitConfigs.standard);
+    if (!rateLimitResult.success) {
+      throw new RateLimitError(rateLimitResult.retryAfter || 60);
+    }
+
+    validateCsrfFromRequest(request);
     const { id } = await params;
     const saleId = parseInt(id);
 
     if (isNaN(saleId)) {
-      return NextResponse.json(
-        { error: "รหัสรายการขายไม่ถูกต้อง" },
-        { status: 400 },
-      );
+      throw new ValidationError("รหัสรายการขายไม่ถูกต้อง");
     }
 
     const body = await request.json();
-    const saleDate = body.saleDate;
-
-    if (!saleDate) {
-      return NextResponse.json(
-        { error: "กรุณาระบุวันที่และเวลา" },
-        { status: 400 },
-      );
-    }
-
-    const parsedDate = new Date(saleDate);
-
-    if (isNaN(parsedDate.getTime())) {
-      return NextResponse.json(
-        { error: "วันที่และเวลาไม่ถูกต้อง" },
-        { status: 400 },
-      );
-    }
+    const validated = UpdateSalesDateSchema.parse(body);
+    const parsedDate = new Date(validated.saleDate);
 
     const { data, error } = await supabaseAdmin
       .from("sales")
@@ -42,19 +45,13 @@ export async function PUT(
       .select("id, created_at")
       .single();
 
-    if (error) throw error;
+    if (error) throw new DatabaseError(error.message);
 
-    return NextResponse.json({
-      data: {
-        id: data.id,
-        createdAt: data.created_at,
-      },
+    return successResponse({
+      id: data.id,
+      createdAt: data.created_at,
     });
-  } catch (error: any) {
-    console.error("Error updating sale timestamp:", error);
-    return NextResponse.json(
-      { error: error?.message || "ไม่สามารถแก้ไขวันที่และเวลาได้" },
-      { status: 500 },
-    );
+  } catch (error) {
+    return errorResponse(error, "sales_update_timestamp", "ไม่สามารถแก้ไขวันที่และเวลาได้");
   }
 }

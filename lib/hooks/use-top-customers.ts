@@ -30,7 +30,13 @@ export function useTopCustomers(type: CustomerViewType = "frequent_visits") {
           throw new Error("Failed to fetch top customers");
         }
 
-        const customers = await response.json();
+        const result = await response.json();
+        // Handle both response formats: wrapped { data: [...] } or direct array
+        const customers = Array.isArray(result)
+          ? result
+          : Array.isArray(result?.data)
+            ? result.data
+            : [];
         setData(customers);
       } catch (err: any) {
         setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");

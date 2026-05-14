@@ -42,8 +42,15 @@ export function useSales(options: UseSalesOptions = {}) {
         throw new Error("ไม่สามารถดึงข้อมูลการขายได้");
       }
 
-      const { data } = await response.json();
-      setSales(data || []);
+      const result = await response.json();
+      // API ส่งคืน { success, data: { data: [...], pagination }, timestamp }
+      // ดึง sales array ออกมา รองรับทั้งแบบ paginated และ flat array
+      const salesList = Array.isArray(result?.data?.data)
+        ? result.data.data
+        : Array.isArray(result?.data)
+          ? result.data
+          : [];
+      setSales(salesList);
     } catch (err: any) {
       setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
       setSales([]);

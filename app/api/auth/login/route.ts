@@ -41,7 +41,11 @@ function getLoginAttemptRecord(clientKey: string) {
   return existingRecord;
 }
 
-export async function POST(request: NextRequest) {
+interface LoginRequest {
+  password?: unknown;
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const clientKey = getClientKey(request);
     const attemptRecord = getLoginAttemptRecord(clientKey);
@@ -64,7 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as LoginRequest;
     const password = `${body?.password || ""}`;
 
     if (password !== getAuthPassword()) {
@@ -87,9 +91,10 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "ไม่สามารถเข้าสู่ระบบได้";
     return NextResponse.json(
-      { error: error?.message || "ไม่สามารถเข้าสู่ระบบได้" },
+      { error: message },
       { status: 500 },
     );
   }
