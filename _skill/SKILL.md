@@ -38,6 +38,7 @@
 - เสมือนข้อมูลสมาชิกผ่าน Supabase
 - ดูประวัติการใช้บริการของแต่ละสมาชิก
 - ค้นหา/กรองข้อมูลสมาชิก
+- เลือกลูกค้าในระบบ POS พร้อมแสดงชื่อสัตว์เลี้ยง
 
 **API Routes**:
 - `POST/GET /api/customers` - สร้าง/ดึงข้อมูลสมาชิก
@@ -121,16 +122,22 @@
 - สร้างใบขายสินค้า/บริการ
 - เพิ่มสินค้าจากรายการสินค้า
 - คำนวณอัตราส่วนลด (ส่วนแบ่งร้อยละ หรือจำนวนเงินคงที่)
-- เลือกวิธีชำระเงิน (สด บัตรเครดิต โอนเงิน)
+- เลือกวิธีชำระเงิน (สด QR บัตรเครดิต)
 - พิมพ์ใบเสร็จรับเงิน
 - บันทึกประวัติการขาย
 - ค้นหาประวัติการขายจากวันที่หรือสมาชิก
+- CSRF protection สำหรับความปลอดภัย
 
 **API Routes**:
-- `POST/GET /api/sales` - สร้าง/ดึงข้อมูลการขาย
+- `POST/GET /api/sales` - สร้าง/ดึงข้อมูลการขาย (ต้องมี CSRF token)
 - `PUT/DELETE /api/sales/[id]` - อัปเดต/ลบการขาย
 
 **Hooks**: `useSales()` - จัดการข้อมูลการขาย
+
+**Payment Methods Supported**:
+- `CASH` - ชำระสด
+- `QR` - QR Code Payment
+- `CREDIT_CARD` - บัตรเครดิต
 
 ---
 
@@ -459,5 +466,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<your_supabase_anon_key>
 
 ---
 
-**Last Updated**: 2026-05-14  
-**Version**: 0.1.0
+**Last Updated**: 2026-05-15  
+**Version**: 0.2.0
+
+**Recent Changes**:
+- ✅ Fixed CSRF token validation for POS sales API
+- ✅ Updated payment methods to support QR code payments
+- ✅ Enhanced customer selector UI with pet names display
+- ✅ Improved security with proper CSRF protection
