@@ -59,7 +59,7 @@ export const CreateSalesSchema = z.object({
   customDiscount: z.number().nonnegative().optional().default(0),
   depositUsed: z.number().nonnegative().optional().default(0),
   totalAmount: z.number().nonnegative(),
-  paymentMethod: z.enum(["CASH", "CREDIT_CARD", "TRANSFER"]),
+  paymentMethod: z.enum(["CASH", "QR", "CREDIT_CARD"]),
   cashReceived: z.number().nonnegative().optional().nullable(),
   change: z.number().nonnegative().optional().nullable(),
   saleType: z.enum(["SERVICE", "PRODUCT", "MIXED"]).optional().default("SERVICE"),
