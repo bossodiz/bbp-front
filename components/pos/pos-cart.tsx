@@ -91,8 +91,26 @@ export function POSCart() {
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [saleDate, setSaleDate] = useState<Date>(new Date());
   const [saleDateOpen, setSaleDateOpen] = useState(false);
+  const [csrfToken, setCsrfToken] = useState<string>("");
   const priceInputRef = useRef<HTMLInputElement>(null);
   const cashInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch CSRF token on mount
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const response = await fetch("/api/csrf-token");
+        if (response.ok) {
+          const data = await response.json();
+          setCsrfToken(data.csrfToken);
+        }
+      } catch (error) {
+        console.error("Failed to fetch CSRF token:", error);
+      }
+    };
+
+    fetchCsrfToken();
+  }, []);
 
   // Fetch booking from API if selectedBookingId exists
   useEffect(() => {
@@ -315,7 +333,10 @@ export function POSCart() {
           `/api/hotel/${selectedHotelBookingId}/checkout`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "x-csrf-token": csrfToken,
+            },
             body: JSON.stringify({
               checkOutDate,
               additionalServices,
@@ -374,7 +395,10 @@ export function POSCart() {
 
           await fetch("/api/sales", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "x-csrf-token": csrfToken,
+            },
             body: JSON.stringify(productSaleData),
           });
         }
@@ -425,7 +449,10 @@ export function POSCart() {
       // Save to database
       const response = await fetch("/api/sales", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
         body: JSON.stringify(saleData),
       });
 

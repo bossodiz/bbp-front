@@ -155,7 +155,7 @@ export function POSCustomerSelector() {
                   type="button"
                   key={customer.id}
                   onClick={() => handleSelectCustomer(customer.id)}
-                  className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors text-left cursor-pointer"
+                  className="w-full flex flex-col gap-2 p-3 rounded-lg border hover:bg-accent/50 transition-colors text-left cursor-pointer"
                 >
                   <div>
                     <p className="font-medium">{customer.name}</p>
@@ -165,25 +165,28 @@ export function POSCustomerSelector() {
                         : "-"}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {customer.pets.map((pet) => (
-                      <div
-                        key={pet.id}
-                        className={cn(
-                          "h-6 w-6 rounded-full flex items-center justify-center",
-                          pet.type === "DOG"
-                            ? "bg-dog/10 text-dog"
-                            : "bg-cat/10 text-cat",
-                        )}
-                      >
-                        {pet.type === "DOG" ? (
-                          <Dog className="h-3 w-3" />
-                        ) : (
-                          <Cat className="h-3 w-3" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  {customer.pets.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {customer.pets.map((pet) => (
+                        <div
+                          key={pet.id}
+                          className={cn(
+                            "flex items-center gap-1 px-2 py-1 rounded text-xs",
+                            pet.type === "DOG"
+                              ? "bg-dog/10 text-dog"
+                              : "bg-cat/10 text-cat",
+                          )}
+                        >
+                          {pet.type === "DOG" ? (
+                            <Dog className="h-3 w-3" />
+                          ) : (
+                            <Cat className="h-3 w-3" />
+                          )}
+                          <span className="font-medium">{pet.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
