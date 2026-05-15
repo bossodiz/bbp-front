@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Search, User, Dog, Cat, X } from "lucide-react";
+import { Search, User, Dog, Cat, X, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCustomerStore, usePOSStore, useBookingStore } from "@/lib/store";
 import { cn, formatPhoneDisplay } from "@/lib/utils";
+import { FastPOSModal } from "./fast-pos-modal";
 
 export function POSCustomerSelector() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [fastPOSOpen, setFastPOSOpen] = useState(false);
 
   const customers = useCustomerStore((s) => s.customers);
   const searchCustomers = useCustomerStore((s) => s.searchCustomers);
@@ -48,11 +50,23 @@ export function POSCustomerSelector() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <User className="h-5 w-5" />
-          ข้อมูลลูกค้า
+        <CardTitle className="text-lg flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            ข้อมูลลูกค้า
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 h-8"
+            onClick={() => setFastPOSOpen(true)}
+          >
+            <Zap className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden sm:inline text-xs">รายการด่วน</span>
+          </Button>
         </CardTitle>
       </CardHeader>
+      <FastPOSModal open={fastPOSOpen} onOpenChange={setFastPOSOpen} />
       <CardContent className="space-y-4">
         {booking && (
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">

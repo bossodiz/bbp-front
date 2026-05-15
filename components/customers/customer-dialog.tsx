@@ -70,7 +70,9 @@ export function CustomerDialog({
     if (open) {
       if (customer) {
         form.reset({
-          name: customer.name,
+          name: customer.name.trim().startsWith("คุณ")
+            ? customer.name.trimStart().slice(3)
+            : customer.name,
           phone: formatPhoneInput(customer.phone),
         });
       } else {
@@ -145,7 +147,7 @@ export function CustomerDialog({
                         คุณ
                       </span>
                       <Input
-                        placeholder="ชื่อ นามสกุล"
+                        placeholder="ชื่อ"
                         className="border-0 rounded-l-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                         {...field}
                       />
