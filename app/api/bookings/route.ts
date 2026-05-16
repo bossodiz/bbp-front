@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { CreateBookingApiSchema } from "@/lib/schemas";
+import { errorResponse } from "@/lib/error-handler";
+import { logger } from "@/lib/logger";
 
 // GET /api/bookings - ดึงรายการนัดหมายทั้งหมด
 export async function GET(request: NextRequest) {
@@ -106,7 +109,11 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(bookings);
-  } catch {
+  } catch (error) {
+    logger.error("bookings_fetch", {
+      message: "Failed to fetch bookings",
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลนัดหมายได้" },
       { status: 500 },
@@ -118,6 +125,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const parsed = CreateBookingApiSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse(parsed.error, "bookings_create");
+    }
     const {
       customerId,
       petServicePairs,
@@ -127,14 +138,7 @@ export async function POST(request: NextRequest) {
       depositAmount,
       depositStatus,
       status,
-    } = body;
-
-    if (!customerId || !bookingDate || !bookingTime) {
-      return NextResponse.json(
-        { error: "กรุณากรอกข้อมูลให้ครบถ้วน" },
-        { status: 400 },
-      );
-    }
+    } = parsed.data;
 
     const { data: booking, error } = await supabaseAdmin.rpc(
       "create_booking_with_pets",
@@ -184,12 +188,14 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error: any) {
-    const message = error?.message || "ไม่สามารถสร้างนัดหมายได้";
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "ไม่สามารถสร้างนัดหมายได้";
     const isConflict =
       message.includes("มีในระบบแล้ว") ||
       message.includes("มีสัตว์เลี้ยงชื่อ") ||
       message.includes("duplicate");
+
+    logger.error("bookings_create", { message, isConflict });
 
     return NextResponse.json(
       { error: message },

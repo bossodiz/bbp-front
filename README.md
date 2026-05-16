@@ -1,348 +1,335 @@
-# Pet Grooming Management System (BBP) - Frontend
+# ระบบจัดการหน้าร้านอาบน้ำตัดขนสัตว์เลี้ยง Bloom Bloom Paw Grooming (BPP Project)
 
-ระบบจัดการร้านอาบน้ำตัดขนสัตว์ - Frontend Application
+## 📋 ภาพรวมโครงการ
 
-A modern, secure, and production-ready pet grooming shop management system built with Next.js 16, React 19, and TypeScript.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+ 
-- pnpm 8+
-- Supabase account
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone <repo-url>
-cd bbp-front
-```
-
-2. **Install dependencies**
-```bash
-pnpm install
-```
-
-3. **Set up environment variables**
-```bash
-cp .env.example .env.local
-```
-
-Fill in the required variables:
-```env
-# Required
-AUTH_PASSWORD=your_secure_password
-AUTH_SECRET=your_secure_secret
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-```
-
-4. **Run development server**
-```bash
-pnpm dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+เป็นระบบจัดการบริหารธุรกิจร้านอาบน้ำตัดขนสัตว์เลี้ยงแบบครบวงจร สำหรับจัดเก็บข้อมูลสมาชิก สัตว์เลี้ยง และจัดการการบริการต่างๆ เช่น การอาบน้ำ ตัดขน การจองคิวอาบน้ำตัดขน การจองโรงแรม ระบบขายหน้าร้าน และระบบส่งเสริมการขาย
 
 ---
 
-## 📁 Project Structure
+## 🏗️ สถาปัตยกรรมเทคโนโลยี
+
+### Backend & Framework
+
+- **Framework**: Next.js 16.0.10
+- **Runtime**: Node.js
+- **API**: RESTful API จาก Next.js App Router
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Custom Auth System with Login/Logout
+
+### Frontend & UI
+
+- **Language**: React 19.2.0 + TypeScript
+- **Styling**: TailwindCSS 4.1.9 + PostCSS
+- **Component Library**: Radix UI (ทั้งหมด ~20+ components)
+- **Form Management**: React Hook Form + Zod Validation
+- **State Management**: Zustand 5.0.10
+- **Charts/Analytics**: Recharts 2.15.4
+- **Date Handling**: date-fns 4.1.0
+- **UI/UX**: Sonner (Toast), Lucide React (Icons)
+
+---
+
+## 📱 ระบบและฟีเจอร์หลัก
+
+### 1️⃣ ระบบจัดการสมาชิก (Customer Management)
+
+**ความสามารถ**:
+
+- เพิ่ม/แก้ไข/ลบข้อมูลสมาชิก
+- จัดเก็บข้อมูลทั่วไป (ชื่อ, เบอร์โทร, ที่อยู่, อีเมล)
+- เสมือนข้อมูลสมาชิกผ่าน Supabase
+- ดูประวัติการใช้บริการของแต่ละสมาชิก
+- ค้นหา/กรองข้อมูลสมาชิก
+- เลือกลูกค้าในระบบ POS พร้อมแสดงชื่อสัตว์เลี้ยง
+
+---
+
+### 2️⃣ ระบบจัดการข้อมูลสัตว์เลี้ยง (Pet Management)
+
+**ความสามารถ**:
+
+- เพิ่มสัตว์เลี้ยงของสมาชิก
+- จัดเก็บข้อมูล: ชื่อ, ประเภท, สายพันธุ์, น้ำหนัก, อายุ, หมายเลขชิป
+- เชื่อมโยงสัตว์เลี้ยงกับสมาชิก
+- บันทึกประวัติการบริการแต่ละตัว
+
+---
+
+### 3️⃣ ระบบจองคิวบริการอาบน้ำตัดขน (Service Booking)
+
+**ความสามารถ**:
+
+- จองบริการอาบน้ำ/ตัดขนสำหรับสัตว์เลี้ยง
+- เลือกวัน เวลา และประเภทบริการ
+- เลือกพนักงาน/ผู้บริการ
+- จัดการสถานะการจอง (pending, confirmed, completed, cancelled)
+- ดูปฏิทินจองคิวรายวัน
+- สร้าง/อัปเดต/ยกเลิกการจอง
+
+---
+
+### 4️⃣ ระบบจองโรงแรมสัตว์เลี้ยง (Hotel Management)
+
+**ความสามารถ**:
+
+- จองห้องโรงแรมสำหรับสัตว์เลี้ยง
+- เลือกห้อง ประเภทห้อง และช่วงวันที่
+- จัดการเช็คอิน/เช็คเอาต์
+- จัดการราคาและค่าใช้บริการเพิ่มเติม
+- บันทึกสถานะห้อง
+- ผลิตใบเสร็จรับเงินตอนเช็คเอาต์
+
+---
+
+### 5️⃣ ระบบ POS ขายสินค้า (Point of Sale)
+
+**ความสามารถ**:
+
+- สร้างใบขายสินค้า/บริการ
+- เพิ่มสินค้าจากรายการสินค้า
+- คำนวณอัตราส่วนลด (ส่วนแบ่งร้อยละ หรือจำนวนเงินคงที่)
+- เลือกวิธีชำระเงิน (สด QR บัตรเครดิต)
+- พิมพ์ใบเสร็จรับเงิน
+- บันทึกประวัติการขาย
+- ค้นหาประวัติการขายจากวันที่หรือสมาชิก
+- CSRF protection สำหรับความปลอดภัย
+
+**Payment Methods Supported**:
+
+- `CASH` - ชำระสด
+- `QR` - QR Code Payment
+- `CREDIT_CARD` - บัตรเครดิต
+
+---
+
+### 6️⃣ ระบบจัดการสินค้า (Product Management)
+
+**ความสามารถ**:
+
+- เพิ่ม/แก้ไข/ลบสินค้า
+- จัดเก็บข้อมูลสินค้า: ชื่อ, ราคา, หมวดหมู่, คำอธิบาย
+- จัดการสต็อกสินค้า
+- บันทึกข้อมูลผู้ขาย/ผู้จัดจำหน่าย
+- ค้นหา/กรองสินค้า
+
+---
+
+### 7️⃣ ระบบส่งเสริมการขาย (Promotions)
+
+**ความสามารถ**:
+
+- สร้างโปรโมชั่น/ส่วนลด/แคมเปญ
+- กำหนดประเภทส่วนลด (ร้อยละ หรือจำนวนเงินคงที่)
+- กำหนดวันที่เริ่ม/สิ้นสุดโปรโมชั่น
+- เลือกสินค้าหรือบริการที่ใช้โปรโมชั่น
+- จัดการเงื่อนไขการใช้โปรโมชั่น
+- ติดตามการใช้โปรโมชั่น
+
+---
+
+### 8️⃣ Dashboard และการวิเคราะห์ (Dashboard & Analytics)
+
+**ความสามารถ**:
+
+- **แสดงสถิติรวม**:
+  - จำนวนสมาชิกทั้งหมด
+  - จำนวนการจองวันนี้
+  - รายได้รวมวันนี้/เดือนนี้
+  - สัตว์เลี้ยงที่ลงทะเบียน
+
+- **กราฟและแผนภูมิ**:
+  - แผนภูมิรายได้ (Revenue Chart)
+  - แผนภูมิบริการที่ได้รับความนิยม (Pet Service Chart)
+  - สมาชิกอันดับต้น (Top Customers)
+  - การจองในวันนี้ (Today Bookings)
+
+- **Widgets**:
+  - แสดงข้อมูลแบบเรียลไทม์
+  - อัปเดตอัตโนมัติ
+
+---
+
+### 9️⃣ ระบบประวัติ (History)
+
+**ความสามารถ**:
+
+- ดูประวัติการจองทั้งหมด
+- ดูประวัติการขายสินค้า
+- ดูประวัติการใช้โปรโมชั่น
+- ค้นหาประวัติตามวันที่/สมาชิก/บริการ
+- ส่งออกรายงาน
+- วิเคราะห์ข้อมูลประวัติ
+
+---
+
+## 🔐 ระบบการยืนยันตัวตน (Authentication)
+
+**ความสามารถ**:
+
+- เข้าสู่ระบบด้วยชื่อผู้ใช้/รหัสผ่าน
+- ออกจากระบบ
+- ตรวจสอบการเข้าสู่ระบบ
+- ข้อมูลผู้ใช้ปัจจุบัน
+
+**Auth System**:
+
+- JWT Token (เก็บใน HTTP-only cookies)
+- Session Management ผ่าน Supabase
+
+---
+
+## 🎨 UI Components & UI Library
+
+**Radix UI Components Used** (20+ components):
+
+- Dialog, Alert Dialog, Accordion, Avatar
+- Checkbox, Radio Group, Select, Switch, Toggle
+- Dropdown Menu, Context Menu, Navigation Menu
+- Tabs, Tooltip, Popover, Hover Card
+- Progress, Slider, Separator, Scroll Area
+- และอื่นๆ
+
+**Custom Components**:
+
+- DataTable/Grid สำหรับแสดงข้อมูล
+- Modal/Dialog สำหรับฟอร์ม
+- Charts/Charts สำหรับกราฟ
+- Sidebar Navigation
+- Breadcrumb Navigation
+
+---
+
+## 💾 State Management
+
+**Zustand Store**:
+
+- จัดการสถานะแอปพลิเคชัน
+- Session/User State
+- UI State (modals, toasts, etc.)
+- Theme State
+
+**Context API**:
+
+- ServiceConfigContext - สำหรับ config สัตว์เลี้ยง
+
+---
+
+## 📁 โครงสร้างไฟล์
 
 ```
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes (products, sales, customers, bookings)
-│   ├── dashboard/         # Dashboard pages
-│   ├── layout.tsx         # Root layout with error boundaries
-│   └── page.tsx           # Home page
-├── components/            # React components
-│   ├── error-boundary.tsx # Error boundary for component errors
-│   └── ui/               # UI components (buttons, forms, modals)
-├── lib/                   # Utility functions and helpers
-│   ├── auth.ts           # Authentication logic
-│   ├── csrf.ts           # CSRF token generation/validation
-│   ├── error-handler.ts  # Centralized error handling
-│   ├── logger.ts         # Structured logging
-│   ├── rate-limit.ts     # Rate limiting per IP
-│   ├── schemas.ts        # Zod validation schemas
-│   ├── pagination.ts     # Pagination helpers
-│   ├── store.ts          # Zustand state management
-│   ├── api-types.ts      # API response types
-│   ├── toast-helper.ts   # Toast notification helpers
-│   ├── loading-states.ts # Global loading state management
-│   └── optimistic-updates.ts # Optimistic UI updates pattern
-├── docs/                  # Documentation
-│   └── API.md            # API reference documentation
-├── __tests__/            # Unit tests
-├── _skill/               # Custom command documentation
-├── _task/                # Task management
-└── public/               # Static files
+bbp-front/
+├── app/
+│   ├── (dashboard)/          # หน้าแดชบอร์ด
+│   │   ├── bookings/         # หน้าการจอง
+│   │   ├── customers/        # หน้าสมาชิก
+│   │   ├── history/          # หน้าประวัติ
+│   │   ├── hotel/            # หน้าโรงแรม
+│   │   ├── pos/              # หน้า POS
+│   │   ├── products/         # หน้าสินค้า
+│   │   ├── promotions/       # หน้าโปรโมชั่น
+│   │   ├── services/         # หน้าบริการ
+│   │   └── page.tsx          # หน้าแดชบอร์ดแรก
+│   ├── api/                  # API Routes
+│   │   ├── auth/             # Authentication API
+│   │   ├── bookings/         # Bookings API
+│   │   ├── customers/        # Customers API
+│   │   ├── pets/             # Pets API
+│   │   ├── hotel/            # Hotel API
+│   │   ├── products/         # Products API
+│   │   ├── promotions/       # Promotions API
+│   │   ├── services/         # Services API
+│   │   ├── sales/            # Sales API
+│   │   ├── dashboard/        # Dashboard API
+│   │   ├── breeds/           # Breeds API
+│   │   └── config/           # Config API
+│   ├── login/                # Login Page
+│   └── layout.tsx            # Root Layout
+├── components/
+│   ├── auth/                 # Auth Components
+│   ├── bookings/             # Booking Components
+│   ├── customers/            # Customer Components
+│   ├── dashboard/            # Dashboard Components
+│   ├── history/              # History Components
+│   ├── hotel/                # Hotel Components
+│   ├── pos/                  # POS Components
+│   ├── products/             # Product Components
+│   ├── promotions/           # Promotion Components
+│   ├── services/             # Service Components
+│   └── ui/                   # Radix UI Components
+├── lib/
+│   ├── hooks/                # Custom Hooks
+│   ├── contexts/             # React Contexts
+│   ├── auth.ts               # Authentication Utilities
+│   ├── supabase.ts           # Supabase Configuration
+│   ├── store.ts              # Zustand Store
+│   └── dashboard-revenue.ts  # Dashboard Utilities
+├── hooks/                    # Root Hooks
+├── package.json              # Dependencies
+└── next.config.mjs           # Next.js Configuration
 ```
 
 ---
 
-## 🛠 Tech Stack
+## 🔄 ลำดับการทำงาน (Workflow)
 
-### Frontend
-- **Framework**: Next.js 16.0.10 with React 19.2.0
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **UI Components**: shadcn/ui
-- **State Management**: Zustand with localStorage persistence
-- **Validation**: Zod (runtime schema validation)
-- **Notifications**: Sonner (toast library)
+### ลำดับสมาชิก + สัตว์เลี้ยง:
 
-### Backend Integration
-- **Database**: Supabase PostgreSQL with RLS
-- **Authentication**: Session-based with HMAC token validation
-- **API**: RESTful with pagination
+1. สมาชิกมาลงทะเบียนในระบบ
+2. เพิ่มข้อมูลสัตว์เลี้ยง (ชื่อ, พันธุ์, น้ำหนัก, เป็นต้น)
+3. สัตว์เลี้ยงพร้อมสำหรับการจองบริการ
 
-### Security
-- **CSRF Protection**: HMAC-based tokens with timing-safe validation
-- **Rate Limiting**: In-memory per-IP rate limiter
-- **Input Validation**: Zod schemas with Thai error messages
-- **Error Handling**: Centralized error classes with consistent responses
-- **Logging**: Structured JSON logging with context
+### ลำดับการจองบริการ:
 
----
+1. เลือกสมาชิก → เลือกสัตว์เลี้ยง → เลือกบริการ
+2. กำหนดวันเวลา → เลือกพนักงาน → ยืนยันการจอง
+3. สถานะการจอง: Pending → Confirmed → Completed
 
-## 🧪 Testing
+### ลำดับการจองโรงแรม:
 
-### Run Unit Tests
-```bash
-pnpm test
-```
+1. เลือกสมาชิก → เลือกสัตว์เลี้ยง
+2. เลือกห้อง → เลือกวันเข้า/ออก
+3. ยืนยันการจอง → ทำการเช็คอิน → ทำการเช็คเอาต์ → สร้างใบเสร็จ
 
-Tests are located in `__tests__/` and cover:
-- Authentication logic
-- Store operations
-- Error handling
-- Input validation
+### ลำดับการขาย (POS):
 
-### Run Tests in Watch Mode
-```bash
-pnpm test:watch
-```
-
-### Generate Coverage Report
-```bash
-pnpm test:coverage
-```
+1. สร้างใบขายใหม่
+2. เลือกสมาชิก (ถ้ามี)
+3. เพิ่มสินค้า/บริการ → กำหนดปริมาณ → คำนวณราคา
+4. เลือกส่วนลด (ถ้ามี) → เลือกวิธีชำระเงิน
+5. พิมพ์ใบเสร็จ → สิ้นสุดการขาย
 
 ---
 
-## 📦 Building
+## 🎯 เป้าหมายและการใช้งาน
 
-### Development Build
-```bash
-pnpm dev
-```
+**เป้าหมายหลัก**:
 
-### Production Build
-```bash
-pnpm build
-pnpm start
-```
+- ✅ จัดการข้อมูลสมาชิกและสัตว์เลี้ยง
+- ✅ ระบบจองคิวบริการสปา
+- ✅ ระบบจองโรงแรมสัตว์เลี้ยง
+- ✅ ระบบขายหน้าร้าน (POS)
+- ✅ ระบบส่งเสริมการขาย
+- ✅ แดชบอร์ดและการวิเคราะห์ข้อมูล
+- ✅ การจัดการประวัติและรายงาน
 
-### Lint Code
-```bash
-pnpm lint
-```
+**ผู้ใช้หลัก**:
 
----
-
-## 📚 API Documentation
-
-Complete API reference is available in [docs/API.md](docs/API.md)
-
-### Key Endpoints
-
-**Products**
-- `GET /api/products` - Get all products with pagination
-- `POST /api/products` - Create product
-- `PUT /api/products/:id` - Update product
-- `DELETE /api/products/:id` - Delete product
-
-**Sales**
-- `GET /api/sales` - Get sales with pagination
-- `POST /api/sales` - Create sale
-
-**Customers**
-- `GET /api/customers` - Get customers with pagination
-- `POST /api/customers` - Create customer
-
-**Bookings**
-- `GET /api/bookings` - Get bookings
-- `POST /api/bookings` - Create booking
-
-All POST/PUT/DELETE requests require CSRF token in `x-csrf-token` header. Get token from `GET /api/csrf-token`.
+- เจ้าของธุรกิจ - ดูแดชบอร์ด, สถิติ, รายงาน
+- พนักงานบริการ - จัดการการจอง, โรงแรม, POS
+- สมาชิก/ลูกค้า - ดูประวัติการใช้บริการ (future feature)
 
 ---
 
-## 🔒 Security Features
+## 📝 หมายเหตุพัฒนา
 
-### Authentication
-- Session-based with HMAC-SHA256 signing
-- Secure HTTP-only cookies
-- Environment variable validation on startup
-
-### Input Validation
-- Zod schemas for all API inputs
-- Type-safe request/response objects
-- Thai error messages for validation failures
-
-### API Security
-- **CSRF Protection**: Token-based with timing-safe comparison
-- **Rate Limiting**: 60 req/min (standard), 5 req/15min (login), 10 req/min (strict)
-- **Error Responses**: Consistent format without sensitive data leakage
-- **SQL Injection**: Prevented by Supabase RLS and parameterized queries
-
-### Data Protection
-- Supabase Row Level Security (RLS) policies
-- No hardcoded credentials (environment variables required)
-- Structured logging without sensitive data
+- โปรเจคนี้ใช้ Next.js 16 กับ React 19 (latest versions)
+- ใช้ TypeScript สำหรับ type safety
+- ใช้ Supabase สำหรับ backend as a service
+- Design System ใช้ TailwindCSS + Radix UI
+- State management ด้วย Zustand + Context API
+- Form validation ด้วย Zod + React Hook Form
 
 ---
 
-## 📊 Performance Optimizations
-
-### Database
-- Pagination on all list endpoints (1-100 items per page)
-- Query optimization guide in `lib/query-optimizer.ts`
-- Batch operations for related data fetching
-- N+1 query prevention patterns
-
-### Frontend
-- Server-side rendering with Next.js
-- Component-level error boundaries
-- Optimistic UI updates pattern
-- Global loading state management
-- Zustand state with localStorage persistence
-
-### Caching
-- Next.js automatic static optimization
-- Selective data revalidation
-
----
-
-## 🐛 Debugging
-
-### Enable Detailed Logging
-Set `DEBUG=*` or use advanced logger in code:
-
-```typescript
-import { useLogger } from 'lib/logger-advanced';
-
-const log = useLogger('MyComponent');
-log.info('User action', { userId: 123 });
-```
-
-### Check Error Boundaries
-Errors in React components are caught by `ErrorBoundary` and `AsyncErrorBoundary` in the root layout. Check the browser console for detailed stack traces.
-
-### API Error Responses
-All API errors follow this format:
-```json
-{
-  "error": "Error message",
-  "code": "ERROR_CODE",
-  "details": { /* additional info */ },
-  "timestamp": "2026-05-14T10:30:45.123Z"
-}
-```
-
----
-
-## 🚦 Development Guidelines
-
-### Code Style
-- Follow ESLint rules in `.eslintrc.json`
-- Use TypeScript strict mode
-- Avoid `any` types - use proper types
-- Write components as functional components with hooks
-
-### State Management
-- Use Zustand for global state
-- Persist important state to localStorage
-- Sync local state with server on critical updates
-
-### Error Handling
-- Use error classes from `lib/error-handler.ts`
-- Throw specific errors (ValidationError, AuthError, etc.)
-- Let centralized handler catch and respond consistently
-
-### API Development
-- Validate inputs with Zod schemas
-- Check CSRF token for mutations
-- Check rate limits
-- Return consistent response format
-- Log API operations with context
-
-### Testing
-- Write tests for critical paths
-- Test error cases and edge cases
-- Mock external dependencies
-- Use integration tests for API routes
-
----
-
-## 📋 Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
-
----
-
-## 🔄 Deployment
-
-### Supabase Setup
-1. Create a Supabase project
-2. Run database migrations (schema defined in Supabase)
-3. Set up RLS policies for data access
-
-### Environment Setup
-1. Copy `.env.example` to `.env.production.local`
-2. Set all required environment variables
-3. Ensure `AUTH_SECRET` is strong and unique
-
-### Deployment Steps
-```bash
-# Build the project
-pnpm build
-
-# Test the build locally
-pnpm start
-
-# Deploy to your hosting platform
-# (Vercel, Netlify, Docker, etc.)
-```
-
-### Production Checklist
-- ✅ All environment variables set
-- ✅ CSRF protection enabled
-- ✅ Rate limiting configured
-- ✅ Error boundaries active
-- ✅ Logging system operational
-- ✅ Database RLS policies in place
-- ✅ HTTPS enforced
-- ✅ Security headers configured
-
----
-
-## 📞 Support
-
-For issues, questions, or feature requests, open an issue on GitHub or contact the development team.
-
----
-
-## 📄 License
-
-This project is proprietary software. All rights reserved.
-
----
-
-**Last Updated**: 2026-05-14  
-**Version**: 1.0.0  
-**Status**: Production Ready ✅
+**Last Updated**: 2026-05-15  
+**Version**: 0.2.0

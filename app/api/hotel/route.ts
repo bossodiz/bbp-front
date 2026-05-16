@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { CreateHotelBookingSchema } from "@/lib/schemas";
+import { errorResponse } from "@/lib/error-handler";
+import { logger } from "@/lib/logger";
 
 function toNumber(value: any): number {
   const num = Number(value);
@@ -176,9 +179,11 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ data: transformed, error: null });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("hotel_fetch", { message });
     return NextResponse.json(
-      { data: null, error: error.message },
+      { data: null, error: message },
       { status: 500 },
     );
   }
@@ -188,6 +193,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const parsed = CreateHotelBookingSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse(parsed.error, "hotel_create");
+    }
     const {
       customerId,
       petIds,
@@ -195,36 +204,13 @@ export async function POST(request: NextRequest) {
       ratePerNight,
       depositAmount,
       note,
-    } = body;
-
-    if (
-      !customerId ||
-      !petIds ||
-      !Array.isArray(petIds) ||
-      petIds.length === 0 ||
-      !checkInDate
-    ) {
-      return NextResponse.json(
-        {
-          data: null,
-          error: "customerId, petIds (array) and checkInDate are required",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (!ratePerNight || ratePerNight <= 0) {
-      return NextResponse.json(
-        { data: null, error: "ratePerNight must be greater than 0" },
-        { status: 400 },
-      );
-    }
+    } = parsed.data;
 
     const insertData: any = {
       customer_id: customerId,
       check_in_date: checkInDate,
       rate_per_night: ratePerNight,
-      deposit_amount: depositAmount || 0,
+      deposit_amount: depositAmount,
       deposit_status: depositAmount > 0 ? "HELD" : "NONE",
       note: note || null,
       status: "RESERVED",
@@ -272,9 +258,11 @@ export async function POST(request: NextRequest) {
       { data: mapHotelBooking(fullBooking, null), error: null },
       { status: 201 },
     );
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("hotel_create", { message });
     return NextResponse.json(
-      { data: null, error: error.message },
+      { data: null, error: message },
       { status: 500 },
     );
   }

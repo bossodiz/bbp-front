@@ -51,8 +51,8 @@ export function useSales(options: UseSalesOptions = {}) {
           ? result.data
           : [];
       setSales(salesList);
-    } catch (err: any) {
-      setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล");
       setSales([]);
     } finally {
       setIsLoading(false);

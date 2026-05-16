@@ -37,8 +37,8 @@ export function useProducts(options: UseProductsOptions = {}) {
           ? result.data
           : [];
       setProducts(productsList);
-    } catch (err: any) {
-      setError(err?.message || "เกิดข้อผิดพลาด");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
     }

@@ -4,7 +4,8 @@ import {
   usePromotionStore,
   useServiceConfigStore,
 } from "@/lib/store";
-import type { Customer, Service, Promotion } from "@/lib/types";
+import type { Promotion } from "@/lib/types";
+import { transformCustomer, transformService } from "@/lib/utils/transformers";
 
 /** Fetch customers from API and sync to Zustand store (no React state) */
 export async function fetchCustomersToStore(search?: string): Promise<void> {
@@ -19,26 +20,7 @@ export async function fetchCustomersToStore(search?: string): Promise<void> {
     throw new Error(result.error || "Failed to fetch customers");
   }
 
-  const customers: Customer[] = result.data.map((customer: any) => ({
-    id: customer.id,
-    name: customer.name,
-    phone: customer.phone,
-    createdAt: new Date(customer.created_at),
-    updatedAt: new Date(customer.updated_at),
-    pets: (customer.pets || []).map((pet: any) => ({
-      id: pet.id,
-      customerId: pet.customer_id,
-      name: pet.name,
-      type: pet.type,
-      breed: pet.breed || "",
-      breed2: pet.breed_2 || undefined,
-      isMixedBreed: pet.is_mixed_breed || false,
-      weight: parseFloat(pet.weight),
-      note: pet.note || "",
-      createdAt: new Date(pet.created_at),
-      updatedAt: new Date(pet.updated_at),
-    })),
-  }));
+  const customers = result.data.map(transformCustomer);
 
   useCustomerStore.setState({ customers });
 }
@@ -54,24 +36,7 @@ export async function fetchServicesToStore(): Promise<void> {
 
   const data = await response.json();
 
-  const services: Service[] = (data.data || []).map((service: any) => ({
-    id: service.id,
-    name: service.name,
-    description: service.description,
-    isSpecial: service.is_special || false,
-    specialPrice: service.special_price,
-    active: service.active,
-    order: service.order_index || 0,
-    createdAt: service.created_at,
-    updatedAt: service.updated_at,
-    prices: (service.service_prices || []).map((price: any) => ({
-      id: price.id,
-      serviceId: service.id,
-      petTypeId: price.pet_type_id,
-      sizeId: price.size_id,
-      price: price.price,
-    })),
-  }));
+  const services = (data.data || []).map(transformService);
 
   useServiceStore.setState({ services });
 }

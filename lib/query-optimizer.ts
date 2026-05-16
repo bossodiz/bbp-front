@@ -2,6 +2,8 @@
 // QUERY OPTIMIZATION GUIDE & UTILITIES
 // ============================================================================
 
+import { logger } from "@/lib/logger";
+
 /**
  * COMMON N+1 QUERY PATTERNS & SOLUTIONS
  *
@@ -190,7 +192,7 @@ export function measureQueryTime<T>(
     const duration = Date.now() - start;
 
     if (duration > 1000) {
-      console.warn(`⚠️ SLOW QUERY: ${name} took ${duration}ms`);
+      logger.warn("query_optimizer", { message: `SLOW QUERY: ${name} took ${duration}ms`, duration });
     }
 
     resolve({ data, duration });

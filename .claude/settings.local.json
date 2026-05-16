@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "PowerShell(cd \"f:\\\\github\\\\bbp-front\"; $env:Path = \"C:\\\\Users\\\\Krittawat.S\\\\AppData\\\\Roaming\\\\fnm\\\\node-versions\\\\v22.16.0\\\\installation\\\\bin;\" + $env:Path; npx tsc --noEmit 2>&1 | Select-Object -First 60)",
+      "Bash(ls \"F:/AI/everything-claude-code-main/agents\")",
+      "Read(//f/AI/everything-claude-code-main/agents/**)",
+      "Bash(ls \"F:/AI/everything-claude-code-main/skills\")",
+      "Read(//f/AI/everything-claude-code-main/skills/**)",
+      "Bash([ -f \"$f/skill.md\" ])",
+      "Bash([ -f \"$f/README.md\" ])",
+      "Read(//f/AI/everything-claude-code-main/.claude/**)",
+      "Read(//f/AI/everything-claude-code-main/**)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\); print\\(json.dumps\\(d.get\\('devDependencies',{}\\), indent=2\\)\\)\")"
+    ]
+  }
+}

@@ -3,7 +3,8 @@ import { usePromotionStore } from "@/lib/store";
 import type { Promotion } from "@/lib/types";
 
 export function usePromotions() {
-  // ใช้ข้อมูลจาก Zustand store โดยตรง - ไม่ trigger re-render
+  // ใช้ Zustand selector pattern - re-render เมื่อ promotions เปลี่ยน
+  const promotions = usePromotionStore((state) => state.promotions);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,7 +104,7 @@ export function usePromotions() {
   // ไม่มี auto-fetch - ให้ component เรียก fetchPromotions() เอง
 
   return {
-    promotions: usePromotionStore.getState().promotions, // อ่านจาก store
+    promotions, // reactive via Zustand selector
     loading,
     error,
     fetchPromotions,

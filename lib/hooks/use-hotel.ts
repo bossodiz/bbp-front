@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { HotelBooking, HotelBookingStatus } from "@/lib/types";
+import type { HotelBooking, HotelBookingStatus, HotelAdditionalService } from "@/lib/types";
 
 interface UseHotelOptions {
   status?: string;
@@ -39,8 +39,8 @@ export function useHotel(options: UseHotelOptions = {}) {
       }
 
       setBookings(result.data || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -116,7 +116,7 @@ export function useHotel(options: UseHotelOptions = {}) {
       id: number,
       data: {
         checkOutDate: string;
-        additionalServices?: any[];
+        additionalServices?: Pick<HotelAdditionalService, "serviceId" | "serviceName" | "originalPrice" | "finalPrice" | "isPriceModified">[];
         discountAmount?: number;
         paymentMethod?: string;
         cashReceived?: number;

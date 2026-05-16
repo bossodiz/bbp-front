@@ -6,6 +6,7 @@ import {
   DatabaseError,
   RateLimitError,
 } from "@/lib/error-handler";
+import { logger } from "@/lib/logger";
 import { CreateProductSchema } from "@/lib/schemas";
 import { validateCsrfFromRequest } from "@/lib/csrf";
 import {
@@ -24,7 +25,7 @@ import { RawProduct } from "@/lib/api-types";
 // GET /api/products - ดึงรายการสินค้าทั้งหมด (with pagination)
 export async function GET(request: NextRequest) {
   try {
-    console.log("Received request to GET /api/products");
+    logger.debug("products_fetch", { message: "Received request to GET /api/products" });
     const ip = getClientIp(request);
     const rateLimitResult = checkRateLimit(
       `products:get:${ip}`,

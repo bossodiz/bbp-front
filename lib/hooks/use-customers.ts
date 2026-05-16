@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useCustomerStore } from "@/lib/store";
 import type { Customer, Pet } from "@/lib/types";
+import { transformCustomer, transformPet } from "@/lib/utils/transformers";
 
 interface UseCustomersReturn {
   customers: Customer[];
@@ -62,32 +63,13 @@ export function useCustomers(): UseCustomersReturn {
       }
 
       // Transform data to match frontend types
-      const transformedCustomers = result.data.map((customer: any) => ({
-        id: customer.id,
-        name: customer.name,
-        phone: customer.phone,
-        createdAt: new Date(customer.created_at),
-        updatedAt: new Date(customer.updated_at),
-        pets: (customer.pets || []).map((pet: any) => ({
-          id: pet.id,
-          customerId: pet.customer_id,
-          name: pet.name,
-          type: pet.type,
-          breed: pet.breed || "",
-          breed2: pet.breed_2 || undefined,
-          isMixedBreed: pet.is_mixed_breed || false,
-          weight: parseFloat(pet.weight),
-          note: pet.note || "",
-          createdAt: new Date(pet.created_at),
-          updatedAt: new Date(pet.updated_at),
-        })),
-      }));
+      const transformedCustomers = result.data.map(transformCustomer);
 
       setCustomers(transformedCustomers);
       // Sync to Zustand store
       useCustomerStore.setState({ customers: transformedCustomers });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -107,14 +89,7 @@ export function useCustomers(): UseCustomersReturn {
         throw new Error(result.error || "Failed to create customer");
       }
 
-      const newCustomer: Customer = {
-        id: result.data.id,
-        name: result.data.name,
-        phone: result.data.phone,
-        createdAt: new Date(result.data.created_at),
-        updatedAt: new Date(result.data.updated_at),
-        pets: [],
-      };
+      const newCustomer: Customer = transformCustomer({ ...result.data, pets: [] });
 
       setCustomers((prev) => [newCustomer, ...prev]);
       return newCustomer;
@@ -137,11 +112,7 @@ export function useCustomers(): UseCustomersReturn {
       }
 
       const updatedCustomer: Customer = {
-        id: result.data.id,
-        name: result.data.name,
-        phone: result.data.phone,
-        createdAt: new Date(result.data.created_at),
-        updatedAt: new Date(result.data.updated_at),
+        ...transformCustomer({ ...result.data, pets: [] }),
         pets: customers.find((c) => c.id === id)?.pets || [],
       };
 
@@ -201,20 +172,7 @@ export function useCustomers(): UseCustomersReturn {
         throw new Error(result.error || "Failed to create pet");
       }
 
-      const newPet: Pet = {
-        id: result.data.id,
-        customerId: result.data.customer_id,
-        name: result.data.name,
-        type: result.data.type,
-        breed: result.data.breed || "",
-        breed2: result.data.breed_2 || undefined,
-        isMixedBreed: result.data.is_mixed_breed || false,
-        weight:
-          result.data.weight !== null ? parseFloat(result.data.weight) : null,
-        note: result.data.note || "",
-        createdAt: new Date(result.data.created_at),
-        updatedAt: new Date(result.data.updated_at),
-      };
+      const newPet: Pet = transformPet(result.data);
 
       setCustomers((prev) =>
         prev.map((c) =>
@@ -260,20 +218,7 @@ export function useCustomers(): UseCustomersReturn {
         throw new Error(result.error || "Failed to update pet");
       }
 
-      const updatedPet: Pet = {
-        id: result.data.id,
-        customerId: result.data.customer_id,
-        name: result.data.name,
-        type: result.data.type,
-        breed: result.data.breed || "",
-        breed2: result.data.breed_2 || undefined,
-        isMixedBreed: result.data.is_mixed_breed || false,
-        weight:
-          result.data.weight !== null ? parseFloat(result.data.weight) : null,
-        note: result.data.note || "",
-        createdAt: new Date(result.data.created_at),
-        updatedAt: new Date(result.data.updated_at),
-      };
+      const updatedPet: Pet = transformPet(result.data);
 
       setCustomers((prev) =>
         prev.map((c) => ({
