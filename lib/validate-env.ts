@@ -3,6 +3,8 @@
  * This runs when the app starts to catch configuration errors early.
  */
 
+import { logger } from "@/lib/logger";
+
 const REQUIRED_ENV_VARS = [
   "AUTH_PASSWORD",
   "AUTH_SECRET",
@@ -21,13 +23,12 @@ export function validateEnv(): void {
   }
 
   if (missingVars.length > 0) {
-    console.error(
-      "❌ Missing required environment variables:\n" +
-        missingVars.map((v) => `   - ${v}`).join("\n") +
-        "\n\nPlease set these variables in your .env.local file.",
-    );
+    logger.error("validate_env", {
+      message: "Missing required environment variables",
+      missingVars,
+    });
     process.exit(1);
   }
 
-  console.log("✅ All required environment variables are set.");
+  logger.info("validate_env", { message: "All required environment variables are set." });
 }

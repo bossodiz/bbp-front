@@ -41,8 +41,8 @@ export function useTodayBookings() {
 
         const bookings = await response.json();
         setData(bookings);
-      } catch (err: any) {
-        setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล");
       } finally {
         setLoading(false);
       }

@@ -1,4 +1,5 @@
 import { renderHook, act } from "@testing-library/react";
+import { beforeEach, describe, it, expect } from "vitest";
 import {
   useCustomerStore,
   useServiceStore,
@@ -7,10 +8,18 @@ import {
 } from "@/lib/store";
 
 describe("Zustand Stores", () => {
-  // Reset stores before each test
   beforeEach(() => {
-    // Clear localStorage for counter store
     localStorage.clear();
+    useCounterStore.setState({
+      customerIdCounter: 1,
+      petIdCounter: 1,
+      serviceIdCounter: 1,
+      promotionIdCounter: 1,
+      bookingIdCounter: 1,
+    });
+    useCustomerStore.setState({ customers: [] });
+    useServiceStore.setState({ services: [] });
+    useBookingStore.setState({ bookings: [] });
   });
 
   describe("useCounterStore", () => {
@@ -22,9 +31,12 @@ describe("Zustand Stores", () => {
 
     it("should increment customer ID", () => {
       const { result } = renderHook(() => useCounterStore());
-      const id1 = act(() => result.current.incrementCustomerId());
-      const id2 = act(() => result.current.incrementCustomerId());
-      expect(id2).toBeGreaterThan(id1);
+      let id1: number, id2: number;
+      act(() => {
+        id1 = result.current.incrementCustomerId();
+        id2 = result.current.incrementCustomerId();
+      });
+      expect(id2!).toBeGreaterThan(id1!);
     });
 
     it("should persist counters in localStorage", () => {
@@ -42,10 +54,7 @@ describe("Zustand Stores", () => {
     it("should sync with database max IDs", () => {
       const { result } = renderHook(() => useCounterStore());
       act(() => {
-        result.current.syncWithDatabase({
-          customerId: 100,
-          petId: 50,
-        });
+        result.current.syncWithDatabase({ customerId: 100, petId: 50 });
       });
 
       expect(result.current.customerIdCounter).toBeGreaterThan(100);
@@ -61,17 +70,14 @@ describe("Zustand Stores", () => {
       act(() => {
         const customer = result.current.addCustomer({
           name: "Test Customer",
-          phone: "1234567890",
-          email: "test@example.com",
-          address: "123 Test St",
-          notes: "Test notes",
+          phone: "0812345678",
         });
         customerId = customer.id;
       });
 
       expect(result.current.customers).toHaveLength(1);
       expect(result.current.customers[0].name).toBe("Test Customer");
-      expect(customerId).toBeGreaterThan(0);
+      expect(customerId!).toBeGreaterThan(0);
     });
 
     it("should add pet to customer", () => {
@@ -81,6 +87,7 @@ describe("Zustand Stores", () => {
       act(() => {
         const customer = result.current.addCustomer({
           name: "Test Customer",
+          phone: "0812345678",
         });
         customerId = customer.id;
 
@@ -88,6 +95,8 @@ describe("Zustand Stores", () => {
           name: "Fluffy",
           type: "DOG",
           breed: "Labrador",
+          isMixedBreed: false,
+          weight: null,
         });
       });
 
@@ -99,14 +108,18 @@ describe("Zustand Stores", () => {
       const { result } = renderHook(() => useCustomerStore());
 
       act(() => {
-        result.current.addCustomer({ name: "Alice" });
-        result.current.addCustomer({ name: "Bob" });
-        result.current.addCustomer({ name: "Charlie" });
+        result.current.addCustomer({ name: "Alice", phone: "0810000001" });
+        result.current.addCustomer({ name: "Bob", phone: "0820000002" });
+        result.current.addCustomer({ name: "Charlie", phone: "0830000003" });
       });
 
-      const searchResults = act(() => result.current.searchCustomers("Ali"));
-      expect(searchResults).toHaveLength(1);
-      expect(searchResults[0].name).toBe("Alice");
+      let searchResults: ReturnType<typeof result.current.searchCustomers>;
+      act(() => {
+        searchResults = result.current.searchCustomers("Ali");
+      });
+
+      expect(searchResults!).toHaveLength(1);
+      expect(searchResults![0].name).toBe("Alice");
     });
   });
 
@@ -117,8 +130,9 @@ describe("Zustand Stores", () => {
       act(() => {
         result.current.addService({
           name: "Bath",
-          basePrice: 50,
-          duration: 60,
+          isSpecial: false,
+          order: 1,
+          prices: [],
         });
       });
 
@@ -134,14 +148,15 @@ describe("Zustand Stores", () => {
       act(() => {
         const service = result.current.addService({
           name: "Bath",
-          basePrice: 50,
-          duration: 60,
+          isSpecial: false,
+          order: 1,
+          prices: [],
         });
         serviceId = service.id;
       });
 
       act(() => {
-        result.current.toggleServiceStatus(serviceId);
+        result.current.toggleServiceStatus(serviceId!);
       });
 
       expect(result.current.services[0].active).toBe(false);
@@ -155,9 +170,10 @@ describe("Zustand Stores", () => {
       act(() => {
         result.current.addBooking({
           customerId: 1,
-          petId: 1,
-          bookingDate: new Date().toISOString(),
-          serviceIds: [1, 2],
+          bookingDate: new Date(),
+          bookingTime: "10:00",
+          depositAmount: 0,
+          depositStatus: "NONE",
           status: "CONFIRMED",
         });
       });
@@ -173,16 +189,21 @@ describe("Zustand Stores", () => {
       act(() => {
         const booking = result.current.addBooking({
           customerId: 1,
-          petId: 1,
-          bookingDate: new Date().toISOString(),
-          serviceIds: [1],
+          bookingDate: new Date(),
+          bookingTime: "10:00",
+          depositAmount: 0,
+          depositStatus: "NONE",
           status: "CONFIRMED",
         });
         bookingId = booking.id;
       });
 
-      const booking = act(() => result.current.getBookingById(bookingId));
-      expect(booking?.id).toBe(bookingId);
+      let found: ReturnType<typeof result.current.getBookingById>;
+      act(() => {
+        found = result.current.getBookingById(bookingId!);
+      });
+
+      expect(found?.id).toBe(bookingId!);
     });
   });
 });

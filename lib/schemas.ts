@@ -113,6 +113,102 @@ export const LoginSchema = z.object({
 });
 
 // ============================================================================
+// SERVICES SCHEMAS
+// ============================================================================
+
+export const CreateServiceSchema = z.object({
+  name: z.string().min(1, "ชื่อบริการต้องไม่ว่างเปล่า"),
+  description: z.string().optional().nullable(),
+  isSpecial: z.boolean().default(false),
+  specialPrice: z.number().positive().optional().nullable(),
+  order: z.number().nonnegative().default(0),
+  prices: z.array(z.object({
+    petTypeId: z.string().optional(),
+    sizeId: z.string().optional(),
+    price: z.number().nonnegative(),
+  })).optional().default([]),
+});
+export const UpdateServiceSchema = CreateServiceSchema.partial().strict();
+export type CreateServiceInput = z.infer<typeof CreateServiceSchema>;
+export type UpdateServiceInput = z.infer<typeof UpdateServiceSchema>;
+
+// ============================================================================
+// PROMOTIONS SCHEMAS
+// ============================================================================
+
+export const CreatePromotionSchema = z.object({
+  name: z.string().min(1, "ชื่อโปรโมชันต้องไม่ว่างเปล่า"),
+  type: z.enum(["PERCENT", "AMOUNT"]),
+  value: z.number().positive(),
+  freeServiceId: z.number().optional().nullable(),
+  applicableTo: z.enum(["ALL", "SERVICE", "HOTEL", "PRODUCT"]),
+  active: z.boolean().default(true),
+  startDate: z.string().datetime().optional().nullable(),
+  endDate: z.string().datetime().optional().nullable(),
+});
+export const UpdatePromotionSchema = CreatePromotionSchema.partial().strict();
+export type CreatePromotionInput = z.infer<typeof CreatePromotionSchema>;
+export type UpdatePromotionInput = z.infer<typeof UpdatePromotionSchema>;
+
+// ============================================================================
+// HOTEL BOOKING SCHEMAS
+// ============================================================================
+
+export const CreateHotelBookingSchema = z.object({
+  customerId: z.number().positive(),
+  petIds: z.array(z.number().positive()).min(1),
+  checkInDate: z.string().min(1),
+  checkOutDate: z.string().optional().nullable(),
+  ratePerNight: z.number().positive(),
+  depositAmount: z.number().nonnegative().default(0),
+  depositStatus: z.enum(["NONE", "HELD", "USED", "FORFEITED"]).default("NONE"),
+  note: z.string().optional().nullable(),
+});
+export const UpdateHotelBookingSchema = CreateHotelBookingSchema.partial().strict();
+export type CreateHotelBookingInput = z.infer<typeof CreateHotelBookingSchema>;
+export type UpdateHotelBookingInput = z.infer<typeof UpdateHotelBookingSchema>;
+
+// ============================================================================
+// BOOKING API SCHEMAS (matches create_booking_with_pets RPC shape)
+// ============================================================================
+
+export const CreateBookingApiSchema = z.object({
+  customerId: z.number().positive("ต้องเลือกลูกค้า"),
+  bookingDate: z.string().min(1, "วันที่ต้องไม่ว่างเปล่า"),
+  bookingTime: z.string().min(1, "เวลาต้องไม่ว่างเปล่า"),
+  petServicePairs: z.array(z.any()).optional().default([]),
+  note: z.string().optional().nullable(),
+  depositAmount: z.number().nonnegative().optional().default(0),
+  depositStatus: z.enum(["NONE", "HELD", "USED", "FORFEITED"]).optional().default("NONE"),
+  status: z.enum(["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"]).optional().default("PENDING"),
+});
+export type CreateBookingApiInput = z.infer<typeof CreateBookingApiSchema>;
+
+// ============================================================================
+// CONFIG SCHEMAS
+// ============================================================================
+
+export const PetTypeConfigSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  icon: z.string().optional().nullable(),
+  active: z.boolean().default(true),
+  order_index: z.number().nonnegative().default(0),
+});
+export const SizeConfigSchema = z.object({
+  id: z.string().min(1),
+  petTypeId: z.string().min(1),
+  name: z.string().min(1),
+  minWeight: z.number().nonnegative().optional().nullable(),
+  maxWeight: z.number().nonnegative().optional().nullable(),
+  description: z.string().optional().nullable(),
+  active: z.boolean().default(true),
+  order_index: z.number().nonnegative().default(0),
+});
+export type PetTypeConfigInput = z.infer<typeof PetTypeConfigSchema>;
+export type SizeConfigInput = z.infer<typeof SizeConfigSchema>;
+
+// ============================================================================
 // TYPE EXPORTS - ใช้สำหรับ TypeScript inference
 // ============================================================================
 

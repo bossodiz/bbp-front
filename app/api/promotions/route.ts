@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { CreatePromotionSchema } from "@/lib/schemas";
+import { errorResponse } from "@/lib/error-handler";
+import { logger } from "@/lib/logger";
 
 // GET /api/promotions - ดึงรายการโปรโมชั่นทั้งหมด
 export async function GET() {
@@ -27,6 +30,10 @@ export async function GET() {
 
     return NextResponse.json(promotions);
   } catch (error) {
+    logger.error("promotions_fetch", {
+      message: "Failed to fetch promotions",
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "ไม่สามารถดึงข้อมูลโปรโมชั่นได้" },
       { status: 500 },
@@ -38,6 +45,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const parsed = CreatePromotionSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse(parsed.error, "promotions_create");
+    }
     const {
       name,
       type,
@@ -47,15 +58,7 @@ export async function POST(request: NextRequest) {
       active,
       startDate,
       endDate,
-    } = body;
-
-    // Validation
-    if (!name || !type || value === undefined) {
-      return NextResponse.json(
-        { error: "กรุณากรอกข้อมูลให้ครบถ้วน" },
-        { status: 400 },
-      );
-    }
+    } = parsed.data;
 
     // แปลง camelCase เป็น snake_case สำหรับ database
     const { data, error } = await supabaseAdmin
@@ -64,8 +67,8 @@ export async function POST(request: NextRequest) {
         name,
         type,
         value,
-        applicable_to: applicableTo || "ALL",
-        active: active !== undefined ? active : true,
+        applicable_to: applicableTo,
+        active: active,
         start_date: startDate || null,
         end_date: endDate || null,
       })
@@ -90,6 +93,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(promotion, { status: 201 });
   } catch (error) {
+    logger.error("promotions_create", {
+      message: "Failed to create promotion",
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "ไม่สามารถสร้างโปรโมชั่นได้" },
       { status: 500 },

@@ -38,8 +38,8 @@ export function useTopCustomers(type: CustomerViewType = "frequent_visits") {
             ? result.data
             : [];
         setData(customers);
-      } catch (err: any) {
-        setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล");
       } finally {
         setLoading(false);
       }

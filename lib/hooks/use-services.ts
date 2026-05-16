@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useServiceStore } from "@/lib/store";
 import type { Service } from "@/lib/types";
+import { transformService } from "@/lib/utils/transformers";
 
 interface UseServicesOptions {
   petTypeId?: string;
@@ -46,30 +47,13 @@ export function useServices(
       const data = await response.json();
 
       // Transform snake_case to camelCase
-      const transformedServices = (data.data || []).map((service: any) => ({
-        id: service.id,
-        name: service.name,
-        description: service.description,
-        isSpecial: service.is_special || false,
-        specialPrice: service.special_price,
-        active: service.active,
-        order: service.order_index || 0,
-        createdAt: service.created_at,
-        updatedAt: service.updated_at,
-        prices: (service.service_prices || []).map((price: any) => ({
-          id: price.id,
-          serviceId: service.id,
-          petTypeId: price.pet_type_id,
-          sizeId: price.size_id,
-          price: price.price,
-        })),
-      }));
+      const transformedServices = (data.data || []).map(transformService);
 
       setServices(transformedServices);
       // Sync to Zustand store
       useServiceStore.setState({ services: transformedServices });
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }

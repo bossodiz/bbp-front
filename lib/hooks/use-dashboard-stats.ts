@@ -35,8 +35,8 @@ export function useDashboardStats() {
 
         const stats = await response.json();
         setData(stats);
-      } catch (err: any) {
-        setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล");
       } finally {
         setLoading(false);
       }

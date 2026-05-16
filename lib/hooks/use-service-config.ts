@@ -54,7 +54,7 @@ export function useServiceConfig(): UseServiceConfigReturn {
       }
 
       const data = await response.json();
-      const formattedData = (data.data || []).map((item: any) => ({
+      const formattedData = (data.data || []).map((item: { id: string; name: string; icon?: string; active: boolean; order_index: number }) => ({
         id: item.id,
         name: item.name,
         icon: item.icon,
@@ -62,8 +62,8 @@ export function useServiceConfig(): UseServiceConfigReturn {
         order: item.order_index,
       }));
       setPetTypes(formattedData);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -86,7 +86,7 @@ export function useServiceConfig(): UseServiceConfigReturn {
       }
 
       const data = await response.json();
-      const formattedData = (data.data || []).map((item: any) => ({
+      const formattedData = (data.data || []).map((item: { id: string; pet_type_id: string; name: string; min_weight?: number; max_weight?: number; description?: string; active: boolean; order_index: number }) => ({
         id: item.id,
         petTypeId: item.pet_type_id,
         name: item.name,
@@ -97,8 +97,8 @@ export function useServiceConfig(): UseServiceConfigReturn {
         order: item.order_index,
       }));
       setPetSizes(formattedData);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }

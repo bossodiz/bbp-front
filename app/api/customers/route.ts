@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { logger } from "@/lib/logger";
 
 // GET /api/customers - ดึงรายชื่อลูกค้าทั้งหมด
 export async function GET(request: NextRequest) {
@@ -72,9 +73,11 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ data, error: null });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("customers_fetch", { message });
     return NextResponse.json(
-      { data: null, error: error.message },
+      { data: null, error: message },
       { status: 500 },
     );
   }
@@ -102,9 +105,11 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ data, error: null }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("customers_create", { message });
     return NextResponse.json(
-      { data: null, error: error.message },
+      { data: null, error: message },
       { status: 500 },
     );
   }

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { CreateServiceSchema } from "@/lib/schemas";
+import { errorResponse } from "@/lib/error-handler";
+import { logger } from "@/lib/logger";
 
 // GET /api/services - ดึงรายการบริการทั้งหมด
 export async function GET(request: NextRequest) {
@@ -28,9 +31,11 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ data, error: null });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("services_fetch", { message });
     return NextResponse.json(
-      { data: null, error: error.message },
+      { data: null, error: message },
       { status: 500 },
     );
   }
@@ -40,16 +45,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, prices, isSpecial, specialPrice } = body;
+    const parsed = CreateServiceSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse(parsed.error, "services_create");
+    }
+    const { name, description, prices, isSpecial, specialPrice } = parsed.data;
 
     // Validation for special vs regular services
-    if (!name) {
-      return NextResponse.json(
-        { data: null, error: "Name is required" },
-        { status: 400 },
-      );
-    }
-
     if (isSpecial) {
       if (!specialPrice || specialPrice <= 0) {
         return NextResponse.json(
@@ -137,9 +139,11 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ data, error: null }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error("services_create", { message });
     return NextResponse.json(
-      { data: null, error: error.message },
+      { data: null, error: message },
       { status: 500 },
     );
   }

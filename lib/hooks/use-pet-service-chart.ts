@@ -43,8 +43,8 @@ export function usePetServiceChart(
 
         const chartData = await response.json();
         setData(chartData);
-      } catch (err: any) {
-        setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูล");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล");
       } finally {
         setLoading(false);
       }
