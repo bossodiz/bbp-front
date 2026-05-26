@@ -14,6 +14,7 @@ import {
   BedDouble,
   Package,
   LogOut,
+  RefreshCw,
 } from "lucide-react";
 import {
   Sidebar,
@@ -85,6 +86,10 @@ const reportItems = [
     url: "/history",
     icon: History,
   },
+];
+
+const syncItems = [
+  { title: "ซิงค์รูปภาพ", url: "/sync-image", icon: RefreshCw },
 ];
 
 export function AppSidebar() {
@@ -225,6 +230,37 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {reportItems.map((item) => {
+                const isActive =
+                  pathname === item.url ||
+                  (item.url !== "/" && pathname.startsWith(item.url));
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className={cn(
+                        "h-12 transition-colors",
+                        isActive && "bg-sidebar-accent font-medium",
+                      )}
+                    >
+                      <Link href={item.url} onClick={handleLinkClick}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* ซิงค์โซเชียล */}
+        <SidebarGroup>
+          <SidebarGroupLabel>ซิงค์โซเชียล</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {syncItems.map((item) => {
                 const isActive =
                   pathname === item.url ||
                   (item.url !== "/" && pathname.startsWith(item.url));

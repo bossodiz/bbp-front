@@ -326,3 +326,34 @@ export const applicableToLabels: Record<ApplicableTo, string> = {
   HOTEL: "โรงแรม",
   PRODUCT: "สินค้า",
 };
+
+// ===== BBP Sync Types =====
+
+export type SyncImageStatus = "pending" | "approved" | "rejected" | "uploaded";
+
+export interface FbImage {
+  id: number;
+  imageUrl: string;
+  storagePath: string | null;
+  status: SyncImageStatus;
+  createdAt: string;
+  approvedAt: string | null;
+  uploadedToMapsAt: string | null;
+  errorMessage: string | null;
+  postCaption: string | null;
+  postUrl: string | null;
+}
+
+export interface SyncStatus {
+  lastFetchTime: string | null;
+  pendingCount: number;
+  approvedCount: number;
+  uploadedCount: number;
+  dbConnected: boolean;
+}
+
+export interface UploadResult {
+  attempted: number;
+  success: number;
+  failed: number;
+}
