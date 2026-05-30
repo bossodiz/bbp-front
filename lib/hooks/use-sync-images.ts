@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { FbImage, SyncStatus } from "@/lib/types";
+import type { FbImage, SyncStatus, CleanupResult, DownloadState } from "@/lib/types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -12,6 +12,12 @@ export function useSyncImages() {
   const [approvedLoading, setApprovedLoading] = useState(false);
   const [rejectedLoading, setRejectedLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadState, setDownloadState] = useState<DownloadState>({
+    status: "idle",
+    percent: 0,
+    processed: 0,
+    total: 0,
+  });
 
   const fetchPending = useCallback(async () => {
     try {
@@ -102,26 +108,54 @@ export function useSyncImages() {
   );
 
   const downloadApproved = useCallback(async (): Promise<void> => {
-    const res = await fetch(`${BACKEND_URL}/api/download/approved`);
-    if (!res.ok) throw new Error("ดาวน์โหลดไม่สำเร็จ");
-    const blob = await res.blob();
-    const disposition = res.headers.get("Content-Disposition") ?? "";
-    const match = disposition.match(/filename="(.+?)"/);
-    const filename = match?.[1] ?? "approved_images.zip";
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    // หลัง download: approved → downloaded, rejected ที่มี storagePath ถูกลบ → refresh ทุก tab
-    await Promise.all([
-      fetchPending(),
-      fetchApproved(),
-      fetchRejected(),
-      fetchStatus(),
-    ]);
-  }, [fetchPending, fetchApproved, fetchRejected, fetchStatus]);
+    const reset = () =>
+      setDownloadState({ status: "idle", percent: 0, processed: 0, total: 0 });
+
+    // 1. prepare — สร้าง job เบื้องหลัง
+    setDownloadState({ status: "preparing", percent: 0, processed: 0, total: 0 });
+    const prepRes = await fetch(`${BACKEND_URL}/api/download/prepare`, { method: "POST" });
+    if (!prepRes.ok) { reset(); throw new Error("เตรียมไฟล์ไม่สำเร็จ"); }
+    const { jobId, total } = await prepRes.json();
+    if (!jobId) { reset(); throw new Error("ไม่มีรูป approved"); }
+
+    setDownloadState({ status: "building", percent: 0, processed: 0, total });
+
+    // 2. poll progress ทุก 1 วินาที
+    await new Promise<void>((resolve, reject) => {
+      const timer = setInterval(async () => {
+        try {
+          const pRes = await fetch(`${BACKEND_URL}/api/download/progress/${jobId}`);
+          if (!pRes.ok) { clearInterval(timer); reset(); reject(new Error("ตรวจสอบ progress ไม่สำเร็จ")); return; }
+          const p: { processed: number; total: number; percent: number; status: string; error?: string } = await pRes.json();
+          setDownloadState({ status: "building", percent: p.percent, processed: p.processed, total: p.total });
+          if (p.status === "ready") { clearInterval(timer); resolve(); }
+          if (p.status === "error") { clearInterval(timer); reset(); reject(new Error(p.error ?? "เกิดข้อผิดพลาด")); }
+        } catch (e) {
+          clearInterval(timer);
+          reset();
+          reject(e);
+        }
+      }, 1000);
+    });
+
+    // 3. trigger download ผ่าน browser
+    setDownloadState({ status: "done", percent: 100, processed: total, total });
+    window.location.href = `${BACKEND_URL}/api/download/result/${jobId}`;
+
+    await new Promise((r) => setTimeout(r, 1500));
+    reset();
+    await Promise.all([fetchApproved(), fetchRejected(), fetchStatus()]);
+  }, [fetchApproved, fetchRejected, fetchStatus]);
+
+  const cleanupDownloaded = useCallback(async (): Promise<CleanupResult> => {
+    const res = await fetch(`${BACKEND_URL}/api/download/cleanup`, {
+      method: "POST",
+    });
+    if (!res.ok) throw new Error("ลบไฟล์ไม่สำเร็จ");
+    const result: CleanupResult = await res.json();
+    await fetchStatus();
+    return result;
+  }, [fetchStatus]);
 
   const triggerSync = useCallback(async () => {
     const res = await fetch(`${BACKEND_URL}/api/sync/trigger`, {
@@ -152,6 +186,8 @@ export function useSyncImages() {
     approveImage,
     rejectImage,
     downloadApproved,
+    downloadState,
+    cleanupDownloaded,
     triggerSync,
   };
 }
