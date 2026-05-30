@@ -25,6 +25,8 @@ export default function SyncImagePage() {
     approveImage,
     rejectImage,
     downloadApproved,
+    downloadState,
+    cleanupDownloaded,
     triggerSync,
   } = useSyncImages();
 
@@ -46,10 +48,11 @@ export default function SyncImagePage() {
           onDownload={downloadApproved}
           onSync={triggerSync}
           approvedCount={approvedImages.length}
+          downloadState={downloadState}
         />
       </div>
 
-      <SyncStatusBar status={status} />
+      <SyncStatusBar status={status} onCleanup={cleanupDownloaded} />
 
       {error && (
         <div className="flex items-center gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">

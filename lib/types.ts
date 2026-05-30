@@ -352,8 +352,23 @@ export interface SyncStatus {
   lastFetchTime: string | null;
   pendingCount: number;
   approvedCount: number;
-  uploadedCount: number;
+  readyToDeleteCount: number;
   dbConnected: boolean;
+}
+
+export interface CleanupResult {
+  attempted: number;
+  success: number;
+  failed: number;
+}
+
+export type DownloadStatus = "idle" | "preparing" | "building" | "done" | "error";
+
+export interface DownloadState {
+  status: DownloadStatus;
+  percent: number;
+  processed: number;
+  total: number;
 }
 
 export interface UploadResult {
