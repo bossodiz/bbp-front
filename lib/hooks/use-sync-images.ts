@@ -101,25 +101,39 @@ export function useSyncImages() {
     [fetchPending, fetchApproved, fetchRejected, fetchStatus],
   );
 
-  // TODO: เปลี่ยน endpoint เป็น path จริงเมื่อได้รับการยืนยันจาก backend
   const downloadApproved = useCallback(async (): Promise<void> => {
-    const res = await fetch(`${BACKEND_URL}/api/posts/approved/download`);
+    const res = await fetch(`${BACKEND_URL}/api/download/approved`);
     if (!res.ok) throw new Error("ดาวน์โหลดไม่สำเร็จ");
     const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const match = disposition.match(/filename="(.+?)"/);
+    const filename = match?.[1] ?? "approved_images.zip";
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "approved-images.zip";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  }, []);
+    // หลัง download: approved → downloaded, rejected ที่มี storagePath ถูกลบ → refresh ทุก tab
+    await Promise.all([
+      fetchPending(),
+      fetchApproved(),
+      fetchRejected(),
+      fetchStatus(),
+    ]);
+  }, [fetchPending, fetchApproved, fetchRejected, fetchStatus]);
 
   const triggerSync = useCallback(async () => {
     const res = await fetch(`${BACKEND_URL}/api/sync/trigger`, {
       method: "POST",
     });
     if (!res.ok) throw new Error("Sync ไม่สำเร็จ");
-    await Promise.all([fetchPending(), fetchApproved(), fetchRejected(), fetchStatus()]);
+    await Promise.all([
+      fetchPending(),
+      fetchApproved(),
+      fetchRejected(),
+      fetchStatus(),
+    ]);
   }, [fetchPending, fetchApproved, fetchRejected, fetchStatus]);
 
   return {
