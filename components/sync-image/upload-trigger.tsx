@@ -2,36 +2,32 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { UploadResult } from "@/lib/types";
-import { Upload, RefreshCw, Loader2 } from "lucide-react";
+import { Download, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface UploadTriggerProps {
-  onUpload: () => Promise<UploadResult>;
+  onDownload: () => Promise<void>;
   onSync: () => Promise<void>;
+  approvedCount?: number;
 }
 
-export function UploadTrigger({ onUpload, onSync }: UploadTriggerProps) {
-  const [uploading, setUploading] = useState(false);
+export function UploadTrigger({
+  onDownload,
+  onSync,
+  approvedCount = 0,
+}: UploadTriggerProps) {
+  const [downloading, setDownloading] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  const handleUpload = async () => {
-    setUploading(true);
+  const handleDownload = async () => {
+    setDownloading(true);
     try {
-      const result = await onUpload();
-      if (result.failed === 0) {
-        toast.success(
-          `Upload สำเร็จ ${result.success}/${result.attempted} รูป`,
-        );
-      } else {
-        toast.warning(
-          `Upload เสร็จสิ้น: สำเร็จ ${result.success}, ล้มเหลว ${result.failed} รูป`,
-        );
-      }
+      await onDownload();
+      toast.success("ดาวน์โหลดรูปภาพสำเร็จ");
     } catch {
-      toast.error("Upload ไม่สำเร็จ กรุณาลองใหม่");
+      toast.error("ดาวน์โหลดไม่สำเร็จ กรุณาลองใหม่");
     } finally {
-      setUploading(false);
+      setDownloading(false);
     }
   };
 
@@ -52,7 +48,7 @@ export function UploadTrigger({ onUpload, onSync }: UploadTriggerProps) {
       <Button
         variant="outline"
         onClick={handleSync}
-        disabled={syncing || uploading}
+        disabled={syncing || downloading}
       >
         {syncing ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -62,15 +58,21 @@ export function UploadTrigger({ onUpload, onSync }: UploadTriggerProps) {
         ดึงรูปใหม่
       </Button>
 
-      {/* <Button onClick={handleUpload} disabled={uploading || syncing}>
-       */}
-      <Button onClick={handleUpload} disabled={true} title="ฟีเจอร์นี้ยังไม่พร้อมใช้งาน">
-        {uploading ? (
+      <Button
+        onClick={handleDownload}
+        disabled={downloading || syncing || approvedCount === 0}
+      >
+        {downloading ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : (
-          <Upload className="mr-2 h-4 w-4" />
+          <Download className="mr-2 h-4 w-4" />
         )}
-        Upload ไป Google Maps ฟีเจอร์นี้ยังไม่พร้อมใช้งาน
+        ดาวน์โหลดรูปอนุมัติ
+        {approvedCount > 0 && (
+          <span className="ml-2 rounded-full bg-white/20 px-1.5 py-0.5 text-xs font-medium">
+            {approvedCount}
+          </span>
+        )}
       </Button>
     </div>
   );
