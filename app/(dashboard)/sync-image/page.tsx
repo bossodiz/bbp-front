@@ -24,7 +24,7 @@ export default function SyncImagePage() {
     fetchStatus,
     approveImage,
     rejectImage,
-    startUpload,
+    downloadApproved,
     triggerSync,
   } = useSyncImages();
 
@@ -40,11 +40,13 @@ export default function SyncImagePage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">ซิงค์รูปภาพ</h1>
-          <p className="text-muted-foreground">
-            จัดการรูปภาพจาก Facebook และ upload ไป Google Maps
-          </p>
+          <p className="text-muted-foreground">จัดการรูปภาพจาก Facebook</p>
         </div>
-        <UploadTrigger onUpload={startUpload} onSync={triggerSync} />
+        <UploadTrigger
+          onDownload={downloadApproved}
+          onSync={triggerSync}
+          approvedCount={approvedImages.length}
+        />
       </div>
 
       <SyncStatusBar status={status} />

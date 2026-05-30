@@ -329,7 +329,11 @@ export const applicableToLabels: Record<ApplicableTo, string> = {
 
 // ===== BBP Sync Types =====
 
-export type SyncImageStatus = "pending" | "approved" | "rejected" | "uploaded";
+export type SyncImageStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "downloaded";
 
 export interface FbImage {
   id: number;

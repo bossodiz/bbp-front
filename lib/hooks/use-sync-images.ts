@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import type { FbImage, SyncStatus, UploadResult } from "@/lib/types";
+import type { FbImage, SyncStatus } from "@/lib/types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -101,15 +101,18 @@ export function useSyncImages() {
     [fetchPending, fetchApproved, fetchRejected, fetchStatus],
   );
 
-  const startUpload = useCallback(async (): Promise<UploadResult> => {
-    const res = await fetch(`${BACKEND_URL}/api/upload/start`, {
-      method: "POST",
-    });
-    if (!res.ok) throw new Error("Upload ไม่สำเร็จ");
-    const result: UploadResult = await res.json();
-    await Promise.all([fetchApproved(), fetchStatus()]);
-    return result;
-  }, [fetchApproved, fetchStatus]);
+  // TODO: เปลี่ยน endpoint เป็น path จริงเมื่อได้รับการยืนยันจาก backend
+  const downloadApproved = useCallback(async (): Promise<void> => {
+    const res = await fetch(`${BACKEND_URL}/api/posts/approved/download`);
+    if (!res.ok) throw new Error("ดาวน์โหลดไม่สำเร็จ");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "approved-images.zip";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
 
   const triggerSync = useCallback(async () => {
     const res = await fetch(`${BACKEND_URL}/api/sync/trigger`, {
@@ -134,7 +137,7 @@ export function useSyncImages() {
     fetchStatus,
     approveImage,
     rejectImage,
-    startUpload,
+    downloadApproved,
     triggerSync,
   };
 }

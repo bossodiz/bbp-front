@@ -18,12 +18,17 @@ const statusConfig = {
   pending: { label: "รอการอนุมัติ", variant: "secondary" as const },
   approved: { label: "อนุมัติแล้ว", variant: "outline" as const },
   rejected: { label: "ปฏิเสธแล้ว", variant: "destructive" as const },
-  uploaded: { label: "Upload แล้ว", variant: "outline" as const },
+  downloaded: { label: "ดาวน์โหลดแล้ว", variant: "outline" as const },
 };
 
 // Animation phases:
 // idle → approve/reject (ring appears, 80ms) → fading-approve/fading-reject (icon + fade out, 500ms) → [removed]
-type AnimPhase = "idle" | "approve" | "reject" | "fading-approve" | "fading-reject";
+type AnimPhase =
+  | "idle"
+  | "approve"
+  | "reject"
+  | "fading-approve"
+  | "fading-reject";
 
 export function ImageCard({ image, onApprove, onReject }: ImageCardProps) {
   const [phase, setPhase] = useState<AnimPhase>("idle");
@@ -36,7 +41,10 @@ export function ImageCard({ image, onApprove, onReject }: ImageCardProps) {
   ) => {
     if (phase !== "idle") return;
     setPhase(type);
-    setTimeout(() => setPhase(type === "approve" ? "fading-approve" : "fading-reject"), 80);
+    setTimeout(
+      () => setPhase(type === "approve" ? "fading-approve" : "fading-reject"),
+      80,
+    );
     setTimeout(async () => {
       try {
         await action();
