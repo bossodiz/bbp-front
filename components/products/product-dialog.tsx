@@ -37,15 +37,44 @@ import { productCategoryOptions } from "@/lib/types";
 import { toast } from "sonner";
 
 const productSchema = z.object({
-  name: z.string().min(1, "กรุณากรอกชื่อสินค้า"),
-  sku: z.string().optional(),
-  description: z.string().optional(),
-  category: z.string().optional(),
-  price: z.coerce.number().min(0, "ราคาต้องมากกว่าหรือเท่ากับ 0"),
-  cost: z.coerce.number().min(0, "ราคาทุนต้องมากกว่าหรือเท่ากับ 0"),
-  stockQuantity: z.coerce.number().int().min(0, "จำนวนต้องมากกว่าหรือเท่ากับ 0"),
-  minStock: z.coerce.number().int().min(0, "จำนวนขั้นต่ำต้องมากกว่าหรือเท่ากับ 0"),
-  unit: z.string().min(1, "กรุณาระบุหน่วยนับ"),
+  name: z
+    .string()
+    .min(1, "กรุณากรอกชื่อสินค้า")
+    .max(255, "ชื่อสินค้าต้องไม่เกิน 255 ตัวอักษร"),
+  sku: z
+    .string()
+    .max(100, "SKU ต้องไม่เกิน 100 ตัวอักษร")
+    .optional(),
+  description: z
+    .string()
+    .max(1000, "รายละเอียดต้องไม่เกิน 1000 ตัวอักษร")
+    .optional(),
+  category: z
+    .string()
+    .max(100, "หมวดหมู่ต้องไม่เกิน 100 ตัวอักษร")
+    .optional(),
+  price: z.coerce
+    .number({ invalid_type_error: "ราคาต้องเป็นตัวเลข" })
+    .min(0, "ราคาต้องมากกว่าหรือเท่ากับ 0")
+    .max(999999, "ราคาต้องไม่เกิน 999,999 บาท"),
+  cost: z.coerce
+    .number({ invalid_type_error: "ราคาทุนต้องเป็นตัวเลข" })
+    .min(0, "ราคาทุนต้องมากกว่าหรือเท่ากับ 0")
+    .max(999999, "ราคาทุนต้องไม่เกิน 999,999 บาท"),
+  stockQuantity: z.coerce
+    .number({ invalid_type_error: "จำนวนต้องเป็นตัวเลข" })
+    .int("จำนวนต้องเป็นจำนวนเต็ม")
+    .min(0, "จำนวนต้องมากกว่าหรือเท่ากับ 0")
+    .max(999999, "จำนวนต้องไม่เกิน 999,999"),
+  minStock: z.coerce
+    .number({ invalid_type_error: "จำนวนขั้นต่ำต้องเป็นตัวเลข" })
+    .int("จำนวนขั้นต่ำต้องเป็นจำนวนเต็ม")
+    .min(0, "จำนวนขั้นต่ำต้องมากกว่าหรือเท่ากับ 0")
+    .max(999999, "จำนวนขั้นต่ำต้องไม่เกิน 999,999"),
+  unit: z
+    .string()
+    .min(1, "กรุณาระบุหน่วยนับ")
+    .max(50, "หน่วยนับต้องไม่เกิน 50 ตัวอักษร"),
   active: z.boolean(),
 });
 

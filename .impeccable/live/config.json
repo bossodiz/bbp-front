@@ -1,0 +1,12 @@
+{
+  "framework": "nextjs",
+  "files": [
+    "app/**/*.tsx",
+    "components/**/*.tsx"
+  ],
+  "insertBefore": "export",
+  "commentSyntax": "//",
+  "cspChecked": true,
+  "devServerUrl": "http://localhost:3000",
+  "injectUrl": "http://localhost:8400"
+}

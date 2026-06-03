@@ -30,11 +30,16 @@ import { formatPhoneInput, getPhoneDigits } from "@/lib/utils";
 import { toast } from "sonner";
 
 const customerSchema = z.object({
-  name: z.string().min(1, "กรุณากรอกชื่อลูกค้า"),
+  name: z
+    .string()
+    .min(1, "กรุณากรอกชื่อลูกค้า")
+    .max(100, "ชื่อลูกค้าต้องไม่เกิน 100 ตัวอักษร")
+    .refine(
+      (val) => val.trim().length > 0,
+      "กรุณากรอกชื่อลูกค้า (ไม่นับช่องว่าง)"
+    ),
   phone: z.string().refine((val) => {
-    // ถ้าไม่ใส่ค่า (empty string) ให้ pass
     if (val === "") return true;
-    // ถ้าใส่ค่ามา ต้อง === 10 หลัก
     return getPhoneDigits(val).length === 10;
   }, "เบอร์โทรศัพท์ต้องมี 10 หลัก"),
 });
@@ -146,6 +151,7 @@ export function CustomerDialog({
                       </span>
                       <Input
                         placeholder="ชื่อ นามสกุล"
+                        maxLength={100}
                         className="border-0 rounded-l-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                         {...field}
                       />

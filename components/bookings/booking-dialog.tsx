@@ -77,9 +77,16 @@ const bookingSchema = z.object({
     required_error: "กรุณาเลือกวันที่",
   }),
   bookingTime: z.string().min(1, "กรุณาเลือกเวลา"),
-  note: z.string().optional(),
+  note: z
+    .string()
+    .max(500, "หมายเหตุต้องไม่เกิน 500 ตัวอักษร")
+    .optional(),
   hasDeposit: z.boolean(),
-  depositAmount: z.coerce.number().min(0).optional(),
+  depositAmount: z.coerce
+    .number({ invalid_type_error: "มัดจำต้องเป็นตัวเลข" })
+    .min(0, "มัดจำต้องมากกว่าหรือเท่ากับ 0")
+    .max(999999, "มัดจำต้องไม่เกิน 999,999 บาท")
+    .optional(),
 });
 
 interface PetServicePair {

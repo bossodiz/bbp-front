@@ -606,9 +606,12 @@ export function POSCart() {
         </CardHeader>
         <CardContent className="space-y-4">
           {cart.length === 0 && !hotelBooking ? (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <ShoppingCart className="h-10 w-10 mb-2 opacity-50" />
-              <p className="text-sm">ยังไม่มีรายการในตะกร้า</p>
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <ShoppingCart className="h-12 w-12 mb-3 opacity-40" />
+              <p className="text-sm font-medium mb-1">ตะกร้าว่าง</p>
+              <p className="text-xs text-center max-w-xs">
+                เลือกลูกค้า แล้วเพิ่มบริการหรือสินค้าจากด้านซ้ายมือ
+              </p>
             </div>
           ) : (
             <>
@@ -661,7 +664,10 @@ export function POSCart() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="text-sm font-medium truncate">
+                            <p
+                              className="text-sm font-medium truncate"
+                              title={item.serviceName}
+                            >
                               {item.serviceName}
                             </p>
                             {isProduct && (
@@ -680,7 +686,10 @@ export function POSCart() {
                                   <Cat className="h-3 w-3 text-cat shrink-0" />
                                 )}
                                 {item.petName && (
-                                  <span className="text-xs text-muted-foreground truncate">
+                                  <span
+                                    className="text-xs text-muted-foreground truncate"
+                                    title={item.petName}
+                                  >
                                     ({item.petName})
                                   </span>
                                 )}
@@ -805,11 +814,23 @@ export function POSCart() {
                 <div className="space-y-1.5">
                   <Select
                     value={appliedPromotionId?.toString() || "none"}
-                    onValueChange={(value) =>
-                      setAppliedPromotion(
-                        value === "none" ? null : Number(value),
-                      )
-                    }
+                    onValueChange={(value) => {
+                      const promotionId = value === "none" ? null : Number(value);
+                      setAppliedPromotion(promotionId);
+
+                      if (promotionId) {
+                        const selectedPromo = promotions.find((p) => p.id === promotionId);
+                        if (selectedPromo) {
+                          const discountText =
+                            selectedPromo.type === "PERCENT"
+                              ? `ลด ${selectedPromo.value}%`
+                              : `ลด ${formatCurrency(selectedPromo.value)}`;
+                          toast.success(`ใช้โปรโมชั่น: ${selectedPromo.name} (${discountText})`);
+                        }
+                      } else {
+                        toast.info("ยกเลิกการใช้โปรโมชั่น");
+                      }
+                    }}
                   >
                     <SelectTrigger className="h-9">
                       <SelectValue placeholder="เลือกโปรโมชั่น" />

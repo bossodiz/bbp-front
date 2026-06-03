@@ -37,11 +37,18 @@ import { toast } from "sonner";
 
 const promotionSchema = z
   .object({
-    name: z.string().min(1, "กรุณากรอกชื่อโปรโมชั่น"),
+    name: z
+      .string()
+      .min(1, "กรุณากรอกชื่อโปรโมชั่น")
+      .max(255, "ชื่อโปรโมชั่นต้องไม่เกิน 255 ตัวอักษร"),
     type: z.enum(["PERCENT", "AMOUNT"], {
       required_error: "กรุณาเลือกประเภทโปรโมชั่น",
     }),
-    value: z.coerce.number().min(0, "ค่าต้องมากกว่าหรือเท่ากับ 0").optional(),
+    value: z.coerce
+      .number({ invalid_type_error: "ค่าต้องเป็นตัวเลข" })
+      .min(0, "ค่าต้องมากกว่าหรือเท่ากับ 0")
+      .max(999999, "ค่าต้องไม่เกิน 999,999")
+      .optional(),
     applicableTo: z.enum(["ALL", "SERVICE", "HOTEL", "PRODUCT"]),
     active: z.boolean(),
   })

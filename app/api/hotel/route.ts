@@ -182,10 +182,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error("hotel_fetch", { message });
-    return NextResponse.json(
-      { data: null, error: message },
-      { status: 500 },
-    );
+    return NextResponse.json({ data: null, error: message }, { status: 500 });
   }
 }
 
@@ -261,9 +258,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error("hotel_create", { message });
-    return NextResponse.json(
-      { data: null, error: message },
-      { status: 500 },
-    );
+    return NextResponse.json({ data: null, error: message }, { status: 500 });
   }
 }

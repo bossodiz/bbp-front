@@ -53,20 +53,29 @@ import { toast } from "sonner";
 
 const petSchema = z
   .object({
-    name: z.string().min(1, "กรุณากรอกชื่อสัตว์เลี้ยง"),
+    name: z
+      .string()
+      .min(1, "กรุณากรอกชื่อสัตว์เลี้ยง")
+      .max(100, "ชื่อสัตว์เลี้ยงต้องไม่เกิน 100 ตัวอักษร"),
     type: z.enum(["DOG", "CAT"], {
       required_error: "กรุณาเลือกประเภทสัตว์",
     }),
     isMixedBreed: z.boolean().default(false),
-    breed: z.string().min(1, "กรุณากรอกสายพันธุ์"),
-    breed2: z.string().optional(),
+    breed: z
+      .string()
+      .min(1, "กรุณากรอกสายพันธุ์")
+      .max(100, "สายพันธุ์ต้องไม่เกิน 100 ตัวอักษร"),
+    breed2: z.string().max(100, "สายพันธุ์ต้องไม่เกิน 100 ตัวอักษร").optional(),
     weight: z.coerce
       .number({ invalid_type_error: "น้ำหนักต้องเป็นตัวเลข" })
       .min(0, "น้ำหนักต้องมากกว่าหรือเท่ากับ 0")
       .max(50, "น้ำหนักต้องไม่เกิน 50 กิโลกรัม")
       .nullable()
       .optional(),
-    note: z.string().optional(),
+    note: z
+      .string()
+      .max(500, "หมายเหตุต้องไม่เกิน 500 ตัวอักษร")
+      .optional(),
   })
   .refine(
     (data) => {
