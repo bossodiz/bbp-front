@@ -9,9 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function DashboardPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">ภาพรวมการดำเนินงานของร้าน</p>
+      <div className="space-y-1.5">
+        <h1 className="text-3xl font-bold text-foreground">แดชบอร์ด</h1>
+        <p className="text-base text-muted-foreground">ภาพรวมการดำเนินงานของร้านในวันนี้</p>
       </div>
 
       <Suspense fallback={<StatsSkeleton />}>

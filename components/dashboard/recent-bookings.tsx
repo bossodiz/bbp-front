@@ -120,6 +120,7 @@ export function RecentBookings() {
                             "text-sm font-medium truncate",
                             overdue && "text-muted-foreground",
                           )}
+                          title={customerName}
                         >
                           {customerName}
                         </p>
@@ -171,7 +172,9 @@ export function RecentBookings() {
                             ) : (
                               <Cat className="h-3 w-3 shrink-0" />
                             )}
-                            <span className="font-medium">{pet.name}</span>
+                            <span className="font-medium truncate" title={pet.name}>
+                              {pet.name}
+                            </span>
                             {pet.service && (
                               <>
                                 <span className="text-muted-foreground/60">

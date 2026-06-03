@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import type { HotelBooking, HotelBookingStatus, HotelAdditionalService } from "@/lib/types";
+import type {
+  HotelBooking,
+  HotelBookingStatus,
+  HotelAdditionalService,
+} from "@/lib/types";
 
 interface UseHotelOptions {
   status?: string;
@@ -55,7 +59,7 @@ export function useHotel(options: UseHotelOptions = {}) {
   const createBooking = useCallback(
     async (data: {
       customerId: number;
-      petId: number;
+      petIds: number[];
       checkInDate: string;
       ratePerNight: number;
       depositAmount?: number;
@@ -116,7 +120,14 @@ export function useHotel(options: UseHotelOptions = {}) {
       id: number,
       data: {
         checkOutDate: string;
-        additionalServices?: Pick<HotelAdditionalService, "serviceId" | "serviceName" | "originalPrice" | "finalPrice" | "isPriceModified">[];
+        additionalServices?: Pick<
+          HotelAdditionalService,
+          | "serviceId"
+          | "serviceName"
+          | "originalPrice"
+          | "finalPrice"
+          | "isPriceModified"
+        >[];
         discountAmount?: number;
         paymentMethod?: string;
         cashReceived?: number;

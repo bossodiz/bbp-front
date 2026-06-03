@@ -41,9 +41,9 @@ export function TopCustomers() {
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="space-y-1.5">
-            <CardTitle>ลูกค้าที่มาใช้บริการบ่อยและสร้างรายได้สูง</CardTitle>
+            <CardTitle>ลูกค้าสำคัญ</CardTitle>
             <CardDescription>
-              {loading ? "..." : `รายการ 5 อันดับแรก`}
+              {loading ? "กำลังโหลด..." : `ทั้งหมด ${topCustomers.length} รายการ`}
             </CardDescription>
           </div>
           <Select
@@ -66,36 +66,40 @@ export function TopCustomers() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : topCustomers.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            ยังไม่มีข้อมูลลูกค้า
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <p className="text-sm">ยังไม่มีข้อมูลลูกค้า</p>
+            <p className="text-xs mt-1">เริ่มต้นโดยการสร้างการจองหรือขายสินค้า</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {topCustomers.map((customer, index) => (
               <div
                 key={customer.customerId}
-                className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
               >
-                <div className="flex items-center justify-center w-6 text-sm font-medium text-muted-foreground">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                   {index + 1}
                 </div>
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                    {customer.customerName.slice(0, 2)}
+                <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                    {customer.customerName.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
+                  <p
+                    className="text-sm font-medium truncate"
+                    title={customer.customerName}
+                  >
                     {customer.customerName}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground truncate">
                     {customer.customerPhone
                       ? formatPhoneDisplay(customer.customerPhone)
-                      : "-"}
+                      : "ไม่มีข้อมูล"}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-semibold">
                     {formatCurrency(customer.totalSpent)}
                   </p>
                   <p className="text-xs text-muted-foreground">

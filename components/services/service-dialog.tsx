@@ -32,8 +32,14 @@ import type { Service, ServicePrice } from "@/lib/types";
 import { toast } from "sonner";
 
 const serviceSchema = z.object({
-  name: z.string().min(1, "กรุณากรอกชื่อบริการ"),
-  description: z.string().optional(),
+  name: z
+    .string()
+    .min(1, "กรุณากรอกชื่อบริการ")
+    .max(255, "ชื่อบริการต้องไม่เกิน 255 ตัวอักษร"),
+  description: z
+    .string()
+    .max(1000, "รายละเอียดต้องไม่เกิน 1000 ตัวอักษร")
+    .optional(),
 });
 
 type ServiceFormData = z.infer<typeof serviceSchema>;
