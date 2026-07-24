@@ -592,9 +592,20 @@ export function ServiceHistoryList() {
       // Text search filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
+        // Pet names come from the customer record (when the customer is in the
+        // store) and from the sale items themselves (always present in history).
+        const petNames = [
+          ...(stat.customer.pets || []).map(
+            (pet: { name?: string }) => pet.name,
+          ),
+          ...stat.sales.flatMap((sale) =>
+            (sale.items || []).map((item) => item.petName),
+          ),
+        ];
         const matchesSearch =
           stat.customer.name.toLowerCase().includes(query) ||
-          stat.customer.phone.includes(searchQuery);
+          stat.customer.phone.includes(searchQuery) ||
+          petNames.some((name) => name?.toLowerCase().includes(query));
         if (!matchesSearch) return false;
       }
 
@@ -639,7 +650,7 @@ export function ServiceHistoryList() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="ค้นหาชื่อลูกค้าหรือเบอร์โทร..."
+                  placeholder="ค้นหาชื่อลูกค้า เบอร์โทร หรือชื่อสัตว์เลี้ยง..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
