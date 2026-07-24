@@ -102,7 +102,8 @@ export function POSCart() {
         const response = await fetch("/api/csrf-token");
         if (response.ok) {
           const data = await response.json();
-          setCsrfToken(data.csrfToken);
+          // envelope: { data: { csrfToken, timestamp }, error }
+          setCsrfToken(data.data?.csrfToken);
         }
       } catch (error) {
         console.error("Failed to fetch CSRF token:", error);
@@ -132,7 +133,7 @@ export function POSCart() {
         if (!bookingData) {
           const response = await fetch(`/api/bookings/${selectedBookingId}`);
           if (response.ok) {
-            bookingData = await response.json();
+            bookingData = (await response.json()).data;
           }
         }
         if (!stale) setBooking(bookingData || null);

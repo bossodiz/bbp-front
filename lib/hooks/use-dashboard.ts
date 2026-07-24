@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { apiFetch } from "@/lib/api";
 
 export interface DashboardData {
   sales: Array<{
@@ -87,9 +88,7 @@ export function useDashboard(options: UseDashboardOptions = {}) {
       const params = new URLSearchParams();
       if (options.period) params.append("period", options.period);
 
-      const response = await fetch(`/api/dashboard?${params.toString()}`);
-      if (!response.ok) throw new Error("ไม่สามารถดึงข้อมูล dashboard ได้");
-      const dashboardData = await response.json();
+      const dashboardData = await apiFetch<DashboardData>(`/api/dashboard?${params.toString()}`);
       setData(dashboardData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");

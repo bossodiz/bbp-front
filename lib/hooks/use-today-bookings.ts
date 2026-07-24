@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/api";
 
 interface Pet {
   petId: number;
@@ -34,12 +35,7 @@ export function useTodayBookings() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("/api/dashboard/today-bookings");
-        if (!response.ok) {
-          throw new Error("Failed to fetch today bookings");
-        }
-
-        const bookings = await response.json();
+        const bookings = await apiFetch<TodayBooking[]>("/api/dashboard/today-bookings");
         setData(bookings);
       } catch (err) {
         setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล");

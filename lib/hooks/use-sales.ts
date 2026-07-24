@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Sale } from "@/lib/types";
+import { apiFetch } from "@/lib/api";
 
 interface UseSalesOptions {
   startDate?: string;
@@ -36,21 +37,9 @@ export function useSales(options: UseSalesOptions = {}) {
         params.append("customerId", options.customerId.toString());
 
       const url = `/api/sales${params.toString() ? `?${params.toString()}` : ""}`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error("ไม่สามารถดึงข้อมูลการขายได้");
-      }
-
-      const result = await response.json();
-      // API ส่งคืน { success, data: { data: [...], pagination }, timestamp }
-      // ดึง sales array ออกมา รองรับทั้งแบบ paginated และ flat array
-      const salesList = Array.isArray(result?.data?.data)
-        ? result.data.data
-        : Array.isArray(result?.data)
-          ? result.data
-          : [];
-      setSales(salesList);
+      // API ส่งคืน { data: [...], error, pagination } — apiFetch คืน data (แถวการขาย)
+      const salesList = await apiFetch<Sale[]>(url);
+      setSales(salesList ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล");
       setSales([]);

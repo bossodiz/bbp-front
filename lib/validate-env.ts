@@ -5,12 +5,11 @@
 
 import { logger } from "@/lib/logger";
 
+// AUTH_SECRET is still used by lib/auth.ts to validate the bbp_auth cookie for
+// dashboard/login page-gating. All data + password auth now lives in the Java backend
+// (proxied via /api/*), so Supabase and the shared password are no longer needed here.
 const REQUIRED_ENV_VARS = [
-  "AUTH_PASSWORD",
   "AUTH_SECRET",
-  "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
 ] as const;
 
 export function validateEnv(): void {

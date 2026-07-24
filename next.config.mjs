@@ -9,6 +9,18 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
+  // Cutover: proxy all /api/* to the Java (Spring Boot) backend. Same-origin from the
+  // browser's view, so the bbp_auth cookie + CSRF work with no per-fetch changes.
+  // beforeFiles runs before app/api route handlers, so those legacy handlers are bypassed
+  // (kept for now; can be deleted once the Java backend is fully validated).
+  async rewrites() {
+    const backend = process.env.BACKEND_URL || "http://localhost:8080";
+    return {
+      beforeFiles: [
+        { source: "/api/:path*", destination: `${backend}/api/:path*` },
+      ],
+    };
+  },
   async headers() {
     return [
       {

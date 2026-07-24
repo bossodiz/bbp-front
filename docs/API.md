@@ -6,12 +6,33 @@
 
 ## 📋 สารบัญ
 
-1. [Authentication](#authentication)
-2. [Products API](#products-api)
-3. [Sales API](#sales-api)
-4. [Customers API](#customers-api)
-5. [Error Handling](#error-handling)
-6. [Rate Limiting](#rate-limiting)
+1. [Response Envelope](#response-envelope)
+2. [Authentication](#authentication)
+3. [Products API](#products-api)
+4. [Sales API](#sales-api)
+5. [Customers API](#customers-api)
+6. [Error Handling](#error-handling)
+7. [Rate Limiting](#rate-limiting)
+
+---
+
+## Response Envelope
+
+**ทุก endpoint ของ shop API คืน envelope แบบเดียวกัน:** `{ data, error }`
+
+| กรณี | HTTP status | รูปแบบ |
+| --- | --- | --- |
+| สำเร็จ | 2xx | `{ "data": <payload>, "error": null }` |
+| สำเร็จ + list ที่มี pagination | 2xx | `{ "data": [...], "error": null, "pagination": {...} }` |
+| ล้มเหลว | 4xx/5xx | `{ "data": null, "error": "ข้อความ", "code": "CODE" }` |
+
+กติกา:
+- **ตรวจว่าสำเร็จหรือไม่จาก HTTP status เท่านั้น** (ไม่มี field `success`) — 2xx = สำเร็จ
+- อ่านข้อมูลจาก `data` เสมอ · ตอนสำเร็จ `error` เป็น `null`
+- ตอนล้มเหลว อ่านข้อความจาก `error` (string) · `code` เป็นรหัสเครื่อง (machine code) ไว้แยกประเภท
+- `code` และ `pagination` จะโผล่ใน JSON เฉพาะเมื่อมีค่า (ไม่มีใน success response ปกติ)
+
+> ฝั่ง frontend ใช้ helper กลางที่ [`lib/api.ts`](../lib/api.ts) (`apiFetch` / `apiSend`) unwrap `data` และ throw `ApiError` ตอน status ไม่ 2xx — ไม่ต้อง parse envelope เองในแต่ละ hook
 
 ---
 
@@ -19,15 +40,25 @@
 
 ### CSRF Token
 
-ทุก POST/PUT/DELETE request ต้องมี CSRF token:
+ขอ CSRF token:
 
 ```bash
-# Get CSRF token
 GET /api/csrf-token
-# Response: { csrfToken: "..." }
+# Response: { "data": { "csrfToken": "...", "timestamp": "..." }, "error": null }
 
-# ใช้ใน header
+# ใช้ใน header ของ mutation
 x-csrf-token: <token>
+```
+
+### Login / Logout
+
+```bash
+POST /api/auth/login    { "password": "..." }
+# สำเร็จ → set-cookie bbp_auth (httpOnly) + { "data": { "success": true }, "error": null }
+# ล้มเหลว → 401 { "data": null, "error": "รหัสผ่านไม่ถูกต้อง", "code": "AUTH_ERROR" }
+
+POST /api/auth/logout
+# → clear cookie + { "data": { "success": true }, "error": null }
 ```
 
 ---
@@ -49,7 +80,6 @@ GET /api/products?page=1&limit=20&active=true&category=SERVICE
 **Response (200):**
 ```json
 {
-  "success": true,
   "data": [
     {
       "id": 1,
@@ -59,6 +89,7 @@ GET /api/products?page=1&limit=20&active=true&category=SERVICE
       "createdAt": "2026-05-14T10:00:00Z"
     }
   ],
+  "error": null,
   "pagination": {
     "page": 1,
     "limit": 20,
@@ -66,8 +97,7 @@ GET /api/products?page=1&limit=20&active=true&category=SERVICE
     "totalPages": 3,
     "hasNext": true,
     "hasPrev": false
-  },
-  "timestamp": "2026-05-14T10:30:45.123Z"
+  }
 }
 ```
 
@@ -98,9 +128,8 @@ Content-Type: application/json
 **Response (201):**
 ```json
 {
-  "success": true,
-  "data": { "id": 1, "name": "อาบน้ำ", ... },
-  "timestamp": "2026-05-14T10:30:45.123Z"
+  "data": { "id": 1, "name": "อาบน้ำ" },
+  "error": null
 }
 ```
 
@@ -143,7 +172,6 @@ GET /api/sales?page=1&limit=20&startDate=2026-05-01&endDate=2026-05-31&customerI
 **Response (200):**
 ```json
 {
-  "success": true,
   "data": [
     {
       "id": 1,
@@ -162,8 +190,8 @@ GET /api/sales?page=1&limit=20&startDate=2026-05-01&endDate=2026-05-31&customerI
       "createdAt": "2026-05-14T10:00:00Z"
     }
   ],
-  "pagination": { ... },
-  "timestamp": "2026-05-14T10:30:45.123Z"
+  "error": null,
+  "pagination": { "page": 1, "limit": 20, "total": 50, "totalPages": 3, "hasNext": true, "hasPrev": false }
 }
 ```
 
@@ -191,15 +219,21 @@ x-csrf-token: <token>
 }
 ```
 
+**Response (201):**
+```json
+{ "data": { "saleId": 42 }, "error": null }
+```
+
 ---
 
 ## Customers API
 
-*Implementation similar to Products API*
+*Implementation similar to Products API — คืน `{ data, error }` เหมือนกัน (rows เป็น snake_case + nested `pets`)*
 
 ### Get All Customers
 ```
-GET /api/customers?page=1&limit=20
+GET /api/customers?search=สมชาย
+# Response: { "data": [ { "id": 1, "name": "...", "pets": [...] } ], "error": null }
 ```
 
 ### Create Customer
@@ -214,16 +248,17 @@ x-csrf-token: <token>
 
 ### Standard Error Response
 
+ทุก error คืน envelope เดียวกัน — status บอกประเภท, `error` เป็นข้อความ, `code` เป็นรหัสเครื่อง:
+
 ```json
 {
+  "data": null,
   "error": "ข้อมูลไม่ถูกต้อง",
-  "code": "VALIDATION_ERROR",
-  "details": {
-    "name": ["ชื่อห้ามว่าง"]
-  },
-  "timestamp": "2026-05-14T10:30:45.123Z"
+  "code": "VALIDATION_ERROR"
 }
 ```
+
+> Validation error จะใส่ข้อความของ field แรกที่ผิดไว้ใน `error` (เช่น `"ชื่อห้ามว่าง"`)
 
 ### Error Codes
 
@@ -234,8 +269,8 @@ x-csrf-token: <token>
 | `CSRF_TOKEN_INVALID` | 403 | CSRF token ไม่ถูกต้อง |
 | `FORBIDDEN` | 403 | ไม่มีสิทธิ์ |
 | `NOT_FOUND` | 404 | ไม่พบข้อมูล |
+| `CONFLICT` | 409 | ข้อมูลซ้ำ/ขัดแย้ง (เช่น ชื่อสัตว์เลี้ยงซ้ำ) |
 | `RATE_LIMIT_EXCEEDED` | 429 | ร้องขอมากเกินไป |
-| `DATABASE_ERROR` | 500 | Database error |
 | `SERVER_ERROR` | 500 | Server error |
 
 ---
@@ -254,12 +289,9 @@ Strict Endpoints:   10 requests/minute per IP
 
 ```json
 {
+  "data": null,
   "error": "Rate limit exceeded",
-  "code": "RATE_LIMIT_EXCEEDED",
-  "details": {
-    "retryAfter": 30
-  },
-  "timestamp": "2026-05-14T10:30:45.123Z"
+  "code": "RATE_LIMIT_EXCEEDED"
 }
 ```
 
@@ -268,6 +300,8 @@ Strict Endpoints:   10 requests/minute per IP
 ```
 Retry-After: 30 (seconds)
 ```
+
+จำนวนวินาทีที่ต้องรอส่งกลับผ่าน header `Retry-After` (ไม่ได้อยู่ใน body แล้ว)
 
 ---
 
@@ -280,8 +314,12 @@ Retry-After: 30 (seconds)
 
 ### Response
 
+`pagination` เป็น sibling field ข้าง `data` (ไม่ซ้อนใน data):
+
 ```json
 {
+  "data": [ ],
+  "error": null,
   "pagination": {
     "page": 1,
     "limit": 20,
@@ -305,10 +343,11 @@ Retry-After: 30 (seconds)
 | 401 | Unauthorized |
 | 403 | Forbidden (CSRF/auth issues) |
 | 404 | Not Found |
+| 409 | Conflict |
 | 429 | Too Many Requests |
 | 500 | Server Error |
 
 ---
 
-**Last Updated**: 2026-05-14  
-**Version**: 1.0.0
+**Last Updated**: 2026-07-24
+**Version**: 2.0.0 — unified `{ data, error }` envelope across all shop endpoints

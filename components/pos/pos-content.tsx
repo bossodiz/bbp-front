@@ -80,7 +80,7 @@ export function POSContent() {
           if (!booking) {
             const response = await fetch(`/api/bookings/${bookingId}`);
             if (!response.ok || cancelled) return;
-            booking = await response.json();
+            booking = (await response.json()).data;
           }
 
           if (!booking || cancelled) return;

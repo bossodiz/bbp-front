@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/api";
 
 interface DashboardStats {
   revenueToday: number;
@@ -28,12 +29,7 @@ export function useDashboardStats() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("/api/dashboard/stats");
-        if (!response.ok) {
-          throw new Error("Failed to fetch dashboard stats");
-        }
-
-        const stats = await response.json();
+        const stats = await apiFetch<DashboardStats>("/api/dashboard/stats");
         setData(stats);
       } catch (err) {
         setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล");

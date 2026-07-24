@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { apiFetch, apiSend, ApiError } from "@/lib/api";
 
 export interface Breed {
   id: number;
@@ -37,13 +38,7 @@ export function useBreeds(options: UseBreedsOptions = {}) {
       if (petTypeId) params.append("petTypeId", petTypeId);
       if (active !== undefined) params.append("active", String(active));
 
-      const response = await fetch(`/api/breeds?${params.toString()}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch breeds");
-      }
-
-      const data = await response.json();
+      const data = await apiFetch<Breed[]>(`/api/breeds?${params.toString()}`);
       setBreeds(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch breeds");
@@ -54,17 +49,11 @@ export function useBreeds(options: UseBreedsOptions = {}) {
 
   const getBreed = async (id: number): Promise<BreedWithParents | null> => {
     try {
-      const response = await fetch(`/api/breeds/${id}`);
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null;
-        }
-        throw new Error("Failed to fetch breed");
-      }
-
-      return await response.json();
+      return await apiFetch<BreedWithParents>(`/api/breeds/${id}`);
     } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        return null;
+      }
       throw err;
     }
   };
@@ -75,69 +64,23 @@ export function useBreeds(options: UseBreedsOptions = {}) {
     order_index: number;
     active?: boolean;
   }): Promise<Breed> => {
-    try {
-      const response = await fetch("/api/breeds", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(breedData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create breed");
-      }
-
-      const newBreed = await response.json();
-      await fetchBreeds(); // Refresh list
-      return newBreed;
-    } catch (err) {
-      throw err;
-    }
+    const newBreed = await apiSend<Breed>("/api/breeds", "POST", breedData);
+    await fetchBreeds(); // Refresh list
+    return newBreed;
   };
 
   const updateBreed = async (
     id: number,
     updates: Partial<Omit<Breed, "id" | "created_at" | "updated_at">>,
   ): Promise<Breed> => {
-    try {
-      const response = await fetch(`/api/breeds/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update breed");
-      }
-
-      const updatedBreed = await response.json();
-      await fetchBreeds(); // Refresh list
-      return updatedBreed;
-    } catch (err) {
-      throw err;
-    }
+    const updatedBreed = await apiSend<Breed>(`/api/breeds/${id}`, "PATCH", updates);
+    await fetchBreeds(); // Refresh list
+    return updatedBreed;
   };
 
   const deleteBreed = async (id: number): Promise<void> => {
-    try {
-      const response = await fetch(`/api/breeds/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete breed");
-      }
-
-      await fetchBreeds(); // Refresh list
-    } catch (err) {
-      throw err;
-    }
+    await apiSend<unknown>(`/api/breeds/${id}`, "DELETE");
+    await fetchBreeds(); // Refresh list
   };
 
   useEffect(() => {
