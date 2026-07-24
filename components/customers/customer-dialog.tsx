@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -61,6 +61,7 @@ export function CustomerDialog({
 }: CustomerDialogProps) {
   const { createCustomer, updateCustomer } = useCustomers();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const isEditing = customer !== null && customer !== undefined;
 
   const form = useForm<CustomerFormData>({
@@ -88,6 +89,10 @@ export function CustomerDialog({
   }, [open, customer, form]);
 
   const onSubmit = async (data: CustomerFormData) => {
+    // กัน double-submit (เช่นกด Enter รัวสองที): ref อัปเดตแบบ synchronous จึงตัด
+    // submit ครั้งที่สองที่ยิงมาก่อน state จะ re-render ปิดปุ่มทัน ไม่ให้สร้างซ้ำ
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     try {
       setIsSubmitting(true);
       const addHonorific = (name: string): string => {
@@ -120,6 +125,7 @@ export function CustomerDialog({
       toast.error(error.message || "เกิดข้อผิดพลาด");
     } finally {
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 
