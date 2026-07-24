@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import type { FbImage, SyncStatus, CleanupResult, DownloadState } from "@/lib/types";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+// All calls go through the same-origin proxy (/api/* -> Java backend, see next.config.mjs).
+// No client-side backend URL needed, so cookies work and there is no CORS to configure.
 
 export function useSyncImages() {
   const [pendingImages, setPendingImages] = useState<FbImage[]>([]);
@@ -23,7 +24,7 @@ export function useSyncImages() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${BACKEND_URL}/api/posts/pending`);
+      const res = await fetch("/api/posts/pending");
       if (!res.ok) throw new Error("โหลดรูปภาพไม่สำเร็จ");
       const data: FbImage[] = await res.json();
       setPendingImages(data);
@@ -37,7 +38,7 @@ export function useSyncImages() {
   const fetchApproved = useCallback(async () => {
     try {
       setApprovedLoading(true);
-      const res = await fetch(`${BACKEND_URL}/api/posts/approved`);
+      const res = await fetch("/api/posts/approved");
       if (!res.ok) throw new Error("โหลดรูปภาพไม่สำเร็จ");
       const data: FbImage[] = await res.json();
       setApprovedImages(data);
@@ -51,7 +52,7 @@ export function useSyncImages() {
   const fetchRejected = useCallback(async () => {
     try {
       setRejectedLoading(true);
-      const res = await fetch(`${BACKEND_URL}/api/posts/rejected`);
+      const res = await fetch("/api/posts/rejected");
       if (!res.ok) throw new Error("โหลดรูปภาพไม่สำเร็จ");
       const data: FbImage[] = await res.json();
       setRejectedImages(data);
@@ -64,7 +65,7 @@ export function useSyncImages() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/status`);
+      const res = await fetch("/api/status");
       if (!res.ok) return;
       const data: SyncStatus = await res.json();
       setStatus(data);
@@ -78,7 +79,7 @@ export function useSyncImages() {
       // Optimistic: ลบออกจาก pending และ rejected (ครอบคลุมทั้งสอง tab ที่มีปุ่มนี้)
       setPendingImages((prev) => prev.filter((img) => img.id !== id));
       setRejectedImages((prev) => prev.filter((img) => img.id !== id));
-      const res = await fetch(`${BACKEND_URL}/api/posts/${id}/approve`, {
+      const res = await fetch(`/api/posts/${id}/approve`, {
         method: "POST",
       });
       if (!res.ok) {
@@ -95,7 +96,7 @@ export function useSyncImages() {
       // Optimistic: ลบออกจาก pending และ approved (ครอบคลุมทั้งสอง tab ที่มีปุ่มนี้)
       setPendingImages((prev) => prev.filter((img) => img.id !== id));
       setApprovedImages((prev) => prev.filter((img) => img.id !== id));
-      const res = await fetch(`${BACKEND_URL}/api/posts/${id}/reject`, {
+      const res = await fetch(`/api/posts/${id}/reject`, {
         method: "POST",
       });
       if (!res.ok) {
@@ -113,7 +114,7 @@ export function useSyncImages() {
 
     // 1. prepare — สร้าง job เบื้องหลัง
     setDownloadState({ status: "preparing", percent: 0, processed: 0, total: 0 });
-    const prepRes = await fetch(`${BACKEND_URL}/api/download/prepare`, { method: "POST" });
+    const prepRes = await fetch("/api/download/prepare", { method: "POST" });
     if (!prepRes.ok) { reset(); throw new Error("เตรียมไฟล์ไม่สำเร็จ"); }
     const { jobId, total } = await prepRes.json();
     if (!jobId) { reset(); throw new Error("ไม่มีรูป approved"); }
@@ -124,7 +125,7 @@ export function useSyncImages() {
     await new Promise<void>((resolve, reject) => {
       const timer = setInterval(async () => {
         try {
-          const pRes = await fetch(`${BACKEND_URL}/api/download/progress/${jobId}`);
+          const pRes = await fetch(`/api/download/progress/${jobId}`);
           if (!pRes.ok) { clearInterval(timer); reset(); reject(new Error("ตรวจสอบ progress ไม่สำเร็จ")); return; }
           const p: { processed: number; total: number; percent: number; status: string; error?: string } = await pRes.json();
           setDownloadState({ status: "building", percent: p.percent, processed: p.processed, total: p.total });
@@ -139,8 +140,10 @@ export function useSyncImages() {
     });
 
     // 3. trigger download ผ่าน browser
+    // ไปที่ redirect route (app/download/[jobId]) ซึ่ง 302 เด้งตรงไป Railway
+    // เพื่อเลี่ยงลิมิต response ของ Vercel proxy (ไฟล์ ZIP ใหญ่ 25MB+)
     setDownloadState({ status: "done", percent: 100, processed: total, total });
-    window.location.href = `${BACKEND_URL}/api/download/result/${jobId}`;
+    window.location.href = `/download/${jobId}`;
 
     await new Promise((r) => setTimeout(r, 1500));
     reset();
@@ -148,7 +151,7 @@ export function useSyncImages() {
   }, [fetchApproved, fetchRejected, fetchStatus]);
 
   const cleanupDownloaded = useCallback(async (): Promise<CleanupResult> => {
-    const res = await fetch(`${BACKEND_URL}/api/download/cleanup`, {
+    const res = await fetch("/api/download/cleanup", {
       method: "POST",
     });
     if (!res.ok) throw new Error("ลบไฟล์ไม่สำเร็จ");
@@ -158,7 +161,7 @@ export function useSyncImages() {
   }, [fetchStatus]);
 
   const triggerSync = useCallback(async () => {
-    const res = await fetch(`${BACKEND_URL}/api/sync/trigger`, {
+    const res = await fetch("/api/sync/trigger", {
       method: "POST",
     });
     if (!res.ok) throw new Error("Sync ไม่สำเร็จ");
