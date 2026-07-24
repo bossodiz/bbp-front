@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useCustomerStore } from "@/lib/store";
 import type { Customer, Pet } from "@/lib/types";
 import { transformCustomer, transformPet } from "@/lib/utils/transformers";
+import { apiFetch, apiSend } from "@/lib/api";
 
 interface UseCustomersReturn {
   customers: Customer[];
@@ -55,15 +56,10 @@ export function useCustomers(): UseCustomersReturn {
         ? `/api/customers?search=${encodeURIComponent(search)}`
         : "/api/customers";
 
-      const response = await fetch(url);
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to fetch customers");
-      }
+      const rows = await apiFetch<any[]>(url);
 
       // Transform data to match frontend types
-      const transformedCustomers = result.data.map(transformCustomer);
+      const transformedCustomers = (rows ?? []).map(transformCustomer);
 
       setCustomers(transformedCustomers);
       // Sync to Zustand store
@@ -77,19 +73,9 @@ export function useCustomers(): UseCustomersReturn {
 
   const createCustomer = useCallback(
     async (data: { name: string; phone: string }) => {
-      const response = await fetch("/api/customers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      const created = await apiSend<any>("/api/customers", "POST", data);
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create customer");
-      }
-
-      const newCustomer: Customer = transformCustomer({ ...result.data, pets: [] });
+      const newCustomer: Customer = transformCustomer({ ...created, pets: [] });
 
       setCustomers((prev) => [newCustomer, ...prev]);
       return newCustomer;
@@ -99,20 +85,10 @@ export function useCustomers(): UseCustomersReturn {
 
   const updateCustomer = useCallback(
     async (id: number, data: { name: string; phone: string }) => {
-      const response = await fetch(`/api/customers/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update customer");
-      }
+      const updated = await apiSend<any>(`/api/customers/${id}`, "PATCH", data);
 
       const updatedCustomer: Customer = {
-        ...transformCustomer({ ...result.data, pets: [] }),
+        ...transformCustomer({ ...updated, pets: [] }),
         pets: customers.find((c) => c.id === id)?.pets || [],
       };
 
@@ -126,14 +102,7 @@ export function useCustomers(): UseCustomersReturn {
   );
 
   const deleteCustomer = useCallback(async (id: number) => {
-    const response = await fetch(`/api/customers/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const result = await response.json();
-      throw new Error(result.error || "Failed to delete customer");
-    }
+    await apiSend<unknown>(`/api/customers/${id}`, "DELETE");
 
     setCustomers((prev) => prev.filter((c) => c.id !== id));
   }, []);
@@ -151,28 +120,18 @@ export function useCustomers(): UseCustomersReturn {
         note?: string;
       },
     ) => {
-      const response = await fetch("/api/pets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer_id: customerId,
-          name: data.name,
-          type: data.type,
-          breed: data.breed,
-          breed_2: data.breed2 || null,
-          is_mixed_breed: data.isMixedBreed,
-          weight: data.weight,
-          note: data.note || null,
-        }),
+      const created = await apiSend<any>("/api/pets", "POST", {
+        customer_id: customerId,
+        name: data.name,
+        type: data.type,
+        breed: data.breed,
+        breed_2: data.breed2 || null,
+        is_mixed_breed: data.isMixedBreed,
+        weight: data.weight,
+        note: data.note || null,
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create pet");
-      }
-
-      const newPet: Pet = transformPet(result.data);
+      const newPet: Pet = transformPet(created);
 
       setCustomers((prev) =>
         prev.map((c) =>
@@ -198,27 +157,17 @@ export function useCustomers(): UseCustomersReturn {
         note?: string;
       },
     ) => {
-      const response = await fetch(`/api/pets/${petId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name,
-          type: data.type,
-          breed: data.breed,
-          breed_2: data.breed2 || null,
-          is_mixed_breed: data.isMixedBreed,
-          weight: data.weight,
-          note: data.note || null,
-        }),
+      const updated = await apiSend<any>(`/api/pets/${petId}`, "PATCH", {
+        name: data.name,
+        type: data.type,
+        breed: data.breed,
+        breed_2: data.breed2 || null,
+        is_mixed_breed: data.isMixedBreed,
+        weight: data.weight,
+        note: data.note || null,
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update pet");
-      }
-
-      const updatedPet: Pet = transformPet(result.data);
+      const updatedPet: Pet = transformPet(updated);
 
       setCustomers((prev) =>
         prev.map((c) => ({
@@ -233,14 +182,7 @@ export function useCustomers(): UseCustomersReturn {
   );
 
   const deletePet = useCallback(async (petId: number) => {
-    const response = await fetch(`/api/pets/${petId}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const result = await response.json();
-      throw new Error(result.error || "Failed to delete pet");
-    }
+    await apiSend<unknown>(`/api/pets/${petId}`, "DELETE");
 
     setCustomers((prev) =>
       prev.map((c) => ({

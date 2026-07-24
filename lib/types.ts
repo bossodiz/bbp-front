@@ -338,7 +338,11 @@ export type SyncImageStatus =
 export interface FbImage {
   id: number;
   imageUrl: string;
+  /** Durable public Supabase Storage URL (does not expire like the Facebook CDN imageUrl). */
+  storageUrl: string | null;
   storagePath: string | null;
+  /** Facebook photo page URL (facebook.com/photo?fbid=...) — a page, not a direct image. */
+  imageFbUrl: string | null;
   status: SyncImageStatus;
   createdAt: string;
   approvedAt: string | null;

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useServiceStore } from "@/lib/store";
 import type { Service } from "@/lib/types";
 import { transformService } from "@/lib/utils/transformers";
+import { apiFetch, apiSend } from "@/lib/api";
 
 interface UseServicesOptions {
   petTypeId?: string;
@@ -37,17 +38,10 @@ export function useServices(
       if (petTypeId) params.append("petTypeId", petTypeId);
       if (active !== undefined) params.append("active", String(active));
 
-      const response = await fetch(`/api/services?${params.toString()}`);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch services");
-      }
-
-      const data = await response.json();
+      const rows = await apiFetch<any[]>(`/api/services?${params.toString()}`);
 
       // Transform snake_case to camelCase
-      const transformedServices = (data.data || []).map(transformService);
+      const transformedServices = (rows ?? []).map(transformService);
 
       setServices(transformedServices);
       // Sync to Zustand store
@@ -60,52 +54,22 @@ export function useServices(
   }, [petTypeId, active]);
 
   const createService = async (data: Omit<Service, "id">): Promise<Service> => {
-    const response = await fetch("/api/services", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to create service");
-    }
-
-    const result = await response.json();
+    const created = await apiSend<Service>("/api/services", "POST", data);
     await fetchServices(); // Refresh list
-    return result.data;
+    return created;
   };
 
   const updateService = async (
     id: number,
     data: Partial<Service>,
   ): Promise<Service> => {
-    const response = await fetch(`/api/services/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to update service");
-    }
-
-    const result = await response.json();
+    const updated = await apiSend<Service>(`/api/services/${id}`, "PATCH", data);
     await fetchServices(); // Refresh list
-    return result.data;
+    return updated;
   };
 
   const deleteService = async (id: number): Promise<void> => {
-    const response = await fetch(`/api/services/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to delete service");
-    }
-
+    await apiSend<unknown>(`/api/services/${id}`, "DELETE");
     await fetchServices(); // Refresh list
   };
 

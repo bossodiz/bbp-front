@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/api";
 
 interface TopCustomer {
   customerId: number;
@@ -23,21 +24,10 @@ export function useTopCustomers(type: CustomerViewType = "frequent_visits") {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
+        const customers = await apiFetch<TopCustomer[]>(
           `/api/dashboard/top-customers?type=${type}`,
         );
-        if (!response.ok) {
-          throw new Error("Failed to fetch top customers");
-        }
-
-        const result = await response.json();
-        // Handle both response formats: wrapped { data: [...] } or direct array
-        const customers = Array.isArray(result)
-          ? result
-          : Array.isArray(result?.data)
-            ? result.data
-            : [];
-        setData(customers);
+        setData(customers ?? []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล");
       } finally {

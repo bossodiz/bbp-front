@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FbImage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, ExternalLink } from "lucide-react";
+import { Check, X, ExternalLink, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +32,23 @@ type AnimPhase =
 
 export function ImageCard({ image, onApprove, onReject }: ImageCardProps) {
   const [phase, setPhase] = useState<AnimPhase>("idle");
+
+  // Facebook CDN imageUrl expires (returns 403). Fall back to the durable Supabase
+  // Storage copy; if that is also unavailable, show a link to the Facebook photo page.
+  const imageSources = [image.imageUrl, image.storageUrl].filter(
+    (s): s is string => Boolean(s),
+  );
+  const [srcIndex, setSrcIndex] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
+  const currentSrc = imageSources[srcIndex];
+
+  const handleImageError = () => {
+    if (srcIndex < imageSources.length - 1) {
+      setSrcIndex((i) => i + 1);
+    } else {
+      setImageFailed(true);
+    }
+  };
 
   const runAnimation = (
     type: "approve" | "reject",
@@ -75,12 +92,32 @@ export function ImageCard({ image, onApprove, onReject }: ImageCardProps) {
     >
       {/* รูปภาพ + color overlay */}
       <div className="relative aspect-square w-full overflow-hidden bg-muted">
-        <img
-          src={image.imageUrl}
-          alt={image.postCaption || "รูปภาพจาก Facebook"}
-          className="h-full w-full object-cover"
-          loading="lazy"
-        />
+        {!imageFailed && currentSrc ? (
+          <img
+            src={currentSrc}
+            alt={image.postCaption || "รูปภาพจาก Facebook"}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            onError={handleImageError}
+          />
+        ) : image.imageFbUrl ? (
+          <a
+            href={image.imageFbUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ExternalLink className="h-8 w-8" />
+            <span className="px-2 text-center text-xs">
+              รูปหมดอายุ · ดูบน Facebook
+            </span>
+          </a>
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-muted text-muted-foreground">
+            <ImageOff className="h-8 w-8" />
+            <span className="text-xs">ไม่พบรูปภาพ</span>
+          </div>
+        )}
 
         {/* Icon + tint overlay — ปรากฏเมื่อกด */}
         {isAnimating && (

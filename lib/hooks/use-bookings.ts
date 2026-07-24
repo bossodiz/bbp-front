@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Booking } from "@/lib/types";
+import { apiFetch, apiSend } from "@/lib/api";
 
 interface UseBookingsOptions {
   status?: string;
@@ -23,9 +24,7 @@ export function useBookings(options: UseBookingsOptions = {}) {
       if (options.date) params.append("date", options.date);
       if (options.fromDate) params.append("fromDate", options.fromDate);
 
-      const response = await fetch(`/api/bookings?${params.toString()}`);
-      if (!response.ok) throw new Error("ไม่สามารถดึงข้อมูลนัดหมายได้");
-      const data = await response.json();
+      const data = await apiFetch<Booking[]>(`/api/bookings?${params.toString()}`);
       setBookings(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
@@ -38,64 +37,22 @@ export function useBookings(options: UseBookingsOptions = {}) {
   const addBooking = async (
     bookingData: Omit<Booking, "id" | "createdAt" | "updatedAt">,
   ) => {
-    try {
-      const response = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bookingData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถสร้างนัดหมายได้");
-      }
-
-      const newBooking = await response.json();
-      await fetchBookings();
-      return newBooking;
-    } catch (err) {
-      throw err;
-    }
+    const newBooking = await apiSend<Booking>("/api/bookings", "POST", bookingData);
+    await fetchBookings();
+    return newBooking;
   };
 
   // อัพเดทนัดหมาย
   const updateBooking = async (id: number, data: Partial<Booking>) => {
-    try {
-      const response = await fetch(`/api/bookings/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถอัพเดทนัดหมายได้");
-      }
-
-      const updatedBooking = await response.json();
-      await fetchBookings();
-      return updatedBooking;
-    } catch (err) {
-      throw err;
-    }
+    const updatedBooking = await apiSend<Booking>(`/api/bookings/${id}`, "PUT", data);
+    await fetchBookings();
+    return updatedBooking;
   };
 
   // ลบนัดหมาย
   const deleteBooking = async (id: number) => {
-    try {
-      const response = await fetch(`/api/bookings/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถลบนัดหมายได้");
-      }
-
-      await fetchBookings();
-    } catch (err) {
-      throw err;
-    }
+    await apiSend<unknown>(`/api/bookings/${id}`, "DELETE");
+    await fetchBookings();
   };
 
   // ยกเลิกนัดหมาย

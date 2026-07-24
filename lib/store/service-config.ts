@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { PetTypeConfig, SizeConfig } from "@/lib/types";
+import { apiFetch } from "@/lib/api";
 
 // Service Configuration Store (Pet Types & Sizes)
 interface ServiceConfigStore {
@@ -32,15 +33,8 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
     try {
       set({ loading: true, error: null });
 
-      const response = await fetch("/api/config/pet-types");
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch pet types");
-      }
-
-      const data = await response.json();
-      const formattedData = (data.data || []).map((item: any) => ({
+      const rows = await apiFetch<any[]>("/api/config/pet-types");
+      const formattedData = (rows ?? []).map((item: any) => ({
         id: item.id,
         name: item.name,
         icon: item.icon,
@@ -63,15 +57,8 @@ export const useServiceConfigStore = create<ServiceConfigStore>((set, get) => ({
         ? `/api/config/pet-sizes?petTypeId=${petTypeId}`
         : "/api/config/pet-sizes";
 
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch pet sizes");
-      }
-
-      const data = await response.json();
-      const formattedData = (data.data || []).map((item: any) => ({
+      const rows = await apiFetch<any[]>(url);
+      const formattedData = (rows ?? []).map((item: any) => ({
         id: item.id,
         petTypeId: item.pet_type_id,
         name: item.name,

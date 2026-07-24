@@ -6,6 +6,7 @@ import type {
   HotelBookingStatus,
   HotelAdditionalService,
 } from "@/lib/types";
+import { apiFetch, apiSend } from "@/lib/api";
 
 interface UseHotelOptions {
   status?: string;
@@ -35,14 +36,8 @@ export function useHotel(options: UseHotelOptions = {}) {
         params.set("customerId", stableOptions.customerId.toString());
 
       const url = `/api/hotel${params.toString() ? `?${params.toString()}` : ""}`;
-      const response = await fetch(url);
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "ไม่สามารถดึงข้อมูลได้");
-      }
-
-      setBookings(result.data || []);
+      const rows = await apiFetch<HotelBooking[]>(url);
+      setBookings(rows ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -65,38 +60,18 @@ export function useHotel(options: UseHotelOptions = {}) {
       depositAmount?: number;
       note?: string;
     }) => {
-      const response = await fetch("/api/hotel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "ไม่สามารถสร้างการจองได้");
-      }
-
+      const created = await apiSend<HotelBooking>("/api/hotel", "POST", data);
       await fetchBookings();
-      return result.data;
+      return created;
     },
     [fetchBookings],
   );
 
   const updateBooking = useCallback(
     async (id: number, data: Record<string, any>) => {
-      const response = await fetch(`/api/hotel/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "ไม่สามารถอัพเดตการจองได้");
-      }
-
+      const updated = await apiSend<HotelBooking>(`/api/hotel/${id}`, "PUT", data);
       await fetchBookings();
-      return result.data;
+      return updated;
     },
     [fetchBookings],
   );
@@ -136,34 +111,16 @@ export function useHotel(options: UseHotelOptions = {}) {
         customDiscount?: number;
       },
     ) => {
-      const response = await fetch(`/api/hotel/${id}/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "ไม่สามารถ checkout ได้");
-      }
-
+      const result = await apiSend<HotelBooking>(`/api/hotel/${id}/checkout`, "POST", data);
       await fetchBookings();
-      return result.data;
+      return result;
     },
     [fetchBookings],
   );
 
   const deleteBooking = useCallback(
     async (id: number) => {
-      const response = await fetch(`/api/hotel/${id}`, {
-        method: "DELETE",
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "ไม่สามารถลบการจองได้");
-      }
-
+      await apiSend<unknown>(`/api/hotel/${id}`, "DELETE");
       await fetchBookings();
     },
     [fetchBookings],

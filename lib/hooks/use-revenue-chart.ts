@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/api";
 
 export interface RevenueChartPoint {
   key: string;
@@ -33,14 +34,9 @@ export function useRevenueChart(
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
+        const chartData = await apiFetch<RevenueChartData>(
           `/api/dashboard/revenue-chart?period=${period}`,
         );
-        if (!response.ok) {
-          throw new Error("Failed to fetch revenue chart data");
-        }
-
-        const chartData = await response.json();
         setData(chartData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการดึงข้อมูล");

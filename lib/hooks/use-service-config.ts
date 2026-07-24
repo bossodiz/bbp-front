@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { apiFetch, apiSend } from "@/lib/api";
 
 export interface PetType {
   id: string;
@@ -46,15 +47,8 @@ export function useServiceConfig(): UseServiceConfigReturn {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("/api/config/pet-types");
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch pet types");
-      }
-
-      const data = await response.json();
-      const formattedData = (data.data || []).map((item: { id: string; name: string; icon?: string; active: boolean; order_index: number }) => ({
+      const rows = await apiFetch<any[]>("/api/config/pet-types");
+      const formattedData = (rows ?? []).map((item: { id: string; name: string; icon?: string; active: boolean; order_index: number }) => ({
         id: item.id,
         name: item.name,
         icon: item.icon,
@@ -78,15 +72,8 @@ export function useServiceConfig(): UseServiceConfigReturn {
         ? `/api/config/pet-sizes?petTypeId=${petTypeId}`
         : "/api/config/pet-sizes";
 
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch pet sizes");
-      }
-
-      const data = await response.json();
-      const formattedData = (data.data || []).map((item: { id: string; pet_type_id: string; name: string; min_weight?: number; max_weight?: number; description?: string; active: boolean; order_index: number }) => ({
+      const rows = await apiFetch<any[]>(url);
+      const formattedData = (rows ?? []).map((item: { id: string; pet_type_id: string; name: string; min_weight?: number; max_weight?: number; description?: string; active: boolean; order_index: number }) => ({
         id: item.id,
         petTypeId: item.pet_type_id,
         name: item.name,
@@ -118,31 +105,20 @@ export function useServiceConfig(): UseServiceConfigReturn {
   ): Promise<PetType> => {
     const maxOrder = Math.max(...petTypes.map((p) => p.order), 0);
 
-    const response = await fetch("/api/config/pet-types", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: data.id,
-        name: data.name,
-        icon: data.icon,
-        active: data.active,
-        order_index: maxOrder + 1,
-      }),
+    const created = await apiSend<any>("/api/config/pet-types", "POST", {
+      id: data.id,
+      name: data.name,
+      icon: data.icon,
+      active: data.active,
+      order_index: maxOrder + 1,
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to create pet type");
-    }
-
-    const result = await response.json();
     await fetchPetTypes();
     return {
-      id: result.data.id,
-      name: result.data.name,
-      icon: result.data.icon,
-      active: result.data.active,
-      order: result.data.order_index,
+      id: created.id,
+      name: created.name,
+      icon: created.icon,
+      active: created.active,
+      order: created.order_index,
     };
   };
 
@@ -150,44 +126,25 @@ export function useServiceConfig(): UseServiceConfigReturn {
     id: string,
     data: Partial<PetType>,
   ): Promise<PetType> => {
-    const response = await fetch("/api/config/pet-types", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id,
-        name: data.name,
-        icon: data.icon,
-        active: data.active,
-        order_index: data.order,
-      }),
+    const updated = await apiSend<any>("/api/config/pet-types", "PATCH", {
+      id,
+      name: data.name,
+      icon: data.icon,
+      active: data.active,
+      order_index: data.order,
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to update pet type");
-    }
-
-    const result = await response.json();
     await fetchPetTypes();
     return {
-      id: result.data.id,
-      name: result.data.name,
-      icon: result.data.icon,
-      active: result.data.active,
-      order: result.data.order_index,
+      id: updated.id,
+      name: updated.name,
+      icon: updated.icon,
+      active: updated.active,
+      order: updated.order_index,
     };
   };
 
   const deletePetType = async (id: string): Promise<void> => {
-    const response = await fetch(`/api/config/pet-types?id=${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to delete pet type");
-    }
-
+    await apiSend<unknown>(`/api/config/pet-types?id=${id}`, "DELETE");
     await fetchPetTypes();
     await fetchPetSizes();
   };
@@ -196,37 +153,26 @@ export function useServiceConfig(): UseServiceConfigReturn {
     const sizesForType = petSizes.filter((s) => s.petTypeId === data.petTypeId);
     const maxOrder = Math.max(...sizesForType.map((s) => s.order), 0);
 
-    const response = await fetch("/api/config/pet-sizes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: data.id,
-        pet_type_id: data.petTypeId,
-        name: data.name,
-        min_weight: data.minWeight,
-        max_weight: data.maxWeight,
-        description: data.description,
-        active: data.active,
-        order_index: maxOrder + 1,
-      }),
+    const created = await apiSend<any>("/api/config/pet-sizes", "POST", {
+      id: data.id,
+      pet_type_id: data.petTypeId,
+      name: data.name,
+      min_weight: data.minWeight,
+      max_weight: data.maxWeight,
+      description: data.description,
+      active: data.active,
+      order_index: maxOrder + 1,
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to create size");
-    }
-
-    const result = await response.json();
     await fetchPetSizes();
     return {
-      id: result.data.id,
-      petTypeId: result.data.pet_type_id,
-      name: result.data.name,
-      minWeight: result.data.min_weight,
-      maxWeight: result.data.max_weight,
-      description: result.data.description,
-      active: result.data.active,
-      order: result.data.order_index,
+      id: created.id,
+      petTypeId: created.pet_type_id,
+      name: created.name,
+      minWeight: created.min_weight,
+      maxWeight: created.max_weight,
+      description: created.description,
+      active: created.active,
+      order: created.order_index,
     };
   };
 
@@ -234,49 +180,30 @@ export function useServiceConfig(): UseServiceConfigReturn {
     id: string,
     data: Partial<PetSize>,
   ): Promise<PetSize> => {
-    const response = await fetch("/api/config/pet-sizes", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id,
-        name: data.name,
-        min_weight: data.minWeight,
-        max_weight: data.maxWeight,
-        description: data.description,
-        active: data.active,
-        order_index: data.order,
-      }),
+    const updated = await apiSend<any>("/api/config/pet-sizes", "PATCH", {
+      id,
+      name: data.name,
+      min_weight: data.minWeight,
+      max_weight: data.maxWeight,
+      description: data.description,
+      active: data.active,
+      order_index: data.order,
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to update size");
-    }
-
-    const result = await response.json();
     await fetchPetSizes();
     return {
-      id: result.data.id,
-      petTypeId: result.data.pet_type_id,
-      name: result.data.name,
-      minWeight: result.data.min_weight,
-      maxWeight: result.data.max_weight,
-      description: result.data.description,
-      active: result.data.active,
-      order: result.data.order_index,
+      id: updated.id,
+      petTypeId: updated.pet_type_id,
+      name: updated.name,
+      minWeight: updated.min_weight,
+      maxWeight: updated.max_weight,
+      description: updated.description,
+      active: updated.active,
+      order: updated.order_index,
     };
   };
 
   const deleteSize = async (id: string): Promise<void> => {
-    const response = await fetch(`/api/config/pet-sizes?id=${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to delete size");
-    }
-
+    await apiSend<unknown>(`/api/config/pet-sizes?id=${id}`, "DELETE");
     await fetchPetSizes();
   };
 

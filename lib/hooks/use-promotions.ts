@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { usePromotionStore } from "@/lib/store";
 import type { Promotion } from "@/lib/types";
+import { apiFetch, apiSend } from "@/lib/api";
 
 export function usePromotions() {
   // ใช้ Zustand selector pattern - re-render เมื่อ promotions เปลี่ยน
@@ -13,9 +14,7 @@ export function usePromotions() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/promotions");
-      if (!response.ok) throw new Error("ไม่สามารถดึงข้อมูลโปรโมชั่นได้");
-      const data = await response.json();
+      const data = await apiFetch<Promotion[]>("/api/promotions");
       // อัพเดทเข้า Zustand store อย่างเดียว
       usePromotionStore.setState({ promotions: data });
     } catch (err) {
@@ -29,67 +28,25 @@ export function usePromotions() {
   const addPromotion = async (
     promotionData: Omit<Promotion, "id" | "createdAt" | "updatedAt">,
   ) => {
-    try {
-      const response = await fetch("/api/promotions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(promotionData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถสร้างโปรโมชั่นได้");
-      }
-
-      const newPromotion = await response.json();
-      // ดึงข้อมูลใหม่จาก database หลังจากเพิ่มสำเร็จ
-      await fetchPromotions();
-      return newPromotion;
-    } catch (err) {
-      throw err;
-    }
+    const newPromotion = await apiSend<Promotion>("/api/promotions", "POST", promotionData);
+    // ดึงข้อมูลใหม่จาก database หลังจากเพิ่มสำเร็จ
+    await fetchPromotions();
+    return newPromotion;
   };
 
   // อัพเดทโปรโมชั่น
   const updatePromotion = async (id: number, data: Partial<Promotion>) => {
-    try {
-      const response = await fetch(`/api/promotions/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถอัพเดทโปรโมชั่นได้");
-      }
-
-      const updatedPromotion = await response.json();
-      // ดึงข้อมูลใหม่จาก database หลังจากแก้ไขสำเร็จ
-      await fetchPromotions();
-      return updatedPromotion;
-    } catch (err) {
-      throw err;
-    }
+    const updatedPromotion = await apiSend<Promotion>(`/api/promotions/${id}`, "PUT", data);
+    // ดึงข้อมูลใหม่จาก database หลังจากแก้ไขสำเร็จ
+    await fetchPromotions();
+    return updatedPromotion;
   };
 
   // ลบโปรโมชั่น
   const deletePromotion = async (id: number) => {
-    try {
-      const response = await fetch(`/api/promotions/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "ไม่สามารถลบโปรโมชั่นได้");
-      }
-
-      // ดึงข้อมูลใหม่จาก database หลังจากลบสำเร็จ
-      await fetchPromotions();
-    } catch (err) {
-      throw err;
-    }
+    await apiSend<unknown>(`/api/promotions/${id}`, "DELETE");
+    // ดึงข้อมูลใหม่จาก database หลังจากลบสำเร็จ
+    await fetchPromotions();
   };
 
   // เปิด/ปิดโปรโมชั่น

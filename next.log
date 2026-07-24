@@ -1,0 +1,38 @@
+$ next dev
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:3000
+   - Network:       http://192.168.50.234:3000
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ✓ optimizeCss
+
+ ✓ Starting...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Ready in 763ms
+[32m[2026-07-10T13:11:54.189Z] INFO [validate_env]:  | {"message":"All required environment variables are set."}[0m
+ GET /customers 200 in 3.3s (compile: 2.9s, render: 327ms)
+(node:20508) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ GET /login 200 in 565ms (compile: 518ms, render: 47ms)
+ GET /customers 200 in 62ms (compile: 4ms, render: 59ms)
+ GET /services 200 in 818ms (compile: 769ms, render: 49ms)
+ GET /products 200 in 535ms (compile: 493ms, render: 42ms)
+ GET /promotions 200 in 546ms (compile: 508ms, render: 39ms)
+ GET /bookings 200 in 2.0s (compile: 2.0s, render: 26ms)
+ GET /hotel 200 in 641ms (compile: 588ms, render: 53ms)
+ GET /pos 200 in 703ms (compile: 674ms, render: 29ms)
+ GET /hotel 200 in 18ms (compile: 3ms, render: 15ms)
+ GET /pos 200 in 19ms (compile: 4ms, render: 15ms)
+ GET /history 200 in 640ms (compile: 603ms, render: 36ms)
+ GET /history 200 in 143ms (compile: 3ms, render: 140ms)
+ GET /sync-image 200 in 507ms (compile: 480ms, render: 27ms)
+ GET /sync-image 200 in 87ms (compile: 3ms, render: 84ms)
+ GET /sync-image 200 in 69ms (compile: 4ms, render: 65ms)
+ GET /sync-image 200 in 82ms (compile: 4ms, render: 78ms)
+ GET /sync-image 200 in 87ms (compile: 5ms, render: 82ms)
+ GET /sync-image 200 in 74ms (compile: 3ms, render: 71ms)
+ ✓ Compiled in 192ms
+ ✓ Compiled in 122ms
+ GET /login 200 in 45ms (compile: 4ms, render: 41ms)
+[32m[2026-07-10T16:53:02.422Z] INFO [validate_env]:  | {"message":"All required environment variables are set."}[0m
+ GET /sync-image 200 in 1184ms (compile: 576ms, render: 608ms)
