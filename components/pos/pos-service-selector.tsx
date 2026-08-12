@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Scissors, Plus, Dog, Cat, Package, Scale } from "lucide-react";
+import { Scissors, Plus, Dog, Cat, Package, Scale, Star } from "lucide-react";
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,7 @@ import {
   useServiceConfigStore,
 } from "@/lib/store";
 import { useProducts } from "@/lib/hooks/use-products";
+import { useSales } from "@/lib/hooks/use-sales";
 import { petTypeLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -39,6 +42,12 @@ export function POSServiceSelector() {
   const updatePetInStore = useCustomerStore((s) => s.updatePet);
   const petTypes = useServiceConfigStore((s) => s.petTypes);
   const getSizesForPetType = useServiceConfigStore((s) => s.getSizesForPetType);
+
+  // ประวัติการขายของลูกค้าที่เลือก — ใช้หา "บริการล่าสุด" ของสัตว์เลี้ยงแต่ละตัว
+  const { sales } = useSales({
+    customerId: selectedCustomerId ?? undefined,
+    autoFetch: selectedCustomerId != null,
+  });
 
   const [showPetSelectDialog, setShowPetSelectDialog] = useState(false);
   const [pendingService, setPendingService] = useState<{
@@ -69,6 +78,43 @@ export function POSServiceSelector() {
       selectedCustomer?.pets.filter((p) => selectedPetIds.includes(p.id)) || []
     );
   }, [selectedCustomer, selectedPetIds]);
+
+  // หาบริการที่แต่ละสัตว์เลี้ยงใช้ "ครั้งล่าสุด" (จากบิลขายที่ใหม่ที่สุดของสัตว์ตัวนั้น)
+  // ต่อ 1 สัตว์ = เก็บ serviceId ทั้งหมดจากบิลล่าสุด + เวลาไว้โชว์ tooltip
+  const lastServiceByPet = useMemo(() => {
+    const latestTime: Record<number, number> = {};
+    const serviceIds: Record<number, Set<number>> = {};
+    for (const sale of sales) {
+      const time = new Date(sale.createdAt).getTime();
+      for (const item of sale.items ?? []) {
+        if (item.petId == null || item.itemType !== "SERVICE") continue;
+        const prev = latestTime[item.petId];
+        if (prev === undefined || time > prev) {
+          latestTime[item.petId] = time;
+          serviceIds[item.petId] = new Set([item.serviceId]);
+        } else if (time === prev) {
+          serviceIds[item.petId].add(item.serviceId);
+        }
+      }
+    }
+    return { latestTime, serviceIds };
+  }, [sales]);
+
+  const isLastUsedService = useCallback(
+    (petId: number, serviceId: number) =>
+      lastServiceByPet.serviceIds[petId]?.has(serviceId) ?? false,
+    [lastServiceByPet],
+  );
+
+  const lastUsedLabel = useCallback(
+    (petId: number) => {
+      const time = lastServiceByPet.latestTime[petId];
+      return time
+        ? `บริการล่าสุด · ${format(new Date(time), "d MMM yy", { locale: th })}`
+        : "บริการล่าสุด";
+    },
+    [lastServiceByPet],
+  );
 
   // Estimate size based on weight for the selected pet
   const estimateSizeFromWeight = useCallback(
@@ -430,8 +476,19 @@ export function POSServiceSelector() {
 
                             return (
                               <div key={service.id} className="space-y-2">
-                                <h4 className="font-medium text-sm">
+                                <h4 className="font-medium text-sm flex items-center gap-1.5">
                                   {service.name}
+                                  {isLastUsedService(pet.id, service.id) && (
+                                    <span
+                                      title={lastUsedLabel(pet.id)}
+                                      className="inline-flex items-center gap-0.5 text-yellow-600"
+                                    >
+                                      <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                                      <span className="text-[10px] font-medium">
+                                        ล่าสุด
+                                      </span>
+                                    </span>
+                                  )}
                                 </h4>
                                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                                   {availablePrices.map((priceInfo) => (
@@ -533,6 +590,11 @@ export function POSServiceSelector() {
                                         pet.id,
                                       )
                                     }
+                                    title={
+                                      isLastUsedService(pet.id, service.id)
+                                        ? lastUsedLabel(pet.id)
+                                        : undefined
+                                    }
                                     className={cn(
                                       "inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm transition-all",
                                       isInCart
@@ -540,6 +602,9 @@ export function POSServiceSelector() {
                                         : "bg-card hover:border-primary hover:shadow-sm cursor-pointer",
                                     )}
                                   >
+                                    {isLastUsedService(pet.id, service.id) && (
+                                      <Star className="h-3.5 w-3.5 shrink-0 fill-yellow-400 text-yellow-400" />
+                                    )}
                                     <span className="font-medium">
                                       {service.name}
                                     </span>
