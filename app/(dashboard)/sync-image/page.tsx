@@ -49,6 +49,7 @@ export default function SyncImagePage() {
           onSync={triggerSync}
           approvedCount={approvedImages.length}
           downloadState={downloadState}
+          storageReady={status?.storageReady ?? true}
         />
       </div>
 

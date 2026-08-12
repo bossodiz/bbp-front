@@ -4,7 +4,7 @@ import { useState } from "react";
 import { SyncStatus, CleanupResult } from "@/lib/types";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { Wifi, WifiOff, Trash2, Loader2 } from "lucide-react";
+import { Wifi, WifiOff, Cloud, CloudOff, Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -42,11 +42,36 @@ export function SyncStatusBar({ status, onCleanup }: SyncStatusBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 rounded-md border bg-card px-3 py-1.5 text-xs">
       <div className="flex items-center gap-3 text-muted-foreground">
-        {status.dbConnected ? (
-          <Wifi className="h-3.5 w-3.5 text-green-500" />
-        ) : (
-          <WifiOff className="h-3.5 w-3.5 text-destructive" />
-        )}
+        <span
+          className="flex items-center"
+          title={status.dbConnected ? "ฐานข้อมูลเชื่อมต่อ" : "ฐานข้อมูลไม่เชื่อมต่อ"}
+        >
+          {status.dbConnected ? (
+            <Wifi className="h-3.5 w-3.5 text-green-500" />
+          ) : (
+            <WifiOff className="h-3.5 w-3.5 text-destructive" />
+          )}
+        </span>
+        <span
+          className={cn(
+            "flex items-center gap-1",
+            !status.storageReady && "text-destructive",
+          )}
+          title={
+            status.storageReady
+              ? "Storage พร้อมใช้งาน"
+              : "Storage ไม่พร้อม — จะดึงรูปใหม่ไม่ได้"
+          }
+        >
+          {status.storageReady ? (
+            <Cloud className="h-3.5 w-3.5 text-green-500" />
+          ) : (
+            <CloudOff className="h-3.5 w-3.5 text-destructive" />
+          )}
+          {!status.storageReady && (
+            <span className="font-medium">Storage ไม่พร้อม</span>
+          )}
+        </span>
         <span>
           ดึงล่าสุด <span className="font-medium text-foreground">{lastFetch}</span>
         </span>

@@ -358,6 +358,7 @@ export interface SyncStatus {
   approvedCount: number;
   readyToDeleteCount: number;
   dbConnected: boolean;
+  storageReady: boolean;
 }
 
 export interface CleanupResult {
