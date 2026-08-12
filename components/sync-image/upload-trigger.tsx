@@ -12,6 +12,8 @@ interface UploadTriggerProps {
   onSync: () => Promise<void>;
   approvedCount?: number;
   downloadState: DownloadState;
+  /** Supabase Storage พร้อมใช้งานไหม — ถ้าไม่พร้อม disable ปุ่มดึงรูปใหม่ (default: true จนกว่าจะรู้สถานะ) */
+  storageReady?: boolean;
 }
 
 export function UploadTrigger({
@@ -19,6 +21,7 @@ export function UploadTrigger({
   onSync,
   approvedCount = 0,
   downloadState,
+  storageReady = true,
 }: UploadTriggerProps) {
   const [syncing, setSyncing] = useState(false);
 
@@ -26,6 +29,7 @@ export function UploadTrigger({
     downloadState.status === "preparing" || downloadState.status === "building";
   const isDone = downloadState.status === "done";
   const isBusy = syncing || isDownloading || isDone;
+  const syncDisabled = isBusy || !storageReady;
 
   const handleDownload = async () => {
     try {
@@ -40,8 +44,10 @@ export function UploadTrigger({
     try {
       await onSync();
       toast.success("ดึงรูปใหม่จาก Facebook สำเร็จ");
-    } catch {
-      toast.error("ดึงรูปภาพไม่สำเร็จ กรุณาลองใหม่");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "ดึงรูปภาพไม่สำเร็จ กรุณาลองใหม่",
+      );
     } finally {
       setSyncing(false);
     }
@@ -49,7 +55,12 @@ export function UploadTrigger({
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Button variant="outline" onClick={handleSync} disabled={isBusy}>
+      <Button
+        variant="outline"
+        onClick={handleSync}
+        disabled={syncDisabled}
+        title={!storageReady ? "Storage ไม่พร้อม — ดึงรูปใหม่ไม่ได้" : undefined}
+      >
         {syncing ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         ) : (

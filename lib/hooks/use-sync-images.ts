@@ -164,7 +164,12 @@ export function useSyncImages() {
     const res = await fetch("/api/sync/trigger", {
       method: "POST",
     });
-    if (!res.ok) throw new Error("Sync ไม่สำเร็จ");
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new Error("Storage ยังไม่พร้อมใช้งาน — ยังไม่ได้ดึงรูป กรุณาลองใหม่");
+      }
+      throw new Error("Sync ไม่สำเร็จ");
+    }
     await Promise.all([
       fetchPending(),
       fetchApproved(),
