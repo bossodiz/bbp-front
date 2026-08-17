@@ -95,19 +95,9 @@ export function CustomerDialog({
     isSubmittingRef.current = true;
     try {
       setIsSubmitting(true);
-      const addHonorific = (name: string): string => {
-        if (!name) return name;
-
-        const trimmedName = name.trim();
-        if (trimmedName.startsWith("คุณ")) {
-          return trimmedName;
-        }
-
-        return `คุณ${trimmedName}`;
-      };
-
       const customerData = {
-        name: addHonorific(data.name),
+        // บันทึกตามที่ผู้ใช้พิมพ์ ไม่เติมและไม่ตัด "คุณ" เพราะลูกค้าอาจชื่อ "คุณ" จริง ๆ
+        name: data.name.trim(),
         phone: data.phone === "" ? "0000000000" : getPhoneDigits(data.phone),
       };
 
