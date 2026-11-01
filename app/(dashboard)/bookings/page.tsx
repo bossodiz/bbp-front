@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +16,17 @@ export default function BookingsPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [refreshKey, setRefreshKey] = useState(0);
   const [showCompleted, setShowCompleted] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // มาจากปุ่ม "สร้างนัดหมาย" ในหน้าแรก (/bookings?new=1): เปิดหน้าต่างเพิ่มนัดหมายทันที
+  // แล้วล้าง query ออก เพื่อไม่ให้เปิดซ้ำเมื่อรีเฟรช
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setIsDialogOpen(true);
+      router.replace("/bookings");
+    }
+  }, [searchParams, router]);
 
   const handleTabChange = (value: string) => {
     if (value === "calendar") {
@@ -62,8 +74,8 @@ export default function BookingsPage() {
         onValueChange={handleTabChange}
       >
         <TabsList>
-          <TabsTrigger value="list">รายการนัดหมาย</TabsTrigger>
           <TabsTrigger value="calendar">ปฏิทิน</TabsTrigger>
+          <TabsTrigger value="list">รายการนัดหมาย</TabsTrigger>
         </TabsList>
         <TabsContent value="list" className="space-y-4">
           <BookingList
