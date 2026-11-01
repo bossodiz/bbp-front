@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader, PageShell } from "@/components/page-shell";
 import { useEffect } from "react";
 import { useSyncImages } from "@/lib/hooks/use-sync-images";
 import { SyncStatusBar } from "@/components/sync-image/sync-status-bar";
@@ -38,22 +39,24 @@ export default function SyncImagePage() {
   }, [fetchPending, fetchApproved, fetchRejected, fetchStatus]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">ซิงค์รูปภาพ</h1>
-          <p className="text-muted-foreground">จัดการรูปภาพจาก Facebook</p>
-        </div>
-        <UploadTrigger
-          onDownload={downloadApproved}
-          onSync={triggerSync}
-          approvedCount={approvedImages.length}
-          downloadState={downloadState}
-          storageReady={status?.storageReady ?? true}
-        />
-      </div>
+    <PageShell>
+      <PageHeader
+        title="ซิงค์รูปภาพ"
+        description="จัดการรูปภาพจาก Facebook"
+        actions={
+          <UploadTrigger
+            onDownload={downloadApproved}
+            onSync={triggerSync}
+            approvedCount={approvedImages.length}
+            downloadState={downloadState}
+            storageReady={status?.storageReady ?? true}
+          />
+        }
+      />
 
-      <SyncStatusBar status={status} onCleanup={cleanupDownloaded} />
+      <div className="shrink-0">
+        <SyncStatusBar status={status} onCleanup={cleanupDownloaded} />
+      </div>
 
       {error && (
         <div className="flex items-center gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
@@ -62,8 +65,8 @@ export default function SyncImagePage() {
         </div>
       )}
 
-      <Tabs defaultValue="pending">
-        <TabsList>
+      <Tabs defaultValue="pending" className="gap-3 lg:min-h-0 lg:flex-1">
+        <TabsList className="shrink-0">
           <TabsTrigger value="pending">
             รอการอนุมัติ
             {pendingImages.length > 0 && (
@@ -90,7 +93,10 @@ export default function SyncImagePage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pending" className="mt-4">
+        <TabsContent
+          value="pending"
+          className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain"
+        >
           <ImageGrid
             images={pendingImages}
             loading={loading}
@@ -101,7 +107,10 @@ export default function SyncImagePage() {
         </TabsContent>
 
         {/* approved — แสดงปุ่มปฏิเสธเผื่อกดผิด */}
-        <TabsContent value="approved" className="mt-4">
+        <TabsContent
+          value="approved"
+          className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain"
+        >
           <ImageGrid
             images={approvedImages}
             loading={approvedLoading}
@@ -111,7 +120,10 @@ export default function SyncImagePage() {
         </TabsContent>
 
         {/* rejected — แสดงปุ่มอนุมัติเผื่อกดผิด */}
-        <TabsContent value="rejected" className="mt-4">
+        <TabsContent
+          value="rejected"
+          className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain"
+        >
           <ImageGrid
             images={rejectedImages}
             loading={rejectedLoading}
@@ -120,6 +132,6 @@ export default function SyncImagePage() {
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageShell>
   );
 }

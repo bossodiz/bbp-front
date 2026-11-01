@@ -4,30 +4,29 @@ import { RevenueChart } from "@/components/dashboard/revenue-chart";
 import { PetServiceChart } from "@/components/dashboard/pet-service-chart";
 import { TopCustomers } from "@/components/dashboard/top-customers";
 import { RecentBookings } from "@/components/dashboard/recent-bookings";
+import { PageHeader, PageShell } from "@/components/page-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-1.5">
-        <h1 className="text-3xl font-bold text-foreground">แดชบอร์ด</h1>
-        <p className="text-base text-muted-foreground">ภาพรวมการดำเนินงานของร้านในวันนี้</p>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="แดชบอร์ด"
+        description="ภาพรวมการดำเนินงานของร้านในวันนี้"
+      />
 
       <Suspense fallback={<StatsSkeleton />}>
         <DashboardStats />
       </Suspense>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* จอใหญ่: 2x2 แบ่งความสูงที่เหลือเท่ากัน ไม่เลื่อนทั้งหน้า (รายการยาวเลื่อนในการ์ดเอง) */}
+      <div className="grid gap-3 md:grid-cols-2 lg:min-h-0 lg:flex-1 lg:grid-rows-2">
         <Suspense fallback={<ChartSkeleton />}>
           <RevenueChart />
         </Suspense>
         <Suspense fallback={<ChartSkeleton />}>
           <PetServiceChart />
         </Suspense>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
         <Suspense fallback={<ListSkeleton />}>
           <TopCustomers />
         </Suspense>
@@ -35,7 +34,7 @@ export default function DashboardPage() {
           <RecentBookings />
         </Suspense>
       </div>
-    </div>
+    </PageShell>
   );
 }
 

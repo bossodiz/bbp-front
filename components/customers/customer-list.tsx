@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -24,11 +24,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -154,8 +149,8 @@ export function CustomerList({
 
   return (
     <>
-      <Card>
-        <div className="rounded-md">
+      <Card className="gap-0 py-0 lg:min-h-0 lg:flex-1">
+        <div className="rounded-md lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
@@ -178,201 +173,198 @@ export function CustomerList({
                 : customers.map((customer) => {
                     const isExpanded = expandedIds.has(customer.id);
                     return (
-                      <Collapsible
-                        key={customer.id}
-                        open={isExpanded}
-                        onOpenChange={() => toggleExpand(customer.id)}
-                        asChild
-                      >
-                        <>
-                          <TableRow
-                            className="cursor-pointer hover:bg-muted/30"
-                            onClick={() => toggleExpand(customer.id)}
-                          >
-                            <TableCell className="py-3">
-                              <CollapsibleTrigger asChild>
-                                <button className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground">
-                                  {isExpanded ? (
-                                    <ChevronDown className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4" />
-                                  )}
-                                </button>
-                              </CollapsibleTrigger>
-                            </TableCell>
-                            <TableCell className="py-3 font-medium">
-                              {customer.name}
-                            </TableCell>
-                            <TableCell className="py-3 text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Phone className="h-3 w-3" />
-                                {customer.phone
-                                  ? formatPhoneDisplay(customer.phone)
-                                  : "-"}
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3">
-                              <div className="flex flex-wrap gap-1">
-                                {customer.pets.length === 0 ? (
-                                  <span className="text-xs text-muted-foreground">
-                                    -
-                                  </span>
-                                ) : (
-                                  customer.pets.map((pet) => (
-                                    <Badge
+                      <Fragment key={customer.id}>
+                        <TableRow
+                          className="cursor-pointer hover:bg-muted/30"
+                          onClick={() => toggleExpand(customer.id)}
+                        >
+                          <TableCell className="py-3">
+                            {/* ไม่ต้องมี onClick เอง: คลิกจะ bubble ไปที่ TableRow ซึ่งสลับการขยายอยู่แล้ว */}
+                            <button
+                              type="button"
+                              aria-expanded={isExpanded}
+                              aria-label={isExpanded ? "ซ่อนสัตว์เลี้ยง" : "แสดงสัตว์เลี้ยง"}
+                              className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </button>
+                          </TableCell>
+                          <TableCell className="py-3 font-medium">
+                            {customer.name}
+                          </TableCell>
+                          <TableCell className="py-3 text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {customer.phone
+                                ? formatPhoneDisplay(customer.phone)
+                                : "-"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <div className="flex flex-wrap gap-1">
+                              {customer.pets.length === 0 ? (
+                                <span className="text-xs text-muted-foreground">
+                                  -
+                                </span>
+                              ) : (
+                                customer.pets.map((pet) => (
+                                  <Badge
+                                    key={pet.id}
+                                    variant="secondary"
+                                    className={cn(
+                                      "text-xs",
+                                      pet.type === "DOG"
+                                        ? "bg-dog/10 text-dog border-dog/30"
+                                        : "bg-cat/10 text-cat border-cat/30",
+                                    )}
+                                  >
+                                    {pet.type === "DOG" ? (
+                                      <Dog className="h-3 w-3 mr-1" />
+                                    ) : (
+                                      <Cat className="h-3 w-3 mr-1" />
+                                    )}
+                                    {pet.name}
+                                  </Badge>
+                                ))
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCustomer(customer);
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingCustomer(customer);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow className="hover:bg-transparent">
+                            <TableCell colSpan={5} className="p-0">
+                              <div className="border-t bg-muted/20 px-4 py-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-sm font-medium text-muted-foreground">
+                                    สัตว์เลี้ยง ({customer.pets.length} ตัว)
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() =>
+                                      setEditingPet({
+                                        customerId: customer.id,
+                                        pet: null,
+                                      })
+                                    }
+                                    className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-lg border-2 border-dashed bg-card/50 hover:bg-muted/50 transition-colors h-19 w-24 shrink-0 text-muted-foreground hover:text-foreground"
+                                  >
+                                    <Plus className="h-5 w-5" />
+                                    <span className="text-[11px] font-medium leading-none text-center">
+                                      เพิ่มสัตว์เลี้ยง
+                                    </span>
+                                  </button>
+                                  {customer.pets.map((pet) => (
+                                    <div
                                       key={pet.id}
-                                      variant="secondary"
-                                      className={cn(
-                                        "text-xs",
-                                        pet.type === "DOG"
-                                          ? "bg-dog/10 text-dog border-dog/30"
-                                          : "bg-cat/10 text-cat border-cat/30",
-                                      )}
+                                      className="flex items-center gap-3 p-3 rounded-lg bg-card border h-19 flex-1 min-w-[260px] max-w-[350px]"
                                     >
-                                      {pet.type === "DOG" ? (
-                                        <Dog className="h-3 w-3 mr-1" />
-                                      ) : (
-                                        <Cat className="h-3 w-3 mr-1" />
-                                      )}
-                                      {pet.name}
-                                    </Badge>
-                                  ))
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingCustomer(customer);
-                                  }}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeletingCustomer(customer);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                                      <div
+                                        className={cn(
+                                          "flex h-9 w-9 items-center justify-center rounded-lg shrink-0",
+                                          pet.type === "DOG"
+                                            ? "bg-dog/10 text-dog"
+                                            : "bg-cat/10 text-cat",
+                                        )}
+                                      >
+                                        {pet.type === "DOG" ? (
+                                          <Dog className="h-5 w-5" />
+                                        ) : (
+                                          <Cat className="h-5 w-5" />
+                                        )}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <p className="text-sm font-medium">
+                                            {pet.name}
+                                          </p>
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs"
+                                          >
+                                            {petTypeLabels[pet.type]}
+                                          </Badge>
+                                          {pet.weight != null &&
+                                            pet.weight > 0 && (
+                                              <Badge
+                                                variant="outline"
+                                                className="text-xs"
+                                              >
+                                                {pet.weight} kg
+                                              </Badge>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          {formatBreedDisplay(pet)}
+                                          {pet.note && ` · ${pet.note}`}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            setEditingPet({
+                                              customerId: customer.id,
+                                              pet,
+                                            })
+                                          }
+                                        >
+                                          <Pencil className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-7 w-7"
+                                          onClick={() =>
+                                            setDeletingPet({
+                                              customerId: customer.id,
+                                              pet,
+                                            })
+                                          }
+                                        >
+                                          <Trash2 className="h-3 w-3 text-destructive" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             </TableCell>
                           </TableRow>
-                          <CollapsibleContent asChild>
-                            <TableRow className="hover:bg-transparent">
-                              <TableCell colSpan={5} className="p-0">
-                                <div className="border-t bg-muted/20 px-4 py-3">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="text-sm font-medium text-muted-foreground">
-                                      สัตว์เลี้ยง ({customer.pets.length} ตัว)
-                                    </p>
-                                  </div>
-                                  <div className="flex flex-wrap gap-2">
-                                    <button
-                                      onClick={() =>
-                                        setEditingPet({
-                                          customerId: customer.id,
-                                          pet: null,
-                                        })
-                                      }
-                                      className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-lg border-2 border-dashed bg-card/50 hover:bg-muted/50 transition-colors h-19 w-24 shrink-0 text-muted-foreground hover:text-foreground"
-                                    >
-                                      <Plus className="h-5 w-5" />
-                                      <span className="text-[11px] font-medium leading-none text-center">
-                                        เพิ่มสัตว์เลี้ยง
-                                      </span>
-                                    </button>
-                                    {customer.pets.map((pet) => (
-                                      <div
-                                        key={pet.id}
-                                        className="flex items-center gap-3 p-3 rounded-lg bg-card border h-19 flex-1 min-w-[260px] max-w-[350px]"
-                                      >
-                                        <div
-                                          className={cn(
-                                            "flex h-9 w-9 items-center justify-center rounded-lg shrink-0",
-                                            pet.type === "DOG"
-                                              ? "bg-dog/10 text-dog"
-                                              : "bg-cat/10 text-cat",
-                                          )}
-                                        >
-                                          {pet.type === "DOG" ? (
-                                            <Dog className="h-5 w-5" />
-                                          ) : (
-                                            <Cat className="h-5 w-5" />
-                                          )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-1.5 flex-wrap">
-                                            <p className="text-sm font-medium">
-                                              {pet.name}
-                                            </p>
-                                            <Badge
-                                              variant="outline"
-                                              className="text-xs"
-                                            >
-                                              {petTypeLabels[pet.type]}
-                                            </Badge>
-                                            {pet.weight != null &&
-                                              pet.weight > 0 && (
-                                                <Badge
-                                                  variant="outline"
-                                                  className="text-xs"
-                                                >
-                                                  {pet.weight} kg
-                                                </Badge>
-                                              )}
-                                          </div>
-                                          <p className="text-xs text-muted-foreground truncate">
-                                            {formatBreedDisplay(pet)}
-                                            {pet.note && ` · ${pet.note}`}
-                                          </p>
-                                        </div>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7"
-                                            onClick={() =>
-                                              setEditingPet({
-                                                customerId: customer.id,
-                                                pet,
-                                              })
-                                            }
-                                          >
-                                            <Pencil className="h-3 w-3" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7"
-                                            onClick={() =>
-                                              setDeletingPet({
-                                                customerId: customer.id,
-                                                pet,
-                                              })
-                                            }
-                                          >
-                                            <Trash2 className="h-3 w-3 text-destructive" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          </CollapsibleContent>
-                        </>
-                      </Collapsible>
+                        )}
+                      </Fragment>
                     );
                   })}
             </TableBody>

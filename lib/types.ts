@@ -176,6 +176,8 @@ export interface SaleItem {
   petId?: number;
   petName?: string;
   petType?: "DOG" | "CAT";
+  /** น้ำหนักสัตว์ (กก.) ตอนใช้บริการครั้งนั้น; null/ไม่มี = รายการเก่าที่ยังไม่ได้เก็บ */
+  petWeight?: number | null;
   itemType: ItemType;
   quantity: number;
   unitPrice: number;

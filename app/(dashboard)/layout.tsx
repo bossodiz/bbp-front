@@ -23,14 +23,14 @@ export default async function DashboardLayout({
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="lg:h-svh lg:overflow-hidden">
       <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
+      <SidebarInset className="min-h-0 min-w-0">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
         </header>
-        <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-auto p-3 lg:overflow-hidden lg:p-4">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

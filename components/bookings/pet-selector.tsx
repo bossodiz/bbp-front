@@ -223,7 +223,7 @@ export function PetSelector({
                 >
                   <PopoverTrigger asChild>
                     <Button
-                      variant="outline"
+                      variant="outline" size="field"
                       role="combobox"
                       aria-expanded={breedOpen}
                       className={cn(

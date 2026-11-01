@@ -272,7 +272,7 @@ export function PetServiceChart() {
   }, [maxCount]);
 
   return (
-    <Card>
+    <Card className="lg:h-full lg:min-h-0">
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -302,16 +302,16 @@ export function PetServiceChart() {
           </Select>
         </div>
       </CardHeader>
-      <CardContent className="pb-4 pt-0">
+      <CardContent className="pb-3 pt-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         {loading ? (
-          <div className="flex items-center justify-center h-[200px] sm:h-[280px] md:h-[300px]">
+          <div className="flex items-center justify-center h-[200px] sm:h-[280px] md:h-[300px] lg:h-auto lg:flex-1">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
           <>
             <ChartContainer
               config={chartConfig}
-              className="h-[200px] sm:h-[280px] md:h-[300px] w-full"
+              className="h-[200px] sm:h-[280px] md:h-[300px] w-full lg:h-auto lg:min-h-0 lg:flex-1"
             >
               <BarChart data={chartData} margin={{ left: -20, right: 10 }}>
                 <CartesianGrid

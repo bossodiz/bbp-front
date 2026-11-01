@@ -392,7 +392,7 @@ export function BookingDialog({
                   >
                     <PopoverTrigger asChild>
                       <Button
-                        variant="outline"
+                        variant="outline" size="field"
                         role="combobox"
                         aria-expanded={customerSearchOpen}
                         className="w-full justify-between"
@@ -604,7 +604,7 @@ export function BookingDialog({
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
-                              variant="outline"
+                              variant="outline" size="field"
                               className={cn(
                                 "pl-3 text-left font-normal",
                                 !field.value && "text-muted-foreground",

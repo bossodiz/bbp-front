@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Banknote,
   Dog,
@@ -9,7 +10,9 @@ import {
   BedDouble,
   Package,
   TrendingUp,
+  Plus,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats";
@@ -107,7 +110,7 @@ export function DashboardStats() {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid shrink-0 gap-3 md:grid-cols-2 lg:grid-cols-4">
       <StatCard
         title="รายได้วันนี้"
         value={loading ? "" : formatCurrency(stats.revenueToday)}
@@ -228,7 +231,15 @@ export function DashboardStats() {
         icon={Calendar}
         iconClassName="bg-info/10 text-info"
         loading={loading}
-      />
+      >
+        {/* ไปหน้านัดหมายและเปิดหน้าต่างเพิ่มนัดหมายทันที (?new=1) */}
+        <Button asChild size="sm" className="mt-3 w-full">
+          <Link href="/bookings?new=1">
+            <Plus className="mr-1.5 h-4 w-4" />
+            สร้างนัดหมาย
+          </Link>
+        </Button>
+      </StatCard>
     </div>
   );
 }

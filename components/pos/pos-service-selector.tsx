@@ -937,7 +937,7 @@ export function POSServiceSelector() {
                       handleSaveWeight();
                     }
                   }}
-                  className="pr-12 text-lg h-12"
+                  className="pr-12 text-lg"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium pointer-events-none">
                   kg

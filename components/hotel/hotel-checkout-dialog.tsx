@@ -378,7 +378,7 @@ export function HotelCheckoutDialog({
             <Popover>
               <PopoverTrigger asChild>
                 <Button
-                  variant="outline"
+                  variant="outline" size="field"
                   className="w-full justify-start text-left font-normal"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -468,7 +468,7 @@ export function HotelCheckoutDialog({
                             onKeyDown={(e) =>
                               e.key === "Enter" && handleSavePrice()
                             }
-                            className="h-7 w-20 text-sm"
+                            className="w-20"
                             autoFocus
                           />
                           <Button

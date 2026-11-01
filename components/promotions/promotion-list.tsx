@@ -121,7 +121,7 @@ export function PromotionList({
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {promotions.map((promotion) => {
           const Icon = typeIcons[promotion.type];
           return (

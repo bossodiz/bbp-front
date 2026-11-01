@@ -67,7 +67,7 @@ export function RecentBookings() {
 
   return (
     <TooltipProvider>
-      <Card>
+      <Card className="lg:h-full lg:min-h-0">
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="space-y-1.5">
@@ -87,7 +87,7 @@ export function RecentBookings() {
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
