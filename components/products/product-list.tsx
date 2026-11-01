@@ -124,9 +124,9 @@ export function ProductList({
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-3 lg:h-full lg:min-h-0">
       {/* Search */}
-      <div className="relative mb-4">
+      <div className="relative shrink-0">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="ค้นหาสินค้า..."
@@ -147,9 +147,9 @@ export function ProductList({
           </CardContent>
         </Card>
       ) : (
-        <Card className="py-0">
-          <CardContent className="p-0">
-            <div className="rounded-lg border">
+        <Card className="gap-0 py-0 lg:min-h-0 lg:flex-1">
+          <CardContent className="p-0 lg:min-h-0 lg:flex-1">
+            <div className="rounded-lg border lg:h-full lg:overflow-y-auto lg:overscroll-contain">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -295,6 +295,6 @@ export function ProductList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

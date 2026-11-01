@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CustomerList } from "@/components/customers/customer-list";
 import { CustomerDialog } from "@/components/customers/customer-dialog";
+import { PageHeader, PageShell } from "@/components/page-shell";
 import { useCustomers } from "@/lib/hooks/use-customers";
 
 const PAGE_SIZE = 10;
@@ -44,24 +45,19 @@ export default function CustomersPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            ลูกค้าและสัตว์เลี้ยง
-          </h1>
-          <p className="text-muted-foreground">
-            จัดการข้อมูลลูกค้าและสัตว์เลี้ยง
-            {!loading && ` (${customers.length} รายการ)`}
-          </p>
-        </div>
-        <Button onClick={() => setIsDialogOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          เพิ่มลูกค้าใหม่
-        </Button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="ลูกค้าและสัตว์เลี้ยง"
+        description={`จัดการข้อมูลลูกค้าและสัตว์เลี้ยง${!loading ? ` (${customers.length} รายการ)` : ""}`}
+        actions={
+          <Button onClick={() => setIsDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            เพิ่มลูกค้าใหม่
+          </Button>
+        }
+      />
 
-      <div className="flex gap-2 max-w-md">
+      <div className="flex max-w-md shrink-0 gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -96,6 +92,7 @@ export default function CustomersPage() {
         </div>
       )}
 
+      <div className="flex flex-col lg:min-h-0 lg:flex-1">
       <CustomerList
         customers={paginatedCustomers}
         loading={loading}
@@ -105,12 +102,13 @@ export default function CustomersPage() {
         onPageChange={setCurrentPage}
         totalCount={customers.length}
       />
+      </div>
 
       <CustomerDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSuccess={() => fetchCustomers(submittedQuery || undefined)}
       />
-    </div>
+    </PageShell>
   );
 }

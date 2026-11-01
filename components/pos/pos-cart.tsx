@@ -559,7 +559,7 @@ export function POSCart() {
                           updated.setHours(h);
                           setSaleDate(updated);
                         }}
-                        className="h-8 w-14 text-center text-sm tabular-nums"
+                        className="w-14 text-center tabular-nums"
                       />
                       <span className="text-muted-foreground font-bold">:</span>
                       <Input
@@ -576,7 +576,7 @@ export function POSCart() {
                           updated.setMinutes(m);
                           setSaleDate(updated);
                         }}
-                        className="h-8 w-14 text-center text-sm tabular-nums"
+                        className="w-14 text-center tabular-nums"
                       />
                     </div>
                     <Button
@@ -722,7 +722,7 @@ export function POSCart() {
                                   setEditingPrice(e.target.value)
                                 }
                                 onKeyDown={handleKeyDown}
-                                className="h-7 w-20 text-sm"
+                                className="w-20"
                               />
                               <Button
                                 size="sm"
@@ -833,7 +833,7 @@ export function POSCart() {
                       }
                     }}
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger>
                       <SelectValue placeholder="เลือกโปรโมชั่น" />
                     </SelectTrigger>
                     <SelectContent>
@@ -855,7 +855,7 @@ export function POSCart() {
                       placeholder="ลดเพิ่ม (฿)"
                       value={customDiscount}
                       onChange={(e) => setCustomDiscount(e.target.value)}
-                      className="h-9 flex-1"
+                      className="flex-1"
                     />
                     {customDiscount && (
                       <Button

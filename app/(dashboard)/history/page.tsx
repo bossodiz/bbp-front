@@ -1,17 +1,16 @@
+import { PageHeader, PageShell } from "@/components/page-shell";
 import { ServiceHistoryList } from "@/components/history/service-history-list";
 
 export default function HistoryPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          ประวัติการเข้าใช้บริการ
-        </h1>
-        <p className="text-muted-foreground">
-          ดูประวัติการเข้าใช้บริการของลูกค้าทั้งหมด
-        </p>
+    <PageShell>
+      <PageHeader
+        title="ประวัติการเข้าใช้บริการ"
+        description="ดูประวัติการเข้าใช้บริการของลูกค้าทั้งหมด"
+      />
+      <div className="flex flex-col lg:min-h-0 lg:flex-1">
+        <ServiceHistoryList />
       </div>
-      <ServiceHistoryList />
-    </div>
+    </PageShell>
   );
 }

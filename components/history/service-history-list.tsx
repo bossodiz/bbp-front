@@ -642,10 +642,10 @@ export function ServiceHistoryList() {
 
   return (
     <>
-      <Card>
-        <CardContent className="p-6">
+      <Card className="gap-0 py-0 lg:min-h-0 lg:flex-1">
+        <CardContent className="flex flex-col p-4 lg:min-h-0 lg:flex-1">
           {/* Search and Filters */}
-          <div className="mb-6 space-y-4">
+          <div className="mb-3 shrink-0 space-y-2">
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -743,7 +743,7 @@ export function ServiceHistoryList() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        variant="outline"
+                        variant="outline" size="field"
                         className="w-50 justify-start text-left font-normal"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -774,7 +774,7 @@ export function ServiceHistoryList() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        variant="outline"
+                        variant="outline" size="field"
                         className="w-50 justify-start text-left font-normal"
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -836,7 +836,7 @@ export function ServiceHistoryList() {
           {/* Table */}
           {!isLoading && !(error || componentError) && (
             <>
-              <div className="rounded-lg border">
+              <div className="rounded-lg border lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1022,7 +1022,7 @@ export function ServiceHistoryList() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
+                <div className="mt-2 flex shrink-0 items-center justify-between">
                   <p className="text-sm text-muted-foreground">
                     แสดง {startIndex + 1}-
                     {Math.min(startIndex + itemsPerPage, filteredStats.length)}{" "}
@@ -1137,9 +1137,9 @@ export function ServiceHistoryList() {
                     <Popover open={billDateOpen} onOpenChange={setBillDateOpen}>
                       <PopoverTrigger asChild>
                         <Button
-                          variant="outline"
+                          variant="outline" size="field"
                           className={cn(
-                            "h-9 w-full justify-between px-3 text-sm",
+                            "w-full justify-between",
                             !isSameDay(
                               billDate,
                               toBangkokDateTime(new Date()),
@@ -1209,7 +1209,7 @@ export function ServiceHistoryList() {
                                   updated.setHours(hours);
                                   setBillDate(updated);
                                 }}
-                                className="h-8 w-14 text-center text-sm tabular-nums"
+                                className="w-14 text-center tabular-nums"
                               />
                               <span className="font-bold text-muted-foreground">
                                 :
@@ -1231,7 +1231,7 @@ export function ServiceHistoryList() {
                                   updated.setMinutes(minutes);
                                   setBillDate(updated);
                                 }}
-                                className="h-8 w-14 text-center text-sm tabular-nums"
+                                className="w-14 text-center tabular-nums"
                               />
                             </div>
                             <Button
@@ -1344,6 +1344,9 @@ export function ServiceHistoryList() {
                                     ? ` (${petTypeLabels[item.petType]})`
                                     : ""}
                                 </span>
+                              ) : null}
+                              {item.petWeight != null ? (
+                                <span>• น้ำหนัก {item.petWeight} กก.</span>
                               ) : null}
                               {item.itemType && item.itemType !== "SERVICE" ? (
                                 <span>

@@ -110,7 +110,7 @@ export function DashboardStats() {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid shrink-0 gap-3 md:grid-cols-2 lg:grid-cols-4">
       <StatCard
         title="รายได้วันนี้"
         value={loading ? "" : formatCurrency(stats.revenueToday)}

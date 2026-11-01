@@ -1,19 +1,27 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Pencil, Trash2, Dog, Cat, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { useMemo, useState } from "react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Cat,
+  Dog,
+  MoreVertical,
+  Power,
+  Search,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +35,7 @@ import {
 import { ServiceDialog } from "./service-dialog";
 import { useServices } from "@/lib/hooks/use-services";
 import { useServiceConfigContext } from "@/lib/contexts/service-config-context";
+import { cn } from "@/lib/utils";
 import type { Service } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -35,6 +44,24 @@ interface ServiceListProps {
   loading?: boolean;
   onRefresh?: () => void;
 }
+
+interface SizeColumn {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+const SPECIAL_TAB = "special";
+
+// การ์ดบริการเรียงเป็นคอลัมน์: มือถือ 1 คอลัมน์, จอกลางขึ้นไป 2 คอลัมน์
+const CARD_GRID = "grid gap-2 md:grid-cols-2 xl:grid-cols-3";
+
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat("th-TH", {
+    style: "currency",
+    currency: "THB",
+    minimumFractionDigits: 0,
+  }).format(amount);
 
 export function ServiceList({
   services,
@@ -48,24 +75,21 @@ export function ServiceList({
   const { petTypes, getSizesForPetType } = useServiceConfigContext();
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [deletingService, setDeletingService] = useState<Service | null>(null);
-
-  const activePetTypes = useMemo(() => {
-    return [...petTypes]
-      .filter((p) => p.active)
-      .sort((a, b) => a.order - b.order);
-  }, [petTypes]);
+  const [query, setQuery] = useState("");
+  const [tab, setTab] = useState("");
+  // ขนาดที่เลือกของแต่ละแท็บ (key = รหัสประเภทสัตว์); ยังไม่เลือก = ขนาดแรก
+  const [sizeByTab, setSizeByTab] = useState<Record<string, string>>({});
 
   const handleDelete = async () => {
-    if (deletingService) {
-      try {
-        await deleteServiceAPI(deletingService.id);
-        toast.success("ลบบริการเรียบร้อยแล้ว");
-        onRefresh?.();
-      } catch (error: any) {
-        toast.error(error.message || "เกิดข้อผิดพลาด");
-      } finally {
-        setDeletingService(null);
-      }
+    if (!deletingService) return;
+    try {
+      await deleteServiceAPI(deletingService.id);
+      toast.success("ลบบริการเรียบร้อยแล้ว");
+      onRefresh?.();
+    } catch (error: any) {
+      toast.error(error.message || "เกิดข้อผิดพลาด");
+    } finally {
+      setDeletingService(null);
     }
   };
 
@@ -81,331 +105,186 @@ export function ServiceList({
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("th-TH", {
-      style: "currency",
-      currency: "THB",
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  // หนึ่งแท็บต่อประเภทสัตว์ที่เปิดใช้งาน + แท็บบริการพิเศษ: บนมือถือเห็นทีละประเภท เลื่อนน้อยลงมาก
+  const groups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const matches = (s: Service) =>
+      !q ||
+      s.name.toLowerCase().includes(q) ||
+      (s.description ?? "").toLowerCase().includes(q);
 
-  const getPetTypeIcon = (petTypeId: string) => {
-    if (petTypeId === "DOG") return <Dog className="h-4 w-4 text-dog" />;
-    if (petTypeId === "CAT") return <Cat className="h-4 w-4 text-cat" />;
-    return null;
+    const petGroups = [...petTypes]
+      .filter((p) => p.active)
+      .sort((a, b) => a.order - b.order)
+      .map((petType) => {
+        const sizes: SizeColumn[] = getSizesForPetType(petType.id)
+          .filter((s) => s.active)
+          .map((s) => ({ id: s.id, name: s.name, description: s.description }));
+        const list = services.filter(
+          (s) =>
+            !s.isSpecial &&
+            matches(s) &&
+            s.prices?.some((p) => p.petTypeId === petType.id && p.price > 0),
+        );
+        return { key: petType.id, label: petType.name, sizes, list };
+      })
+      .filter((g) => g.sizes.length > 0);
+
+    const special = services.filter((s) => s.isSpecial && matches(s));
+    const hasAnySpecial = services.some((s) => s.isSpecial);
+    return { petGroups, special, hasAnySpecial };
+  }, [services, petTypes, getSizesForPetType, query]);
+
+  const tabs = [
+    ...groups.petGroups.map((g) => ({ key: g.key, label: g.label, count: g.list.length })),
+    ...(groups.hasAnySpecial
+      ? [{ key: SPECIAL_TAB, label: "พิเศษ", count: groups.special.length }]
+      : []),
+  ];
+  const activeTab = tabs.some((t) => t.key === tab) ? tab : tabs[0]?.key;
+
+  const rowActions = {
+    onEdit: setEditingService,
+    onDelete: setDeletingService,
+    onToggle: handleToggleStatus,
   };
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-muted-foreground">กำลังโหลดข้อมูล...</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-3" aria-busy="true" aria-label="กำลังโหลดข้อมูล">
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-12 w-full" />
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-28 w-full rounded-xl" />
+        ))}
+      </div>
     );
   }
 
   if (services.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-muted-foreground">ยังไม่มีบริการในระบบ</p>
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border bg-card px-4 py-12 text-center text-base text-muted-foreground">
+        ยังไม่มีบริการในระบบ
+      </div>
     );
   }
 
   return (
     <>
-      <div className="space-y-8">
-        {/* บริการพิเศษ */}
-        {(() => {
-          const specialServices = services.filter((s) => s.isSpecial);
-          if (specialServices.length === 0) return null;
+      {/* การ์ดใหญ่ใบเดียวบนจอใหญ่ (ค้นหา + แท็บ + รายการ) บนมือถือไม่ซ้อนกรอบเพื่อให้เหลือพื้นที่เต็มความกว้าง */}
+      <div className="flex flex-col gap-3 lg:h-full lg:min-h-0 md:rounded-xl md:border md:bg-card md:p-4">
+        <div className="relative">
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="ค้นหาบริการ"
+            aria-label="ค้นหาบริการ"
+            className="pl-10 text-base md:max-w-sm"
+          />
+        </div>
 
-          return (
-            <Card
-              key="special"
-              className="overflow-hidden border-primary/20 py-0"
-            >
-              {/* Header บริการพิเศษ */}
-              <CardHeader className="bg-primary/5 border-b py-6 px-4 flex items-center">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">⭐</span>
-                  <div className="space-y-0">
-                    <CardTitle className="text-sm font-semibold uppercase leading-none">
-                      บริการพิเศษ
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      บริการที่ไม่เกี่ยวข้องกับประเภทสัตว์และขนาด
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-
-              {/* ตารางบริการพิเศษ */}
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/20 hover:bg-muted/20">
-                        <TableHead className="w-[200px] font-semibold text-sm h-6">
-                          บริการ
-                        </TableHead>
-                        <TableHead className="text-center min-w-[100px] font-semibold text-sm h-6">
-                          ราคา
-                        </TableHead>
-                        <TableHead className="w-[130px] text-center font-semibold text-sm h-8">
-                          จัดการ
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {specialServices.map((service) => (
-                        <TableRow
-                          key={service.id}
-                          className={`hover:bg-muted/50 ${!service.active ? "opacity-50" : ""}`}
-                        >
-                          <TableCell className="py-2 px-3">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs text-muted-foreground font-mono w-8">
-                                #{service.order}
-                              </span>
-                              <span className="font-medium text-sm">
-                                {service.name}
-                              </span>
-                              {!service.active && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs h-5 px-1.5"
-                                >
-                                  ปิด
-                                </Badge>
-                              )}
-                            </div>
-                            {service.description && (
-                              <p className="text-xs text-muted-foreground mt-0.5 ml-9">
-                                {service.description}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center py-2 px-2">
-                            <Badge
-                              variant="secondary"
-                              className="font-medium text-sm h-6 px-2.5"
-                            >
-                              {formatCurrency(service.specialPrice || 0)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center py-2 px-2">
-                            <div className="flex items-center justify-center gap-0.5">
-                              <Switch
-                                checked={service.active}
-                                onCheckedChange={() =>
-                                  handleToggleStatus(service)
-                                }
-                                className="scale-75"
-                              />
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setEditingService(service)}
-                                className="h-7 w-7 p-0"
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeletingService(service)}
-                                className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })()}
-
-        {/* แยกตารางตามประเภทสัตว์ */}
-        {activePetTypes.map((petType) => {
-          const sizes = getSizesForPetType(petType.id).filter((s) => s.active);
-
-          if (sizes.length === 0) return null;
-
-          return (
-            <Card
-              key={petType.id}
-              className={`overflow-hidden py-0 ${
-                petType.id === "DOG"
-                  ? "border-orange-200"
-                  : petType.id === "CAT"
-                    ? "border-sky-200"
-                    : ""
-              }`}
-            >
-              {/* Header ประเภทสัตว์ */}
-              <CardHeader
-                className={`border-b py-6 px-4 flex items-center ${
-                  petType.id === "DOG"
-                    ? "bg-orange-50"
-                    : petType.id === "CAT"
-                      ? "bg-sky-50"
-                      : "bg-muted/30"
-                }`}
+        <Tabs value={activeTab} onValueChange={setTab} className="gap-3 lg:min-h-0 lg:flex-1">
+          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto p-1 md:w-fit">
+            {tabs.map((t) => (
+              <TabsTrigger
+                key={t.key}
+                value={t.key}
+                className="h-10 min-w-fit flex-1 gap-2 px-4 text-base md:flex-none"
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{getPetTypeIcon(petType.id)}</span>
-                  <div className="space-y-0">
-                    <CardTitle className="text-sm font-semibold uppercase leading-none">
-                      {petType.name} SERVICE
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      บริการสำหรับ{petType.name}
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
+                <TabIcon id={t.key} />
+                <span>{t.label}</span>
+                <span className="text-sm tabular-nums text-muted-foreground">
+                  {t.count}
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-              {/* ตารางบริการ */}
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/20 hover:bg-muted/20">
-                        <TableHead className="w-[160px] font-semibold text-sm h-6">
-                          บริการ
-                        </TableHead>
-                        {sizes.map((size) => (
-                          <TableHead
-                            key={size.id}
-                            className="text-center min-w-[75px] font-semibold text-sm h-6 px-2"
-                          >
-                            <div className="flex flex-col items-center">
-                              <span>{size.name}</span>
-                              {size.description && (
-                                <span className="text-xs font-normal text-muted-foreground">
-                                  {size.description}
-                                </span>
-                              )}
-                            </div>
-                          </TableHead>
-                        ))}
-                        <TableHead className="w-[130px] text-center font-semibold text-sm h-6">
-                          จัดการ
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {services
-                        .filter((service) => {
-                          // กรองเฉพาะบริการปกติที่มีราคาสำหรับประเภทสัตว์นี้
-                          return (
-                            !service.isSpecial &&
-                            service.prices?.some(
-                              (p) => p.petTypeId === petType.id && p.price > 0,
-                            )
-                          );
-                        })
-                        .map((service) => {
-                          return (
-                            <TableRow
-                              key={service.id}
-                              className={`hover:bg-muted/50 ${!service.active ? "opacity-50" : ""}`}
-                            >
-                              <TableCell className="py-2 px-3">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-xs text-muted-foreground font-mono w-8">
-                                    #{service.order}
-                                  </span>
-                                  <span className="font-medium text-sm">
-                                    {service.name}
-                                  </span>
-                                  {!service.active && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-xs h-5 px-1.5"
-                                    >
-                                      ปิด
-                                    </Badge>
-                                  )}
-                                </div>
-                                {service.description && (
-                                  <p className="text-xs text-muted-foreground mt-0.5 ml-9">
-                                    {service.description}
-                                  </p>
-                                )}
-                              </TableCell>
-                              {sizes.map((size) => {
-                                const price = service.prices?.find(
-                                  (p) =>
-                                    p.petTypeId === petType.id &&
-                                    p.sizeId === size.id,
-                                );
-                                return (
-                                  <TableCell
-                                    key={size.id}
-                                    className="text-center py-2 px-2"
-                                  >
-                                    {price && price.price > 0 ? (
-                                      <Badge
-                                        variant="secondary"
-                                        className="font-medium text-sm h-6 px-2.5"
-                                      >
-                                        {formatCurrency(price.price)}
-                                      </Badge>
-                                    ) : (
-                                      <span className="text-muted-foreground text-sm">
-                                        -
-                                      </span>
-                                    )}
-                                  </TableCell>
-                                );
-                              })}
-                              <TableCell className="text-center py-2 px-2">
-                                <div className="flex items-center justify-center gap-0.5">
-                                  <Switch
-                                    checked={service.active}
-                                    onCheckedChange={() =>
-                                      handleToggleStatus(service)
-                                    }
-                                    className="scale-75"
-                                  />
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setEditingService(service)}
-                                    className="h-7 w-7 p-0"
-                                  >
-                                    <Pencil className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setDeletingService(service)}
-                                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                    </TableBody>
-                  </Table>
+          {groups.petGroups.map((group) => {
+            const selected =
+              group.sizes.find((z) => z.id === sizeByTab[group.key]) ??
+              group.sizes[0];
+            // แสดงเฉพาะขนาดที่เลือก (พนักงานรู้น้ำหนักสัตว์อยู่แล้ว เลือกขนาดแล้วเห็นราคาทุกบริการ)
+            const items = group.list
+              .map((service) => ({
+                service,
+                price: service.prices?.find(
+                  (p) => p.petTypeId === group.key && p.sizeId === selected.id,
+                )?.price,
+              }))
+              .filter((it) => it.price != null && it.price > 0);
+
+            return (
+              <TabsContent
+                key={group.key}
+                value={group.key}
+                className="flex flex-col gap-3 lg:min-h-0 lg:flex-1"
+              >
+                <SizePicker
+                  sizes={group.sizes}
+                  selectedId={selected.id}
+                  onSelect={(id) =>
+                    setSizeByTab((prev) => ({ ...prev, [group.key]: id }))
+                  }
+                />
+                <div className="flex shrink-0 flex-wrap items-baseline gap-x-2 border-b pb-1.5">
+                  <h2 className="text-lg font-semibold">{selected.name} ({selected.description})</h2>
+                  <span className="ml-auto text-sm tabular-nums text-muted-foreground">
+                    {items.length} บริการ
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+                  {items.length === 0 ? (
+                    <EmptyState searching={query.trim() !== ""} />
+                  ) : (
+                    <ul className={CARD_GRID}>
+                      {items.map(({ service, price }) => (
+                        <ServiceCard
+                          key={service.id}
+                          service={service}
+                          price={price}
+                          {...rowActions}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </TabsContent>
+            );
+          })}
+
+          {groups.hasAnySpecial && (
+            <TabsContent
+              value={SPECIAL_TAB}
+              className="flex flex-col gap-3 lg:min-h-0 lg:flex-1"
+            >
+              <p className="text-sm text-muted-foreground">
+                ราคาเดียว ไม่แยกตามประเภทสัตว์และขนาด
+              </p>
+              <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+                {groups.special.length === 0 ? (
+                  <EmptyState searching={query.trim() !== ""} />
+                ) : (
+                  <ul className={CARD_GRID}>
+                    {groups.special.map((service) => (
+                      <ServiceCard
+                        key={service.id}
+                        service={service}
+                        price={service.specialPrice}
+                        {...rowActions}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
 
       {/* Edit Service Dialog */}
@@ -441,5 +320,186 @@ export function ServiceList({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+function TabIcon({ id }: { id: string }) {
+  if (id === "DOG") return <Dog className="h-5 w-5 text-dog" aria-hidden="true" />;
+  if (id === "CAT") return <Cat className="h-5 w-5 text-cat" aria-hidden="true" />;
+  return <Sparkles className="h-5 w-5 text-warning" aria-hidden="true" />;
+}
+
+function EmptyState({ searching }: { searching: boolean }) {
+  return (
+    <div className="rounded-xl border bg-card px-4 py-10 text-center text-base text-muted-foreground">
+      {searching ? "ไม่พบบริการที่ค้นหา" : "ยังไม่มีบริการในหมวดนี้"}
+    </div>
+  );
+}
+
+// "2 - 4.9 KG" -> "2 - 4.9": ตัดหน่วยออกให้ป้ายบนปุ่มสั้นลง (หน่วยเต็มอยู่ที่หัวข้อด้านล่าง)
+function compactRange(text?: string) {
+  if (!text) return "";
+  return text
+    .replace(/\s*kg\.?$/i, "")
+    .replace(/\s*-\s*/g, " - ")
+    .trim();
+}
+
+// ปุ่มเลือกขนาด (เลือกได้ทีละหนึ่ง): สองบรรทัด ชื่อขนาดตัวใหญ่ + ช่วงน้ำหนักตัวเล็ก
+// เรียงเป็นแถวเดียว เลื่อนซ้าย-ขวาได้ (ปุ่มที่เลือกจะเลื่อนมาอยู่กลางจอให้เอง)
+function SizePicker({
+  sizes,
+  selectedId,
+  onSelect,
+}: {
+  sizes: SizeColumn[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  if (sizes.length < 2) return null;
+  return (
+    <div className="shrink-0 space-y-1">
+      <p className="text-sm text-muted-foreground">เลือกขนาด · น้ำหนักเป็น กก.</p>
+      <div
+        role="group"
+        aria-label="เลือกขนาด"
+        className="-mx-1 flex gap-2 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {sizes.map((size) => {
+          const active = size.id === selectedId;
+          return (
+            <button
+              key={size.id}
+              type="button"
+              aria-pressed={active}
+              onClick={(e) => {
+                onSelect(size.id);
+                e.currentTarget.scrollIntoView({
+                  behavior: "smooth",
+                  inline: "center",
+                  block: "nearest",
+                });
+              }}
+              className={cn(
+                // มือถือ (< md): แสดง 5 ปุ่มพอดีแถว ที่เหลือเลื่อนซ้าย-ขวา
+                // จอใหญ่ (md+): ขยายเท่า ๆ กันเต็มแถว ไม่ต่ำกว่า min-w-24 (ไม่พอก็เลื่อน)
+                "flex min-h-14 w-[calc((100%-2rem)/5)] min-w-0 flex-none flex-col items-center justify-center gap-0.5 rounded-xl border px-1.5 py-1.5 whitespace-nowrap transition-colors",
+                "md:w-auto md:min-w-24 md:flex-1 md:shrink-0 md:px-3",
+                "outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                active
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "bg-card hover:bg-muted",
+              )}
+            >
+              <span className="text-lg font-semibold leading-none">
+                {size.name}
+              </span>
+              {size.description && (
+                <span
+                  className={cn(
+                    "text-sm leading-none tabular-nums",
+                    active ? "text-primary-foreground/90" : "text-muted-foreground",
+                  )}
+                >
+                  {compactRange(size.description)}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+interface ServiceCardProps {
+  service: Service;
+  price?: number;
+  onEdit: (service: Service) => void;
+  onDelete: (service: Service) => void;
+  onToggle: (service: Service) => void;
+}
+
+// การ์ดแถวเดียว: แตะที่การ์ดเพื่อแก้ไข, เมนู "⋯" สำหรับเปิด/ปิดใช้งานและลบ
+function ServiceCard({
+  service,
+  price,
+  onEdit,
+  onDelete,
+  onToggle,
+}: ServiceCardProps) {
+  const has = price != null && price > 0;
+
+  return (
+    <li className="flex items-center rounded-xl border bg-card pl-1 pr-1">
+      <button
+        type="button"
+        onClick={() => onEdit(service)}
+        aria-label={`แก้ไข ${service.name}`}
+        className={cn(
+          "flex min-h-14 min-w-0 flex-1 items-center justify-between gap-3 rounded-lg px-3 py-2 text-left",
+          "outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring",
+          !service.active && "opacity-60",
+        )}
+      >
+        <span className="min-w-0">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-base font-semibold leading-snug">
+              {service.name}
+            </span>
+            {!service.active && (
+              <Badge variant="outline" className="text-sm">
+                ปิดใช้งาน
+              </Badge>
+            )}
+          </span>
+          {service.description && (
+            <span className="mt-0.5 line-clamp-1 text-sm text-muted-foreground md:line-clamp-2">
+              {service.description}
+            </span>
+          )}
+        </span>
+        <span
+          className={cn(
+            "shrink-0 text-xl tabular-nums",
+            has ? "font-semibold" : "text-muted-foreground",
+          )}
+        >
+          {has ? formatCurrency(price) : "–"}
+        </span>
+      </button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11 shrink-0"
+            aria-label={`เมนูของ ${service.name}`}
+          >
+            <MoreVertical className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-44">
+          <DropdownMenuItem
+            className="min-h-11 text-base"
+            onSelect={() => onToggle(service)}
+          >
+            <Power />
+            {service.active ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            className="min-h-11 text-base"
+            onSelect={() => onDelete(service)}
+          >
+            <Trash2 />
+            ลบบริการ
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
   );
 }

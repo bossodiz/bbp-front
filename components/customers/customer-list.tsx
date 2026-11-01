@@ -149,8 +149,8 @@ export function CustomerList({
 
   return (
     <>
-      <Card>
-        <div className="rounded-md">
+      <Card className="gap-0 py-0 lg:min-h-0 lg:flex-1">
+        <div className="rounded-md lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">

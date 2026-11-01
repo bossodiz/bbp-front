@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { PageHeader, PageShell } from "@/components/page-shell";
 import { BookingList } from "@/components/bookings/booking-list";
 import { BookingCalendar } from "@/components/bookings/booking-calendar";
 import { BookingDialog } from "@/components/bookings/booking-dialog";
@@ -41,49 +42,53 @@ export default function BookingsPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            ระบบนัดหมาย
-          </h1>
-          <p className="text-muted-foreground">จัดการการนัดหมายและมัดจำ</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Switch
-              id="show-completed"
-              checked={showCompleted}
-              onCheckedChange={setShowCompleted}
-            />
-            <Label htmlFor="show-completed" className="text-sm">
-              แสดงนัดที่เสร็จแล้ว/ยกเลิก
-            </Label>
-          </div>
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            เพิ่มนัดหมาย
-          </Button>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="ระบบนัดหมาย"
+        description="จัดการการนัดหมายและมัดจำ"
+        actions={
+          <>
+            <div className="mr-2 flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Switch
+                id="show-completed"
+                checked={showCompleted}
+                onCheckedChange={setShowCompleted}
+              />
+              <Label htmlFor="show-completed" className="text-sm">
+                แสดงนัดที่เสร็จแล้ว/ยกเลิก
+              </Label>
+            </div>
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              เพิ่มนัดหมาย
+            </Button>
+          </>
+        }
+      />
 
       <Tabs
         defaultValue="list"
-        className="space-y-4"
+        className="gap-3 lg:min-h-0 lg:flex-1"
         onValueChange={handleTabChange}
       >
-        <TabsList>
+        <TabsList className="shrink-0">
           <TabsTrigger value="calendar">ปฏิทิน</TabsTrigger>
           <TabsTrigger value="list">รายการนัดหมาย</TabsTrigger>
         </TabsList>
-        <TabsContent value="list" className="space-y-4">
+        <TabsContent
+          value="list"
+          className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain"
+        >
           <BookingList
             key={`list-${refreshKey}`}
             showCompleted={showCompleted}
           />
         </TabsContent>
-        <TabsContent value="calendar" className="space-y-4">
+        <TabsContent
+          value="calendar"
+          className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain"
+        >
           <BookingCalendar
             key={`calendar-${refreshKey}`}
             selectedDate={selectedDate}
@@ -100,6 +105,6 @@ export default function BookingsPage() {
         defaultDate={selectedDate}
         onSuccess={handleBookingSuccess}
       />
-    </div>
+    </PageShell>
   );
 }

@@ -381,35 +381,58 @@ export function ServiceDialog({
 
                 return (
                   <div className="rounded-lg border p-4 space-y-3">
-                    <Label>กำหนดราคาตามขนาด (บาท)</Label>
-                    <div className="grid grid-cols-5 gap-2">
-                      {sizes.map((size) => (
-                        <div key={size.id} className="space-y-1">
-                          <Label className="text-xs flex flex-col">
-                            <span>{size.name}</span>
-                            {size.description && (
-                              <span className="text-muted-foreground font-normal">
-                                {size.description}
+                    <Label className="text-base">กำหนดราคาตามขนาด (บาท)</Label>
+                    {/* มือถือ: หนึ่งขนาดต่อหนึ่งแถว เลื่อนขึ้น-ลง / จอใหญ่: ไทล์ 3 คอลัมน์ */}
+                    <div className="flex flex-col divide-y sm:grid sm:grid-cols-3 sm:gap-3 sm:divide-y-0">
+                      {sizes.map((size) => {
+                        const inputId = `price-${selectedPetTypeId}-${size.id}`;
+                        return (
+                          <div
+                            key={size.id}
+                            className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 sm:flex-col sm:items-stretch sm:gap-2 sm:rounded-xl sm:border sm:bg-muted/30 sm:p-3 sm:first:pt-3 sm:last:pb-3"
+                          >
+                            <Label
+                              htmlFor={inputId}
+                              className="flex min-w-0 flex-col items-start gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-2"
+                            >
+                              <span className="text-base font-semibold">
+                                {size.name}
                               </span>
-                            )}
-                          </Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={
-                              prices[`${selectedPetTypeId}_${size.id}`] || ""
-                            }
-                            onChange={(e) =>
-                              handlePriceChange(
-                                selectedPetTypeId,
-                                size.id,
-                                e.target.value,
-                              )
-                            }
-                          />
-                        </div>
-                      ))}
+                              {size.description && (
+                                <span className="text-sm font-normal text-muted-foreground">
+                                  {size.description}
+                                </span>
+                              )}
+                            </Label>
+                            <div className="relative w-40 shrink-0 sm:w-full">
+                              <Input
+                                id={inputId}
+                                type="number"
+                                inputMode="decimal"
+                                min="0"
+                                placeholder="0"
+                                className="pr-9 text-right text-lg tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                value={
+                                  prices[`${selectedPetTypeId}_${size.id}`] || ""
+                                }
+                                onChange={(e) =>
+                                  handlePriceChange(
+                                    selectedPetTypeId,
+                                    size.id,
+                                    e.target.value,
+                                  )
+                                }
+                              />
+                              <span
+                                aria-hidden="true"
+                                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground"
+                              >
+                                ฿
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );

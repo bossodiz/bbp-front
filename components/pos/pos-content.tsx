@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader, PageShell } from "@/components/page-shell";
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { POSServiceSelector } from "./pos-service-selector";
@@ -294,23 +295,22 @@ export function POSContent() {
   }, [bookingId, hotelId]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">
-          ขายหน้าร้าน (POS)
-        </h1>
-        <p className="text-muted-foreground">เลือกบริการและชำระเงิน</p>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="ขายหน้าร้าน (POS)"
+        description="เลือกบริการและชำระเงิน"
+      />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      {/* จอใหญ่: สองคอลัมน์เลื่อนแยกกัน (เลือกบริการ | ตะกร้า) หน้าไม่เลื่อน */}
+      <div className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-3">
+        <div className="space-y-3 lg:col-span-2 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           <POSCustomerSelector />
           <POSServiceSelector />
         </div>
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           <POSCart />
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

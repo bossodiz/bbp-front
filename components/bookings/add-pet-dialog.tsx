@@ -280,7 +280,7 @@ export function AddPetDialog({
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
-                              variant="outline"
+                              variant="outline" size="field"
                               role="combobox"
                               aria-expanded={breedOpen}
                               className={cn(
@@ -369,7 +369,7 @@ export function AddPetDialog({
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
-                              variant="outline"
+                              variant="outline" size="field"
                               role="combobox"
                               aria-expanded={breed2Open}
                               className={cn(
@@ -461,7 +461,7 @@ export function AddPetDialog({
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
-                            variant="outline"
+                            variant="outline" size="field"
                             role="combobox"
                             aria-expanded={breedOpen}
                             className={cn(
